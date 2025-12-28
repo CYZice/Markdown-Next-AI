@@ -1,6 +1,6 @@
-# MarkdownNext AI
+# Markdown Next AI
 
-**MarkdownNext AI** 是一个深度集成到 Obsidian 的 AI 助手插件。它不仅仅是一个简单的聊天窗口，更是懂你笔记上下文的智能写作伴侣。
+**Markdown Next AI** 是一个深度集成到 Obsidian 的 AI 助手插件。它不仅仅是一个简单的聊天窗口，更是懂你笔记上下文的智能写作伴侣。
 
 通过强大的上下文感知、灵活的模型管理以及自定义提示词系统，它能帮助你完成从灵感捕捉、内容润色到全文续写的各项任务。
 
