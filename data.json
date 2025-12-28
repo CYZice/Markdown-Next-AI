@@ -1,0 +1,76 @@
+{
+  "providers": {
+    "openai": {
+      "apiKey": "",
+      "baseUrl": "https://yunwu.ai/v1",
+      "enabled": true,
+      "apiKeyLink": "https://platform.openai.com/api-keys"
+    }
+  },
+  "models": {
+    "gemini-3-pro-preview": {
+      "id": "gemini-3-pro-preview",
+      "name": "gemini-3-pro-preview",
+      "provider": "openai",
+      "actualModel": "gemini-3-pro-preview",
+      "model": "gemini-3-pro-preview",
+      "category": "text",
+      "enabled": true
+    },
+    "gemini-3-flash-preview": {
+      "id": "gemini-3-flash-preview",
+      "name": "gemini-3-flash-preview",
+      "provider": "openai",
+      "actualModel": "gemini-3-flash-preview",
+      "model": "gemini-3-flash-preview",
+      "category": "text",
+      "enabled": true
+    },
+    "gpt-5": {
+      "id": "gpt-5",
+      "name": "GPT-5",
+      "provider": "openai",
+      "model": "gpt-5",
+      "actualModel": "gpt-5",
+      "type": "chat",
+      "enabled": true,
+      "category": "text"
+    }
+  },
+  "currentModel": "gemini-3-flash-preview",
+  "timeout": 30000,
+  "enableRightClick": true,
+  "enableAtTrigger": true,
+  "maxTokens": 5000,
+  "maxContextLines": 20,
+  "maxContextChars": 3000,
+  "globalRules": [],
+  "enableGlobalRules": true,
+  "commonPrompts": [
+    {
+      "id": "expand",
+      "name": "内容扩充",
+      "content": "基于现有内容进行深度扩充，补充更多细节描述及具体案例，使其更加丰富完整。"
+    },
+    {
+      "id": "summarize",
+      "name": "核心摘要",
+      "content": "提炼这段文本的核心观点，生成一份精简的摘要，保留关键信息。"
+    },
+    {
+      "id": "improve",
+      "name": "润色优化",
+      "content": "优化这段文字的表达方式，使其逻辑更通顺，用词更精准，提升整体可读性。"
+    },
+    {
+      "id": "translate",
+      "name": "中译英",
+      "content": "将上述内容翻译为地道的英文表达，确保语法正确且符合母语习惯。"
+    },
+    {
+      "id": "continue",
+      "name": "续写创作",
+      "content": "承接上文语境和风格，继续撰写后续内容，保持思路连贯。"
+    }
+  ]
+}

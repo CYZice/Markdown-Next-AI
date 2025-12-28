@@ -46,11 +46,11 @@
 
 由于本插件尚未上架 Obsidian 社区插件市场，请按照以下步骤手动安装：
 
-1.  下载本仓库最新 Release 中的 `main.js`, `manifest.json`, `styles.css`。
+1.  下载本仓库最新 Release 中的 `main.js`, `manifest.json`, `styles.css`,data.json 。
 2.  打开您的 Obsidian 仓库文件夹，进入 `.obsidian/plugins` 目录。
 3.  创建一个名为 `markdown-next-ai` 的新文件夹。
 4.  将下载的三个文件放入该文件夹。
-5.  重启 Obsidian，在 **设置** -> **第三方插件** 中启用 "MarkdownNext AI"。
+5.  重启 Obsidian，在 **设置** -> **第三方插件** 中启用 "Markdown Next AI"。
 
 ## ⚙️ 配置说明
 
