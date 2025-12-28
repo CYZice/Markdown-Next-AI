@@ -332,11 +332,10 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
+  padding: 8px 12px;
   border-bottom: 1px solid var(--background-modifier-border);
   background: var(--background-secondary);
   border-radius: 12px 12px 0 0;
-  display: none;
 }
 
 .markdown-next-ai-window-header h2 {
@@ -601,17 +600,17 @@
 .markdown-next-ai-popup-content .markdown-next-ai-model-select,
 .markdown-next-ai-modal-body .markdown-next-ai-model-select {
   width: auto;
-  max-width: 180px;
+  max-width: none;
   background: transparent;
   color: var(--text-normal);
   font-size: 12px;
   cursor: pointer;
-  transition: all 0.2s ease;
-  margin-right: 8px;
+  transition: all 0.15s ease;
+  margin-right: 4px;
+  padding-right: 4px;
   appearance: auto;
   -webkit-appearance: auto;
   box-shadow: none !important;
-
 }
 
 
@@ -1026,10 +1025,12 @@
   border: 1px solid var(--background-modifier-border);
   border-radius: 8px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-  min-width: 300px;
-  max-width: 400px;
+  min-width: 480px;
+  max-width: 80vw;
+  width: fit-content;
   font-family: var(--font-interface);
   animation: markdown-next-ai-popup-appear 0.2s ease-out;
+  transition: width 0.15s ease-out;
 }
 
 /* 上下文按钮样式已移动到上�?*/
@@ -1132,15 +1133,16 @@
 
 
 
-/* Contenteditable输入框样�?*/
+/* Contenteditable输入框样式 */
 .markdown-next-ai-editable-input {
   width: 100%;
-  padding: 12px;
+  min-width: 420px;
+  padding: 12px 14px;
   border: 1px solid var(--background-modifier-border);
   border-radius: 6px;
   background: transparent !important;
   color: var(--text-normal);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.5;
   outline: none;
   white-space: pre-wrap;
@@ -1388,7 +1390,8 @@
 .markdown-next-ai-left-section {
   display: flex;
   align-items: center;
-
+  flex-shrink: 0;
+  gap: 2px;
 }
 
 .markdown-next-ai-popup-content .markdown-next-ai-upload-btn,
@@ -2326,7 +2329,7 @@
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   min-width: 300px;
-  max-width: 500px;
+  max-width: 600px;
   overflow: hidden;
   z-index: 10000;
 }
