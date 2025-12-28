@@ -12,27 +12,7 @@ const MODEL_CATEGORIES = {
     IMAGE: "image"
 };
 
-const CATEGORY_NAMES = {
-    [MODEL_CATEGORIES.THINKING]: "思考模型",
-    [MODEL_CATEGORIES.VISION]: "视觉模型",
-    [MODEL_CATEGORIES.MULTIMODAL]: "多模态模型",
-    [MODEL_CATEGORIES.TEXT]: "文本模型",
-    [MODEL_CATEGORIES.IMAGE]: "图片模型"
-};
 
-const CATEGORY_ICONS = {
-    [MODEL_CATEGORIES.THINKING]: "🧠",
-    [MODEL_CATEGORIES.VISION]: "👁️",
-    [MODEL_CATEGORIES.MULTIMODAL]: "🌈",
-    [MODEL_CATEGORIES.TEXT]: "📝",
-    [MODEL_CATEGORIES.IMAGE]: "🖼️"
-};
-
-const DEFAULT_MODEL_IDS = [
-    "gemini-3-pro-preview",
-    "gemini-3-flash-preview",
-    "gpt-5"
-];
 
 const DEFAULT_SETTINGS = {
     providers: {
