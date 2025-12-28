@@ -1,0 +1,2888 @@
+/* MarkdownNext AI Plugin Styles */
+
+/* 图片显示样式 */
+.image-mask-default {
+  display: inline-block;
+  border-radius: 8px;
+  overflow: hidden;
+  vertical-align: middle;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.image-mask-default:hover {
+  transform: scale(1.02);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.image-mask-default img {
+  border: none;
+  border-radius: 8px;
+}
+
+/* Thinking模型流式处理样式 */
+.markdown-next-ai-thinking-section {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  margin-bottom: 12px;
+  padding: 12px;
+  font-family: var(--font-monospace);
+  font-size: 0.85em;
+  line-height: 1.4;
+}
+
+.markdown-next-ai-thinking-header {
+  color: var(--text-accent);
+  font-weight: 600;
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  font-size: 0.9em;
+}
+
+.markdown-next-ai-thinking-content {
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  max-height: 200px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb-bg) var(--scrollbar-bg);
+}
+
+.markdown-next-ai-thinking-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.markdown-next-ai-thinking-content::-webkit-scrollbar-track {
+  background: var(--scrollbar-bg);
+  border-radius: 3px;
+}
+
+.markdown-next-ai-thinking-content::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb-bg);
+  border-radius: 3px;
+}
+
+.markdown-next-ai-thinking-content::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover-bg);
+}
+
+.markdown-next-ai-response-content {
+  color: var(--text-normal);
+  font-family: var(--font-text);
+  font-size: 1em;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* 独立thinking消息样式 */
+.markdown-next-ai-message-thinking {
+  background: rgba(243, 156, 18, 0.05);
+  border: 1px solid rgba(243, 156, 18, 0.2);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  margin-right: 50px;
+}
+
+.markdown-next-ai-message-thinking .markdown-next-ai-message-header {
+  background: rgba(243, 156, 18, 0.1);
+  padding: 8px 12px;
+  border-radius: 7px 7px 0 0;
+  font-size: 0.9em;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.markdown-next-ai-message-thinking .markdown-next-ai-message-content {
+  padding: 12px;
+  font-family: var(--font-monospace);
+  font-size: 0.85em;
+  line-height: 1.4;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  max-height: 300px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(243, 156, 18, 0.3) transparent;
+}
+
+.markdown-next-ai-message-thinking .markdown-next-ai-message-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.markdown-next-ai-message-thinking .markdown-next-ai-message-content::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 3px;
+}
+
+.markdown-next-ai-message-thinking .markdown-next-ai-message-content::-webkit-scrollbar-thumb {
+  background: rgba(243, 156, 18, 0.3);
+  border-radius: 3px;
+}
+
+.markdown-next-ai-message-thinking .markdown-next-ai-message-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(243, 156, 18, 0.5);
+}
+
+/* SVG图标样式 */
+.markdown-next-ai-popup-title svg,
+.markdown-next-ai-modal-title svg {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 4px;
+  width: 16px;
+  height: 16px;
+}
+
+/* 菜单项中的SVG图标 */
+.menu-item-icon svg {
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 4px;
+  width: 16px;
+  height: 16px;
+}
+
+/* 通用样式 */
+.markdown-next-ai-modal {
+  font-family: var(--font-interface);
+  color: var(--text-normal);
+}
+
+/* 旧的AI结果显示模态框样式 - 已废弃，保留用于向后兼容 */
+
+.markdown-next-ai-original-text {
+  background: var(--background-secondary);
+  padding: 2px;
+  margin-bottom: 16px;
+}
+
+.markdown-next-ai-original-text pre {
+  margin: 0;
+  font-family: var(--font-monospace);
+  font-size: 0.9em;
+  line-height: 1.4;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.markdown-next-ai-ai-result {
+  background: transparent;
+  padding: 2px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.markdown-next-ai-ai-result pre {
+  margin: 0;
+  font-family: var(--font-text);
+  font-size: 1em;
+  line-height: 1.6;
+  color: var(--text-normal);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* 文件和文件夹选择窗口样式 */
+.markdown-next-ai-file-selection-window,
+.markdown-next-ai-folder-selection-window {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 20000;
+  font-family: var(--font-interface);
+  pointer-events: none;
+}
+
+.markdown-next-ai-window-content {
+  position: absolute;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 12px;
+  width: 250px;
+  max-height: 400px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: markdown-next-ai-window-appear 0.2s ease-out;
+  pointer-events: auto;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes markdown-next-ai-window-appear {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.markdown-next-ai-window-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  border-radius: 12px 12px 0 0;
+  display: none;
+}
+
+.markdown-next-ai-window-header h2 {
+  margin: 0;
+  font-size: 1.1em;
+  font-weight: 600;
+  color: var(--text-accent);
+}
+
+.markdown-next-ai-window-close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.markdown-next-ai-window-close:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.markdown-next-ai-window-body {
+  padding: 10px;
+  flex: 1;
+  overflow-y: auto;
+  max-height: 300px;
+  background: var(--background-secondary);
+}
+
+.markdown-next-ai-search-container {
+  margin-bottom: 16px;
+}
+
+.markdown-next-ai-search-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+}
+
+.markdown-next-ai-search-input:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+}
+
+.markdown-next-ai-file-list,
+.markdown-next-ai-folder-list {
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.markdown-next-ai-file-item,
+.markdown-next-ai-folder-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 8px;
+  margin-bottom: 4px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.markdown-next-ai-file-item:hover,
+.markdown-next-ai-folder-item:hover {
+  background-color: var(--background-modifier-hover);
+}
+
+.markdown-next-ai-file-checkbox,
+.markdown-next-ai-folder-checkbox {
+  cursor: pointer;
+  height: 14px !important;
+  width: 14px !important;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.markdown-next-ai-file-checkbox::after,
+.markdown-next-ai-folder-checkbox::after {
+  cursor: pointer;
+  height: 14px !important;
+  width: 14px !important;
+}
+
+.markdown-next-ai-file-label,
+.markdown-next-ai-folder-label {
+  cursor: pointer;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text-normal);
+}
+
+.markdown-next-ai-file-name {
+  color: var(--text-normal);
+}
+
+.markdown-next-ai-file-extension {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 1px 4px;
+  background: transparent;
+  border-radius: 3px;
+  text-transform: uppercase;
+}
+
+
+
+
+.markdown-next-ai-window-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 2px 10px;
+  border-top: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+  border-radius: 0 0 12px 12px;
+  flex-shrink: 0;
+}
+
+.markdown-next-ai-confirm-btn,
+.markdown-next-ai-cancel-btn {
+  padding: 6px;
+  border: none !important;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.markdown-next-ai-confirm-btn {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.markdown-next-ai-confirm-btn:hover {
+  background: var(--interactive-accent-hover);
+}
+
+
+/* @符号触发模态框 */
+.markdown-next-ai-at-trigger-modal {
+  max-width: 600px;
+  width: 80vw;
+}
+
+.markdown-next-ai-at-trigger-modal h2 {
+  color: var(--text-accent);
+  border-bottom: 2px solid var(--background-modifier-border);
+  padding-bottom: 8px;
+  margin-bottom: 20px;
+  font-size: 1.4em;
+  font-weight: 600;
+}
+
+.markdown-next-ai-at-trigger-modal p {
+  margin: 12px 0;
+  color: var(--text-normal);
+  font-size: 1em;
+}
+
+
+/* 按钮组样�?*/
+.markdown-next-ai-button-group {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.markdown-next-ai-button-group button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9em;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  min-width: 80px;
+}
+
+/* 主要按钮（接受、生成） */
+.markdown-next-ai-accept-btn,
+.markdown-next-ai-submit-btn {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.markdown-next-ai-accept-btn:hover,
+.markdown-next-ai-submit-btn:hover {
+  background: var(--interactive-accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(var(--interactive-accent-rgb), 0.3);
+}
+
+/* 次要按钮（重新生成） */
+.markdown-next-ai-regenerate-btn {
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+}
+
+.markdown-next-ai-regenerate-btn:hover {
+  background: var(--background-secondary-alt);
+  border-color: var(--interactive-accent);
+  transform: translateY(-1px);
+}
+
+
+
+/* 按钮禁用状�?*/
+.markdown-next-ai-button-group button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* 模型选择器样�?*/
+.markdown-next-ai-model-selector {
+  margin-bottom: 16px;
+  padding: 12px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.markdown-next-ai-model-selector:hover {
+  border-color: var(--interactive-accent);
+  background: var(--background-secondary-alt);
+}
+
+.markdown-next-ai-model-selector label {
+  color: var(--text-normal);
+  font-weight: 500;
+  font-size: 0.9em;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.markdown-next-ai-popup-content .markdown-next-ai-model-select,
+.markdown-next-ai-modal-body .markdown-next-ai-model-select {
+  width: auto;
+  max-width: 180px;
+  background: transparent;
+  color: var(--text-normal);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-right: 8px;
+  appearance: auto;
+  -webkit-appearance: auto;
+  box-shadow: none !important;
+
+}
+
+
+.markdown-next-ai-model-select option {
+  background: var(--background-primary);
+  color: var(--text-normal);
+  padding: 8px;
+}
+
+/* 右键菜单样式增强 */
+.menu .menu-item[data-markdown-next-ai] {
+  padding: 8px 12px;
+}
+
+.menu .menu-item[data-markdown-next-ai]:hover {
+  background: var(--background-modifier-hover);
+}
+
+.menu .menu-item[data-markdown-next-ai] .menu-item-icon {
+  margin-right: 8px;
+  opacity: 0.8;
+}
+
+/* 加载指示器样�?*/
+.markdown-next-ai-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-normal);
+  font-size: 14px;
+  font-weight: 500;
+  padding: 6px 12px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.markdown-next-ai-loading::after {
+  content: '';
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--background-modifier-border);
+  border-top: 2px solid var(--text-muted);
+  border-radius: 50%;
+  animation: markdown-next-ai-spin 1s linear infinite;
+}
+
+.markdown-next-ai-dots {
+  display: inline-block;
+  min-width: 20px;
+  text-align: left;
+  font-weight: bold;
+  animation: markdown-next-ai-blink 1s ease-in-out infinite;
+}
+
+/* 加载动画 */
+@keyframes markdown-next-ai-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes markdown-next-ai-blink {
+
+  0%,
+  50% {
+    opacity: 1;
+  }
+
+  51%,
+  100% {
+    opacity: 0.3;
+  }
+}
+
+/* 设置面板样式 */
+.markdown-next-ai-config-desc {
+  margin-bottom: 15px;
+  padding: 12px;
+  background-color: var(--background-secondary);
+  border-radius: 8px;
+  font-size: 0.9em;
+  color: var(--text-muted);
+  border-left: 4px solid var(--interactive-accent);
+}
+
+.markdown-next-ai-config-desc strong {
+  color: var(--text-normal);
+}
+
+.markdown-next-ai-model-info {
+  margin: 10px 0;
+  padding: 12px;
+  background-color: var(--background-secondary);
+  border-radius: 8px;
+  font-size: 0.9em;
+  color: var(--text-normal);
+  border-left: 4px solid var(--text-accent);
+  transition: all 0.2s ease;
+}
+
+.markdown-next-ai-url-presets {
+  margin: 10px 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.markdown-next-ai-url-presets button {
+  font-size: 0.8em;
+  padding: 6px 12px;
+  margin: 2px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.markdown-next-ai-url-presets button:hover {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.markdown-next-ai-url-presets button:active {
+  transform: translateY(0);
+}
+
+/* 加载状态样�?*/
+.markdown-next-ai-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.markdown-next-ai-loading::after {
+  content: '';
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--background-modifier-border);
+  border-top: 2px solid var(--interactive-accent);
+  border-radius: 50%;
+  animation: markdown-next-ai-spin 1s linear infinite;
+}
+
+@keyframes markdown-next-ai-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* 设置页面样式 */
+.setting-item[data-markdown-next-ai-setting] {
+  border-bottom: 1px solid var(--background-modifier-border-hover);
+  padding: 16px 0;
+}
+
+.setting-item[data-markdown-next-ai-setting]:last-child {
+  border-bottom: none;
+}
+
+.setting-item[data-markdown-next-ai-setting] .setting-item-name {
+  font-weight: 500;
+  color: var(--text-normal);
+}
+
+.setting-item[data-markdown-next-ai-setting] .setting-item-description {
+  color: var(--text-muted);
+  font-size: 0.9em;
+  margin-top: 4px;
+}
+
+/* 测试连接按钮特殊样式 */
+.setting-item button[data-test-connection] {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.85em;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.setting-item button[data-test-connection]:hover {
+  background: var(--interactive-accent-hover);
+}
+
+.setting-item button[data-test-connection]:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 供应商和模型配置表格样式 - 简约紧凑版�?*/
+.markdown-next-ai-config-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 12px 0;
+  background: var(--background-primary);
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  border: 1px solid var(--background-modifier-border);
+}
+
+.markdown-next-ai-config-table th {
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  font-weight: 500;
+  padding: 8px 12px;
+  text-align: left;
+  border-bottom: 2px solid var(--background-modifier-border);
+  font-size: 0.85em;
+  white-space: nowrap;
+}
+
+.markdown-next-ai-config-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  color: var(--text-normal);
+  font-size: 0.85em;
+  vertical-align: middle;
+}
+
+.markdown-next-ai-config-table tr:last-child td {
+  border-bottom: none;
+}
+
+.markdown-next-ai-config-table tr:hover {
+  background: var(--background-modifier-hover);
+}
+
+.markdown-next-ai-config-table .markdown-next-ai-api-key-cell {
+  font-family: var(--font-monospace);
+  color: var(--text-muted);
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.markdown-next-ai-config-table .markdown-next-ai-actions-cell {
+  text-align: center;
+  width: 80px;
+  white-space: nowrap;
+}
+
+.markdown-next-ai-config-table .markdown-next-ai-enable-cell {
+  text-align: center;
+  width: 60px;
+}
+
+.markdown-next-ai-config-table button {
+  padding: 3px 6px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 3px;
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  cursor: pointer;
+  font-size: 0.75em;
+  transition: all 0.15s ease;
+  margin: 0 1px;
+  display: inline-block;
+}
+
+.markdown-next-ai-config-table button:hover {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border-color: var(--interactive-accent);
+  transform: translateY(-1px);
+}
+
+.markdown-next-ai-config-table .checkbox-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.markdown-next-ai-config-table .checkbox-container input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+  transform: scale(1.1);
+}
+
+.markdown-next-ai-config-table select {
+  padding: 3px 6px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 3px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 0.75em;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.markdown-next-ai-config-table select:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+}
+
+.markdown-next-ai-config-table a {
+  color: var(--text-accent);
+  text-decoration: none;
+  font-size: 0.75em;
+  transition: color 0.15s ease;
+}
+
+.markdown-next-ai-config-table a:hover {
+  color: var(--interactive-accent);
+  text-decoration: underline;
+}
+
+/* 配置节标题样�?*/
+.markdown-next-ai-config-section {
+  margin: 24px 0 16px 0;
+}
+
+.markdown-next-ai-config-section h3 {
+  color: var(--text-accent);
+  font-size: 1.2em;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  padding-bottom: 8px;
+  border-bottom: 2px solid var(--background-modifier-border);
+}
+
+.markdown-next-ai-config-section p {
+  color: var(--text-muted);
+  font-size: 0.9em;
+  margin: 0 0 16px 0;
+}
+
+/* 响应式设�?*/
+@media (max-width: 768px) {
+  .markdown-next-ai-at-trigger-modal {
+    width: 95vw;
+    max-width: none;
+  }
+
+  .markdown-next-ai-button-group {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .markdown-next-ai-button-group button {
+    width: 100%;
+  }
+
+  .markdown-next-ai-config-table {
+    font-size: 0.75em;
+  }
+
+  .markdown-next-ai-config-table th,
+  .markdown-next-ai-config-table td {
+    padding: 6px 8px;
+  }
+
+  .markdown-next-ai-config-table .markdown-next-ai-api-key-cell {
+    max-width: 80px;
+  }
+
+  .markdown-next-ai-config-table button {
+    padding: 2px 4px;
+    font-size: 0.7em;
+    margin: 0 1px;
+    display: inline-block;
+  }
+
+  .markdown-next-ai-config-table select {
+    padding: 2px 4px;
+    font-size: 0.7em;
+  }
+}
+
+/* 深色主题适配 */
+.theme-dark .markdown-next-ai-ai-result {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.theme-dark .markdown-next-ai-continue-input {
+  background: var(--background-primary-alt);
+}
+
+/* 高对比度模式 */
+@media (prefers-contrast: high) {
+  .markdown-next-ai-ai-result {
+    border-width: 3px;
+  }
+
+  .markdown-next-ai-button-group button {
+    border-width: 2px;
+  }
+}
+
+/* @符号触发弹出窗口样式 */
+.markdown-next-ai-at-popup {
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  min-width: 300px;
+  max-width: 400px;
+  font-family: var(--font-interface);
+  animation: markdown-next-ai-popup-appear 0.2s ease-out;
+}
+
+/* 上下文按钮样式已移动到上�?*/
+
+.markdown-next-ai-select-file-btn {
+  background: transparent !important;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  padding: 5px;
+  box-shadow: none !important;
+  display: none;
+}
+
+.markdown-next-ai-select-folder-btn {
+  background: transparent !important;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  padding: 5px;
+  box-shadow: none !important;
+}
+
+
+.markdown-next-ai-selected-context {
+  display: none;
+  margin-top: 8px;
+}
+
+.markdown-next-ai-context-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  display: none;
+}
+
+.markdown-next-ai-context-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.markdown-next-ai-clear-context {
+  padding: 2px 6px;
+  background: var(--background-modifier-error);
+  color: var(--text-error);
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.markdown-next-ai-clear-context:hover {
+  background: var(--background-modifier-error-hover);
+}
+
+.markdown-next-ai-context-list {
+  max-height: 120px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.markdown-next-ai-context-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0px;
+  margin-bottom: 2px;
+  background: var(--background-primary);
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.markdown-next-ai-context-item svg {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.markdown-next-ai-context-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.markdown-next-ai-remove-context {
+  background: transparent !important;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  font-size: 14px;
+  line-height: 1;
+  box-shadow: none !important;
+}
+
+
+
+/* Contenteditable输入框样�?*/
+.markdown-next-ai-editable-input {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: transparent !important;
+  color: var(--text-normal);
+  font-size: 12px;
+  line-height: 1.5;
+  outline: none;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.markdown-next-ai-editable-input:focus {
+  border-color: var(--interactive-accent);
+}
+
+.markdown-next-ai-editable-input.empty:before {
+  content: attr(data-placeholder);
+  color: var(--text-muted);
+  pointer-events: none;
+  position: absolute;
+}
+
+/* 内联标签样式 */
+.markdown-next-ai-inline-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 8px;
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+  border-radius: 10px;
+  font-size: 12px;
+  cursor: default;
+  user-select: none;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.markdown-next-ai-inline-tag-icon {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.markdown-next-ai-inline-tag-name {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 文件/文件夹选择模态框样式 */
+.markdown-next-ai-search-container {
+  margin-bottom: 16px;
+}
+
+.markdown-next-ai-search-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 14px;
+}
+
+.markdown-next-ai-search-input:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+}
+
+.markdown-next-ai-file-list,
+.markdown-next-ai-folder-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.markdown-next-ai-file-item,
+.markdown-next-ai-folder-item {
+  display: flex;
+  align-items: center;
+  padding: 2px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.markdown-next-ai-file-item:last-child,
+.markdown-next-ai-folder-item:last-child {
+  border-bottom: none;
+}
+
+.markdown-next-ai-file-item:hover,
+.markdown-next-ai-folder-item:hover {
+  background: var(--background-modifier-hover);
+}
+
+
+.markdown-next-ai-file-label,
+.markdown-next-ai-folder-label {
+  flex: 1;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.markdown-next-ai-modal-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+
+
+.markdown-next-ai-popup-header {
+  padding: 12px 16px;
+  padding-bottom: 0px;
+  background: var(--background-secondary);
+  border-radius: 8px 8px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.markdown-next-ai-popup-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-normal);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.markdown-next-ai-popup-content {
+  padding: 16px;
+  padding-bottom: 0px;
+  padding-top: 0px;
+  box-shadow: none !important;
+  background: var(--background-secondary);
+}
+
+
+.markdown-next-ai-popup-content .markdown-next-ai-continue-input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.5;
+  font-size: 12px;
+}
+
+.markdown-next-ai-upload-section .markdown-next-ai-submit-btn {
+  background: transparent;
+  color: var(--text-normal);
+  padding: 6px 6px;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: none !important;
+}
+
+
+.markdown-next-ai-modal-body .markdown-next-ai-upload-section .markdown-next-ai-submit-btn {
+  padding: 8px 16px;
+  font-size: 13px;
+}
+
+
+
+/* 弹出动画 */
+@keyframes markdown-next-ai-popup-appear {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* 动画效果 */
+.markdown-next-ai-at-trigger-modal {
+  animation: markdown-next-ai-modal-appear 0.2s ease-out;
+}
+
+@keyframes markdown-next-ai-modal-appear {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* 焦点可见�?*/
+.markdown-next-ai-button-group button:focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 2px;
+}
+
+
+/* 错误状态样�?*/
+.markdown-next-ai-error {
+  color: var(--text-error);
+  background: var(--background-modifier-error);
+  border: 1px solid var(--text-error);
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin: 8px 0;
+  font-size: 0.9em;
+}
+
+/* 成功状态样�?*/
+.markdown-next-ai-success {
+  color: var(--text-success);
+  background: var(--background-modifier-success);
+  border: 1px solid var(--text-success);
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin: 8px 0;
+  font-size: 0.9em;
+}
+
+/* 上下文选择区域样式 */
+.markdown-next-ai-context-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.markdown-next-ai-context-buttons {
+  display: flex;
+
+}
+
+/* 图片上传相关样式 */
+.markdown-next-ai-upload-section {
+  margin: 8px 0;
+  display: flex;
+  align-items: center;
+
+  justify-content: space-between;
+}
+
+.markdown-next-ai-left-section {
+  display: flex;
+  align-items: center;
+
+}
+
+.markdown-next-ai-popup-content .markdown-next-ai-upload-btn,
+.markdown-next-ai-modal-body .markdown-next-ai-upload-btn {
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+  align-items: center;
+  gap: 4px;
+  padding: 5px;
+  box-shadow: none !important;
+}
+
+
+
+.markdown-next-ai-file-input {
+  display: none;
+}
+
+/* 图片预览区域 */
+.markdown-next-ai-image-previews {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.markdown-next-ai-image-preview {
+  position: relative;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 4px;
+  background: var(--background-secondary);
+  max-width: 120px;
+  transition: all 0.2s ease;
+}
+
+.markdown-next-ai-image-preview:hover {
+  border-color: var(--interactive-accent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.markdown-next-ai-image-container {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.markdown-next-ai-preview-img {
+  max-width: 100px;
+  max-height: 80px;
+  object-fit: cover;
+  border-radius: 4px;
+  display: block;
+}
+
+.markdown-next-ai-remove-image {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--text-error);
+  color: white;
+  border: none;
+  cursor: pointer;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: all 0.2s ease;
+  opacity: 0;
+}
+
+.markdown-next-ai-image-preview:hover .markdown-next-ai-remove-image {
+  opacity: 1;
+}
+
+.markdown-next-ai-remove-image:hover {
+  background: var(--text-error);
+  transform: scale(1.1);
+}
+
+/* PDF右键菜单样式 */
+.pdfflow-context-menu {
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  padding: 4px;
+  min-width: 150px;
+  animation: markdown-next-ai-popup-appear 0.15s ease-out;
+  font-family: var(--font-interface);
+}
+
+.pdfflow-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: var(--text-normal);
+  font-size: 14px;
+  user-select: none;
+}
+
+.pdfflow-menu-item:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-accent);
+}
+
+.pdfflow-menu-item svg {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+}
+
+.pdfflow-menu-item span {
+  flex: 1;
+  white-space: nowrap;
+}
+
+.markdown-next-ai-image-info {
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.2;
+}
+
+.markdown-next-ai-image-name {
+  display: block;
+  max-width: 100px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.markdown-next-ai-image-size {
+  display: block;
+  margin-top: 2px;
+  color: var(--text-faint);
+}
+
+/* 响应式设�?*/
+@media (max-width: 600px) {
+  .markdown-next-ai-image-previews {
+    max-height: 150px;
+  }
+
+  .markdown-next-ai-image-preview {
+    max-width: 80px;
+  }
+
+  .markdown-next-ai-preview-img {
+    max-width: 70px;
+    max-height: 60px;
+  }
+
+  .markdown-next-ai-upload-btn {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+}
+
+/* AI文本修改模态框样式 */
+.markdown-next-ai-ai-modify-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-interface);
+}
+
+/* 通用模态框背景 */
+.markdown-next-ai-modal-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+/* 通用模态框内容样式 */
+.markdown-next-ai-modal-content {
+  position: relative;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  max-width: 500px;
+  width: 80vw;
+  max-height: 80vh;
+  overflow-y: auto;
+  animation: markdown-next-ai-modal-appear 0.2s ease-out;
+}
+
+/* 通用模态框头部样式 */
+.markdown-next-ai-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 20px;
+  background: var(--background-secondary);
+  border-radius: 12px 12px 0 0;
+  cursor: grab;
+  user-select: none;
+}
+
+.markdown-next-ai-modal-header:active {
+  cursor: grabbing;
+}
+
+/* 通用模态框标题样式 */
+.markdown-next-ai-modal-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-normal);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 通用模态框关闭按钮样式 */
+.markdown-next-ai-modal-close {
+  background: transparent !important;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px;
+  box-shadow: none !important;
+}
+
+
+
+.markdown-next-ai-popup-close {
+  background: transparent !important;
+  font-size: 15px;
+  cursor: pointer;
+  padding: 4px;
+  border: none;
+  box-shadow: none !important;
+}
+
+.markdown-next-ai-popup-close:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.markdown-next-ai-modal-body {
+  padding: 0px 20px;
+  padding-bottom: 10px;
+  background: var(--background-secondary);
+}
+
+.markdown-next-ai-selected-text {
+  background: var(--background-secondary);
+  border-radius: 8px;
+  padding: 5px;
+  margin-bottom: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.markdown-next-ai-selected-text-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.markdown-next-ai-selected-text h4 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.markdown-next-ai-toggle-btn {
+  background: transparent !important;
+  border: none;
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  box-shadow: none !important;
+}
+
+.markdown-next-ai-text-preview {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-faint);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  transition: all 0.3s ease;
+  padding-left: 8px;
+  background: var(--blockquote-background-color);
+  border-left: 2px solid var(--color-accent);
+  border-radius: 6px;
+}
+
+.markdown-next-ai-text-preview.markdown-next-ai-collapsed {
+  display: none;
+}
+
+.markdown-next-ai-prompt-input h4 {
+  color: var(--text-normal);
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+
+
+
+/* 设置按钮样式 */
+.markdown-next-ai-settings-btn {
+  background: transparent !important;
+  border: none !important;
+  padding: 4px !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  transition: all 0.2s ease !important;
+  border-radius: 4px !important;
+}
+
+
+
+.markdown-next-ai-settings-btn svg {
+  width: 16px !important;
+  height: 16px !important;
+  color: var(--text-muted) !important;
+}
+
+.markdown-next-ai-settings-btn:hover svg {
+  color: var(--text-normal) !important;
+}
+
+/* 响应式设计适配 */
+@media (max-width: 768px) {
+  .markdown-next-ai-ai-modify-modal {
+    width: 95vw;
+    max-width: none;
+  }
+}
+
+/* 提示词选择弹出窗口样式 */
+.markdown-next-ai-prompt-selector-popup {
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  max-width: 300px;
+  min-width: 200px;
+  max-height: 300px;
+  overflow-y: auto;
+  font-family: var(--font-interface);
+  z-index: 10010 !important;
+}
+
+.markdown-next-ai-prompt-list {
+  padding: 8px 0;
+}
+
+.markdown-next-ai-prompt-item {
+  padding: 12px 16px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--background-modifier-border);
+  transition: background-color 0.2s ease;
+}
+
+.markdown-next-ai-prompt-item:last-child {
+  border-bottom: none;
+}
+
+.markdown-next-ai-prompt-item:hover {
+  background: var(--background-modifier-hover);
+}
+
+.markdown-next-ai-prompt-item.selected {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.markdown-next-ai-prompt-item.selected .markdown-next-ai-prompt-name {
+  color: var(--text-on-accent);
+}
+
+.markdown-next-ai-prompt-item.selected .markdown-next-ai-prompt-preview {
+  color: var(--text-on-accent);
+  opacity: 0.8;
+}
+
+.markdown-next-ai-prompt-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-normal);
+  margin-bottom: 4px;
+}
+
+.markdown-next-ai-prompt-preview {
+  font-size: 0.7em;
+  color: var(--text-muted);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.markdown-next-ai-prompt-empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* 滚动条样�?*/
+.markdown-next-ai-prompt-selector-popup::-webkit-scrollbar {
+  width: 6px;
+}
+
+.markdown-next-ai-prompt-selector-popup::-webkit-scrollbar-track {
+  background: var(--background-secondary);
+}
+
+.markdown-next-ai-prompt-selector-popup::-webkit-scrollbar-thumb {
+  background: var(--background-modifier-border);
+  border-radius: 3px;
+}
+
+.markdown-next-ai-prompt-selector-popup::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* 全文修改按钮样式 */
+.markdown-next-ai-header-button {
+  background: transparent !important;
+  border: none !important;
+  padding: 6px 8px !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.2s ease !important;
+  border-radius: 4px !important;
+  margin-left: 4px !important;
+  opacity: 0.7 !important;
+}
+
+.markdown-next-ai-header-button:hover {
+  background: var(--background-modifier-hover) !important;
+  opacity: 1 !important;
+}
+
+.markdown-next-ai-header-button svg {
+  width: 16px !important;
+  height: 16px !important;
+  color: var(--text-muted) !important;
+  transition: color 0.2s ease !important;
+}
+
+.markdown-next-ai-header-button:hover svg {
+  color: var(--text-normal) !important;
+}
+
+/* 全文修改模态框样式 */
+.markdown-next-ai-full-text-modal {
+  width: 600px;
+  max-width: 90vw;
+  max-height: 80vh;
+}
+
+.markdown-next-ai-full-text-modal .markdown-next-ai-modal-body {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.markdown-next-ai-text-preview label {
+  display: block;
+  font-weight: 500;
+  color: var(--text-normal);
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.markdown-next-ai-text-content {
+  font-family: var(--font-text);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  background: var(--background-primary);
+  padding: 12px;
+  margin-bottom: 8px;
+  max-height: 700px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.markdown-next-ai-text-length {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.markdown-next-ai-input-group {
+  margin-bottom: 20px;
+}
+
+.markdown-next-ai-input-group label {
+  display: block;
+  font-weight: 500;
+  color: var(--text-normal);
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.markdown-next-ai-input-group textarea {
+  width: 100%;
+  min-height: 100px;
+  padding: 12px;
+  border: 2px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-family: var(--font-text);
+  font-size: 14px;
+  line-height: 1.5;
+  resize: vertical;
+  transition: border-color 0.2s ease;
+  outline: none;
+}
+
+.markdown-next-ai-input-group textarea:focus {
+  border-color: var(--interactive-accent);
+}
+
+.markdown-next-ai-input-group textarea::placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+  opacity: 0.7;
+}
+
+.markdown-next-ai-model-group {
+  margin-bottom: 20px;
+}
+
+.markdown-next-ai-model-group label {
+  display: block;
+  font-weight: 500;
+  color: var(--text-normal);
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.markdown-next-ai-model-group select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 2px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+  outline: none;
+}
+
+.markdown-next-ai-model-group select:focus {
+  border-color: var(--interactive-accent);
+}
+
+/* 全文修改结果模态框样式 - 已废弃，保留用于向后兼容 */
+
+.markdown-next-ai-diff-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.markdown-next-ai-diff-header {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.markdown-next-ai-diff-legend {
+  display: flex;
+  gap: 20px;
+  font-size: 12px;
+}
+
+.markdown-next-ai-diff-legend span {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+.markdown-next-ai-diff-removed {
+  background: rgba(255, 129, 130, 0.2) !important;
+  color: #ff8182 !important;
+  text-decoration: line-through;
+}
+
+.markdown-next-ai-diff-added {
+  background: rgba(46, 160, 67, 0.2) !important;
+  color: #2ea043 !important;
+}
+
+.markdown-next-ai-diff-content {
+  flex: 1;
+  overflow-y: auto;
+  font-family: var(--font-text);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-normal);
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 16px;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* 差异对比滚动条样�?*/
+.markdown-next-ai-diff-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.markdown-next-ai-diff-content::-webkit-scrollbar-track {
+  background: var(--background-secondary);
+  border-radius: 4px;
+}
+
+.markdown-next-ai-diff-content::-webkit-scrollbar-thumb {
+  background: var(--background-modifier-border);
+  border-radius: 4px;
+}
+
+.markdown-next-ai-diff-content::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* 响应式设�?*/
+@media (max-width: 768px) {
+  .markdown-next-ai-full-text-modal {
+    width: 95vw;
+    max-width: none;
+  }
+
+  .markdown-next-ai-diff-legend {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .markdown-next-ai-text-content {
+    max-height: 80px;
+  }
+}
+
+/* AI结果对比窗口样式 */
+.markdown-next-ai-ai-result-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-interface);
+}
+
+/* AI结果窗口特定的背景样�?*/
+.markdown-next-ai-ai-result-modal .markdown-next-ai-modal-backdrop {
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(2px);
+}
+
+/* AI结果窗口特定的内容样�?*/
+.markdown-next-ai-ai-result-modal .markdown-next-ai-modal-content {
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.25);
+  max-width: 1200px;
+  width: 90vw;
+  max-height: 85vh;
+  overflow: hidden;
+  animation: markdown-next-ai-modal-appear 0.3s ease-out;
+}
+
+/* AI结果窗口特定的关闭按钮样�?*/
+.markdown-next-ai-ai-result-modal .markdown-next-ai-modal-close {
+  border: none !important;
+  padding: 4px 8px;
+  border-radius: 4px;
+  color: var(--text-muted);
+}
+
+.markdown-next-ai-ai-result-modal .markdown-next-ai-modal-close:hover {
+  background: var(--background-modifier-hover) !important;
+  color: var(--text-normal);
+}
+
+.markdown-next-ai-ai-result-modal .markdown-next-ai-modal-body {
+  padding: 20px;
+  height: calc(85vh - 80px);
+  display: flex;
+  flex-direction: column;
+}
+
+/* 左右对比容器 */
+.markdown-next-ai-comparison-container {
+  display: flex;
+  flex: 1;
+  gap: 5px;
+  min-height: 0;
+  margin-bottom: 20px;
+}
+
+/* 左侧原文区域 */
+.markdown-next-ai-original-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background: var(--background-secondary);
+}
+
+/* 右侧AI结果区域 */
+.markdown-next-ai-result-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border: 2px solid var(--interactive-accent);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(var(--interactive-accent-rgb), 0.1);
+}
+
+/* 区域标题 */
+.markdown-next-ai-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary-alt);
+  border-radius: 8px 8px 0 0;
+}
+
+.markdown-next-ai-section-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-normal);
+}
+
+.markdown-next-ai-text-length {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--background-primary);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 500;
+}
+
+/* 文本内容区域 */
+.markdown-next-ai-text-content {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.markdown-next-ai-original-text,
+.markdown-next-ai-ai-result {
+  margin: 0;
+  font-family: var(--font-text);
+  font-size: 13px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  color: var(--text-normal);
+}
+
+.markdown-next-ai-original-text {
+  color: var(--text-muted);
+}
+
+.markdown-next-ai-ai-result {
+  color: var(--text-normal);
+}
+
+/* 中间分隔�?*/
+.markdown-next-ai-divider {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  min-width: 40px;
+}
+
+.markdown-next-ai-divider-line {
+  width: 2px;
+  height: 60px;
+  background: linear-gradient(to bottom,
+      var(--background-modifier-border) 0%,
+      var(--interactive-accent) 50%,
+      var(--background-modifier-border) 100%);
+  border-radius: 1px;
+}
+
+.markdown-next-ai-divider-arrow {
+  margin-top: 8px;
+  font-size: 16px;
+  color: var(--interactive-accent);
+  font-weight: bold;
+  animation: markdown-next-ai-arrow-pulse 2s ease-in-out infinite;
+}
+
+@keyframes markdown-next-ai-arrow-pulse {
+
+  0%,
+  100% {
+    transform: translateX(0);
+    opacity: 0.7;
+  }
+
+  50% {
+    transform: translateX(3px);
+    opacity: 1;
+  }
+}
+
+/* 按钮组样�?*/
+.markdown-next-ai-ai-result-modal .markdown-next-ai-button-group {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  padding: 16px 0 0 0;
+  border-top: 1px solid var(--background-modifier-border);
+  margin-top: auto;
+}
+
+.markdown-next-ai-ai-result-modal .markdown-next-ai-button-group button {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 100px;
+  justify-content: center;
+}
+
+.markdown-next-ai-ai-result-modal .markdown-next-ai-accept-btn {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.markdown-next-ai-ai-result-modal .markdown-next-ai-accept-btn:hover {
+  background: var(--interactive-accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(var(--interactive-accent-rgb), 0.3);
+}
+
+.markdown-next-ai-ai-result-modal .markdown-next-ai-regenerate-btn {
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  border: 1px solid var(--background-modifier-border);
+}
+
+.markdown-next-ai-ai-result-modal .markdown-next-ai-regenerate-btn:hover {
+  background: var(--background-secondary-alt);
+  border-color: var(--interactive-accent);
+  transform: translateY(-1px);
+}
+
+.markdown-next-ai-confirm-btn,
+.markdown-next-ai-cancel-btn {
+  background: transparent !important;
+  border: 1px solid var(--background-modifier-border);
+  box-shadow: none !important;
+}
+
+
+/* 滚动条样�?*/
+.markdown-next-ai-text-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.markdown-next-ai-text-content::-webkit-scrollbar-track {
+  background: var(--background-secondary);
+  border-radius: 3px;
+}
+
+.markdown-next-ai-text-content::-webkit-scrollbar-thumb {
+  background: var(--background-modifier-border);
+  border-radius: 3px;
+}
+
+.markdown-next-ai-text-content::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* 输入框@符号上下文选择器样�?*/
+.markdown-next-ai-context-suggestions {
+  position: fixed;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  min-width: 300px;
+  max-width: 500px;
+  overflow: hidden;
+  z-index: 10000;
+}
+
+.markdown-next-ai-suggestions-header {
+  padding: 8px 12px;
+  background: var(--background-secondary);
+  border-bottom: 1px solid var(--background-modifier-border);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.markdown-next-ai-suggestions-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.markdown-next-ai-suggestion-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  gap: 10px;
+}
+
+.markdown-next-ai-suggestion-item:hover {
+  background: var(--background-modifier-hover);
+}
+
+.markdown-next-ai-suggestion-item.selected {
+  background: var(--background-modifier-active-hover);
+}
+
+.markdown-next-ai-suggestion-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.markdown-next-ai-suggestion-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.markdown-next-ai-suggestion-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-normal);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.markdown-next-ai-suggestion-path {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.markdown-next-ai-suggestions-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.markdown-next-ai-suggestions-list::-webkit-scrollbar-track {
+  background: var(--background-secondary);
+  border-radius: 3px;
+}
+
+.markdown-next-ai-suggestions-list::-webkit-scrollbar-thumb {
+  background: var(--background-modifier-border);
+  border-radius: 3px;
+}
+
+.markdown-next-ai-suggestions-list::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* 响应式设�?*/
+@media (max-width: 1024px) {
+  .markdown-next-ai-ai-result-modal .markdown-next-ai-modal-content {
+    width: 95vw;
+    max-height: 90vh;
+  }
+
+  .markdown-next-ai-ai-result-modal .markdown-next-ai-modal-body {
+    height: calc(90vh - 80px);
+  }
+
+  .markdown-next-ai-comparison-container {
+    gap: 15px;
+  }
+
+  .markdown-next-ai-divider {
+    padding: 0 5px;
+    min-width: 30px;
+  }
+
+  .markdown-next-ai-divider-line {
+    height: 40px;
+  }
+
+  .markdown-next-ai-divider-arrow {
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 768px) {
+  .markdown-next-ai-ai-result-modal .markdown-next-ai-modal-content {
+    width: 98vw;
+    max-height: 95vh;
+    border-radius: 8px;
+  }
+
+  .markdown-next-ai-ai-result-modal .markdown-next-ai-modal-body {
+    height: calc(95vh - 70px);
+    padding: 15px;
+  }
+
+  .markdown-next-ai-comparison-container {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .markdown-next-ai-divider {
+    flex-direction: row;
+    padding: 10px 0;
+    min-width: auto;
+  }
+
+  .markdown-next-ai-divider-line {
+    width: 60px;
+    height: 2px;
+  }
+
+  .markdown-next-ai-divider-arrow {
+    margin-top: 0;
+    margin-left: 8px;
+    transform: rotate(90deg);
+  }
+
+  .markdown-next-ai-ai-result-modal .markdown-next-ai-button-group {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .markdown-next-ai-ai-result-modal .markdown-next-ai-button-group button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .markdown-next-ai-ai-result-modal .markdown-next-ai-modal-header {
+    padding: 12px 15px;
+  }
+
+  .markdown-next-ai-ai-result-modal .markdown-next-ai-modal-title {
+    font-size: 14px;
+  }
+
+  .markdown-next-ai-ai-result-modal .markdown-next-ai-modal-body {
+    padding: 12px;
+  }
+
+  .markdown-next-ai-section-header {
+    padding: 10px 12px;
+  }
+
+  .markdown-next-ai-section-header h3 {
+    font-size: 13px;
+  }
+
+  .markdown-next-ai-text-content {
+    padding: 2px;
+  }
+
+  .markdown-next-ai-original-text,
+  .markdown-next-ai-ai-result {
+    font-size: 12px;
+  }
+}
+
+/* 保护提示样式 */
+.markdown-next-ai-protection-notice {
+  background: linear-gradient(135deg, #ff6b6b, #ee5a24) !important;
+  color: white !important;
+  border: 2px solid #c44569 !important;
+  border-radius: 8px !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 12px rgba(238, 90, 36, 0.3) !important;
+  animation: markdown-next-ai-protection-pulse 2s infinite !important;
+}
+
+@keyframes markdown-next-ai-protection-pulse {
+
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow: 0 4px 12px rgba(238, 90, 36, 0.3);
+  }
+
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 6px 16px rgba(238, 90, 36, 0.4);
+  }
+}
+
+/* 多轮对话相关样式 */
+.markdown-next-ai-chat-history {
+  max-height: 400px;
+  overflow-y: auto;
+  background: var(--background-primary);
+  margin-bottom: 16px;
+  padding: 0px;
+}
+
+.markdown-next-ai-chat-history:empty {
+  display: none;
+}
+
+
+.markdown-next-ai-message {
+  margin-bottom: 16px;
+  border-radius: 8px;
+}
+
+.markdown-next-ai-message-user {
+  background: var(--background-modifier-hover);
+  margin-left: 220px;
+  margin-right: 6px;
+}
+
+.markdown-next-ai-message-assistant {
+  background: var(--background-modifier-active-hover);
+  margin-right: 50px;
+  border-color: var(--interactive-accent);
+}
+
+.markdown-next-ai-message-error {
+  background: var(--background-secondary);
+  border-color: var(--text-error);
+  margin-right: 20px;
+}
+
+.markdown-next-ai-message-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.markdown-next-ai-message-role {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.markdown-next-ai-message-user .markdown-next-ai-message-role {
+  color: var(--text-accent);
+}
+
+.markdown-next-ai-message-assistant .markdown-next-ai-message-role {
+  color: var(--interactive-accent);
+}
+
+.markdown-next-ai-message-error .markdown-next-ai-message-role {
+  color: var(--text-error);
+}
+
+.markdown-next-ai-message-content {
+  font-family: var(--font-text);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-normal);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  padding: 12px;
+}
+
+/* 用户消息头部样式 */
+.markdown-next-ai-message-header-user {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+/* 助手消息头部样式 */
+.markdown-next-ai-message-header-assistant {
+  justify-content: flex-start;
+  text-align: left;
+}
+
+/* 用户消息内容右对�?*/
+.markdown-next-ai-message[data-role="user"] .markdown-next-ai-message-content {
+  text-align: right;
+}
+
+/* AI消息内容左对�?*/
+.markdown-next-ai-message[data-role="assistant"] .markdown-next-ai-message-content {
+  text-align: left;
+}
+
+/* 错误消息左对�?*/
+.markdown-next-ai-message[data-role="error"] .markdown-next-ai-message-header {
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.markdown-next-ai-message[data-role="error"] .markdown-next-ai-message-content {
+  text-align: left;
+}
+
+.markdown-next-ai-error-content {
+  color: var(--text-error);
+  font-style: italic;
+}
+
+.markdown-next-ai-message-images {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.markdown-next-ai-message-image {
+  max-width: 150px;
+  max-height: 150px;
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+  object-fit: cover;
+}
+
+.markdown-next-ai-apply-btn {
+  background: transparent !important;
+  border: none;
+  padding: 4px 4px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  box-shadow: none !important;
+}
+
+.markdown-next-ai-apply-btn:hover {
+  background: var(--interactive-accent-hover);
+  transform: translateY(-1px);
+}
+
+.markdown-next-ai-clear-btn {
+  background: transparent !important;
+  border: 1px solid var(--background-modifier-border);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  box-shadow: none !important;
+}
+
+/* 滚动条样�?*/
+.markdown-next-ai-chat-history::-webkit-scrollbar {
+  width: 6px;
+}
+
+.markdown-next-ai-chat-history::-webkit-scrollbar-track {
+  background: var(--background-secondary);
+  border-radius: 3px;
+}
+
+.markdown-next-ai-chat-history::-webkit-scrollbar-thumb {
+  background: var(--background-modifier-border);
+  border-radius: 3px;
+}
+
+.markdown-next-ai-chat-history::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* 响应式设�?- 多轮对话 */
+@media (max-width: 768px) {
+  .markdown-next-ai-message-user {
+    margin-left: 10px;
+  }
+
+  .markdown-next-ai-message-assistant,
+  .markdown-next-ai-message-error {
+    margin-right: 10px;
+  }
+
+  .markdown-next-ai-chat-history {
+    max-height: 300px;
+  }
+
+  .markdown-next-ai-message-image {
+    max-width: 100px;
+    max-height: 100px;
+  }
+}
+
+/* 等待动画样式 */
+.markdown-next-ai-loading-animation {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 8px 0;
+  color: var(--text-muted);
+}
+
+.markdown-next-ai-loading-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--background-modifier-border);
+  border-top: 2px solid var(--interactive-accent);
+  border-radius: 50%;
+  animation: markdown-next-ai-spin 1s linear infinite;
+  margin-right: 8px;
+}
+
+.markdown-next-ai-loading-dots {
+  display: flex;
+  align-items: center;
+}
+
+.markdown-next-ai-loading-dots::after {
+  content: '';
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  animation: markdown-next-ai-dots 1.4s ease-in-out infinite both;
+  margin-left: 4px;
+}
+
+.markdown-next-ai-loading-dots::before {
+  content: '';
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  animation: markdown-next-ai-dots 1.4s ease-in-out -0.32s infinite both;
+  margin-right: 4px;
+}
+
+.markdown-next-ai-loading-text {
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* 动画关键�?*/
+@keyframes markdown-next-ai-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes markdown-next-ai-dots {
+
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* 加载状态下的消息样�?*/
+.markdown-next-ai-message-loading {
+  opacity: 0.8;
+  border-style: dashed;
+}
+
+.markdown-next-ai-message-loading .markdown-next-ai-message-content {
+  display: flex;
+  align-items: center;
+  min-height: 40px;
+}
+
+/* ContentProtection验证相关样式 */
+.plugin-activation-notice {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--background-primary);
+  border: 2px solid var(--text-error);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  z-index: 10000;
+  max-width: 400px;
+  width: 90vw;
+  animation: markdown-next-ai-notice-appear 0.3s ease-out;
+}
+
+@keyframes markdown-next-ai-notice-appear {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.plugin-activation-notice h3 {
+  margin: 0 0 10px 0;
+  color: var(--text-error);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.plugin-activation-notice p {
+  margin: 0 0 8px 0;
+  color: var(--text-normal);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.plugin-activation-notice p:last-child {
+  margin-bottom: 0;
+}
+
+/* 设置页面中的激活状态提�?*/
+.markdown-next-ai-activation-warning {
+  background: var(--background-modifier-error);
+  color: var(--text-error);
+  padding: 15px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  border: 1px solid var(--text-error);
+}
+
+.markdown-next-ai-activation-warning h3 {
+  margin: 0 0 10px 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.markdown-next-ai-activation-warning p {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.markdown-next-ai-activation-warning p:last-child {
+  margin-bottom: 0;
+}
+
+/* 禁用状态的UI元素 */
+.markdown-next-ai-disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.markdown-next-ai-disabled .markdown-next-ai-button,
+.markdown-next-ai-disabled .markdown-next-ai-input,
+.markdown-next-ai-disabled .markdown-next-ai-select {
+  cursor: not-allowed;
+}
+
+/* 标题栏按钮禁用状�?*/
+.markdown-next-ai-full-modify-btn.markdown-next-ai-disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.markdown-next-ai-full-modify-btn.markdown-next-ai-disabled:hover {
+  background: transparent !important;
+  opacity: 0.3;
+}
+
+/* 右键菜单禁用状�?*/
+.menu .menu-item[data-markdown-next-ai-disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.menu .menu-item[data-markdown-next-ai-disabled]:hover {
+  background: transparent;
+}
+
+/* 状态指示器 */
+.markdown-next-ai-status-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.markdown-next-ai-status-indicator.markdown-next-ai-status-active {
+  background: var(--background-modifier-success);
+  color: var(--text-success);
+  border: 1px solid var(--text-success);
+}
+
+.markdown-next-ai-status-indicator.markdown-next-ai-status-inactive {
+  background: var(--background-modifier-error);
+  color: var(--text-error);
+  border: 1px solid var(--text-error);
+}
+
+.markdown-next-ai-status-indicator.markdown-next-ai-status-warning {
+  background: var(--background-modifier-warning);
+  color: var(--text-warning);
+  border: 1px solid var(--text-warning);
+}
+
+/* 状态指示器图标 */
+.markdown-next-ai-status-indicator::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.markdown-next-ai-status-indicator.markdown-next-ai-status-active::before {
+  background: var(--text-success);
+  animation: markdown-next-ai-status-pulse 2s ease-in-out infinite;
+}
+
+.markdown-next-ai-status-indicator.markdown-next-ai-status-inactive::before {
+  background: var(--text-error);
+}
+
+.markdown-next-ai-status-indicator.markdown-next-ai-status-warning::before {
+  background: var(--text-warning);
+  animation: markdown-next-ai-status-pulse 1s ease-in-out infinite;
+}
+
+@keyframes markdown-next-ai-status-pulse {
+
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
+  }
+}
