@@ -1,3 +1,103 @@
+/* AI预览弹窗样式（仅保留内部按钮样式，容器无边框/背景） */
+.markdown-next-ai-preview-popup {
+  position: absolute;
+  /* 由JS定位到编辑器滚动容器内 */
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  z-index: 10001;
+  min-width: auto;
+  max-width: none;
+}
+
+@keyframes slideInUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.markdown-next-ai-preview-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.markdown-next-ai-preview-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.markdown-next-ai-preview-status {
+  font-size: 13px;
+  font-weight: 500;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 4px 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+
+/* 状态变体：思考中 / 生成中 */
+.markdown-next-ai-preview-status.thinking {
+  background: #FFF4CC;
+  /* 柔和黄色 */
+  border-color: #F3D27A;
+  color: #7A5C00;
+}
+
+.markdown-next-ai-preview-status.generating {
+  background: #E6F4FF;
+  /* 柔和蓝色 */
+  border-color: #9FD0FF;
+  color: #014C7A;
+}
+
+.markdown-next-ai-preview-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.markdown-next-ai-preview-confirm-btn,
+.markdown-next-ai-preview-reject-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.markdown-next-ai-preview-confirm-btn {
+  background: #4CAF50;
+  color: white;
+}
+
+.markdown-next-ai-preview-confirm-btn:hover {
+  background: #45a049;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+}
+
+.markdown-next-ai-preview-reject-btn {
+  background: #f44336;
+  color: white;
+}
+
+.markdown-next-ai-preview-reject-btn:hover {
+  background: #da190b;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(244, 67, 54, 0.3);
+}
+
 /* MarkdownNext AI Plugin Styles */
 
 /* 图片显示样式 */
