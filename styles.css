@@ -36,6 +36,9 @@
 }
 
 .markdown-next-ai-preview-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 15px;
   font-weight: 600;
   border: 1px solid transparent;
@@ -45,10 +48,49 @@
   letter-spacing: 0.5px;
 }
 
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: currentColor;
+  animation: status-dot-breathe 1.5s ease-in-out infinite;
+}
+
+@keyframes status-dot-breathe {
+
+  0%,
+  100% {
+    transform: scale(0.8);
+    opacity: 0.6;
+  }
+
+  50% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+}
+
 /* 状态变体：思考中 / 生成中 */
+@keyframes ai-thinking-pulse {
+  0% {
+    background-color: #FFF4CC;
+    box-shadow: 0 0 4px rgba(243, 210, 122, 0.2);
+  }
+
+  50% {
+    background-color: #FFE599;
+    box-shadow: 0 0 12px rgba(243, 210, 122, 0.6);
+  }
+
+  100% {
+    background-color: #FFF4CC;
+    box-shadow: 0 0 4px rgba(243, 210, 122, 0.2);
+  }
+}
+
 .markdown-next-ai-preview-status.thinking {
-  background: #FFF4CC;
-  /* 柔和黄色 */
+  background-color: #FFF4CC;
+  animation: ai-thinking-pulse 2s ease-in-out infinite;
   border-color: #F3D27A;
   color: #7A5C00;
 }
@@ -62,54 +104,69 @@
 
 .markdown-next-ai-preview-actions {
   display: flex;
-  gap: 10px;
+  gap: 6px;
   justify-content: flex-end;
 }
 
-.markdown-next-ai-preview-confirm-btn,
-.markdown-next-ai-preview-reject-btn {
-  padding: 8px 20px;
+.markdown-next-ai-preview-btn {
+  padding: 5px 14px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 6px;
   cursor: pointer;
-  font-size: 15px;
+  font-size: 12px;
   font-weight: 600;
-  transition: all 0.2s ease;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-  /* 重置按钮默认样式，使其表现更像 span */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
   appearance: none;
   -webkit-appearance: none;
   background-image: none !important;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.01em;
+  line-height: 1.5;
 }
 
-.markdown-next-ai-preview-confirm-btn {
-  background: rgba(35, 134, 54, 0.1) !important;
-  /* 极淡的绿色背景 */
-  border: 1px solid rgba(35, 134, 54, 0.2) !important;
-  color: #1a7f37 !important;
-  /* 深绿色文字，保证可读性 */
+/* --- 确认按钮：Cursor 风格绿色 --- */
+.markdown-next-ai-preview-btn.confirm {
+  background: #10a37f !important;
+  /* OpenAI/Cursor Green */
+  color: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
 }
 
-.markdown-next-ai-preview-confirm-btn:hover {
-  background: rgba(35, 134, 54, 0.2) !important;
-  border-color: rgba(35, 134, 54, 0.5) !important;
-  transform: translateY(-1px);
+.markdown-next-ai-preview-btn.confirm:hover {
+  background: #0d8c6d !important;
+  transform: translateY(-0.5px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
-/* --- 拒绝按钮：低调的红/灰色 --- */
-.markdown-next-ai-preview-reject-btn {
-  background: rgba(207, 34, 46, 0.05) !important;
-  /* 极淡的红色背景 */
-  border: 1px solid rgba(207, 34, 46, 0.2) !important;
-  color: #cf222e !important;
-  /* 深红色文字 */
+/* --- 追加按钮：Cursor 风格蓝色 --- */
+.markdown-next-ai-preview-btn.append {
+  background: #3b82f6 !important;
+  /* Modern Blue */
+  color: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
 }
 
-.markdown-next-ai-preview-reject-btn:hover {
-  background: rgba(207, 34, 46, 0.15) !important;
-  border-color: rgba(207, 34, 46, 0.5) !important;
-  transform: translateY(-1px);
+.markdown-next-ai-preview-btn.append:hover {
+  background: #2563eb !important;
+  transform: translateY(-0.5px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+}
+
+/* --- 拒绝按钮：醒目的红色 --- */
+.markdown-next-ai-preview-btn.reject {
+  background: #ef4444 !important;
+  /* Modern Red */
+  color: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+}
+
+.markdown-next-ai-preview-btn.reject:hover {
+  background: #dc2626 !important;
+  transform: translateY(-0.5px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
 }
 
 /* MarkdownNext AI Plugin Styles */
@@ -1047,7 +1104,43 @@
   transition: width 0.15s ease-out;
 }
 
-/* 上下文按钮样式已移动到上�?*/
+/* 选中文本预览区域样式 */
+.markdown-next-ai-selected-text-section {
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-left: 3px solid #FFB74D;
+  border-radius: 6px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+
+.markdown-next-ai-selected-text-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.markdown-next-ai-selected-text-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #FFB74D;
+}
+
+.markdown-next-ai-selected-text-preview {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 80px;
+  overflow-y: auto;
+  background: var(--background-primary);
+  padding: 8px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--background-modifier-border);
+}
+
+/* 上下文按钮样式已移动到上方*/
 
 .markdown-next-ai-select-file-btn {
   background: transparent !important;
