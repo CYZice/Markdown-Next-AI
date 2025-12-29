@@ -36,12 +36,13 @@
 }
 
 .markdown-next-ai-preview-status {
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 15px;
+  font-weight: 600;
   border: 1px solid transparent;
-  border-radius: 6px;
-  padding: 4px 8px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  padding: 8px 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  letter-spacing: 0.5px;
 }
 
 /* 状态变体：思考中 / 生成中 */
@@ -67,35 +68,48 @@
 
 .markdown-next-ai-preview-confirm-btn,
 .markdown-next-ai-preview-reject-btn {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 6px;
+  padding: 8px 20px;
+  border: 1px solid transparent;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 13px;
-  font-weight: 500;
+  font-size: 15px;
+  font-weight: 600;
   transition: all 0.2s ease;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  /* 重置按钮默认样式，使其表现更像 span */
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: none !important;
+  letter-spacing: 0.5px;
 }
 
 .markdown-next-ai-preview-confirm-btn {
-  background: #4CAF50;
-  color: white;
+  background: rgba(35, 134, 54, 0.1) !important;
+  /* 极淡的绿色背景 */
+  border: 1px solid rgba(35, 134, 54, 0.2) !important;
+  color: #1a7f37 !important;
+  /* 深绿色文字，保证可读性 */
 }
 
 .markdown-next-ai-preview-confirm-btn:hover {
-  background: #45a049;
+  background: rgba(35, 134, 54, 0.2) !important;
+  border-color: rgba(35, 134, 54, 0.5) !important;
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
 }
 
+/* --- 拒绝按钮：低调的红/灰色 --- */
 .markdown-next-ai-preview-reject-btn {
-  background: #f44336;
-  color: white;
+  background: rgba(207, 34, 46, 0.05) !important;
+  /* 极淡的红色背景 */
+  border: 1px solid rgba(207, 34, 46, 0.2) !important;
+  color: #cf222e !important;
+  /* 深红色文字 */
 }
 
 .markdown-next-ai-preview-reject-btn:hover {
-  background: #da190b;
+  background: rgba(207, 34, 46, 0.15) !important;
+  border-color: rgba(207, 34, 46, 0.5) !important;
   transform: translateY(-1px);
-  box-shadow: 0 2px 8px rgba(244, 67, 54, 0.3);
 }
 
 /* MarkdownNext AI Plugin Styles */
