@@ -2,7 +2,7 @@
   "providers": {
     "openai": {
       "apiKey": "",
-      "baseUrl": "https://yunwu.ai/v1",
+      "baseUrl": "",
       "enabled": true,
       "apiKeyLink": "https://platform.openai.com/api-keys"
     }

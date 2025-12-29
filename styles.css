@@ -1132,7 +1132,10 @@
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;
-  max-height: 80px;
+  min-height: calc(1.5em);
+  /* 最少显示一行 */
+  max-height: calc(1.5em * 3);
+  /* 最多显示两行 */
   overflow-y: auto;
   background: var(--background-primary);
   padding: 8px 10px;
