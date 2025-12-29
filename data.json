@@ -14,7 +14,7 @@
       "provider": "openai",
       "actualModel": "gemini-3-pro-preview",
       "model": "gemini-3-pro-preview",
-      "category": "text",
+      "category": "multimodal",
       "enabled": true
     },
     "gemini-3-flash-preview": {
@@ -23,7 +23,7 @@
       "provider": "openai",
       "actualModel": "gemini-3-flash-preview",
       "model": "gemini-3-flash-preview",
-      "category": "text",
+      "category": "multimodal",
       "enabled": true
     },
     "gpt-5": {
@@ -34,7 +34,7 @@
       "actualModel": "gpt-5",
       "type": "chat",
       "enabled": true,
-      "category": "text"
+      "category": "multimodal"
     }
   },
   "currentModel": "gemini-3-flash-preview",
