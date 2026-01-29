@@ -1,12 +1,8 @@
 import { App, Notice, TAbstractFile, TFile, TFolder } from "obsidian";
 import { MODEL_CATEGORIES } from "../constants";
 import { ImageHandler } from "../services/image-handler";
-import { SmartConnectionsAdapter, type SmartConnectionsResult } from "../services/smart-connections-adapter";
 import { CursorPosition, ImageData, PluginSettings, SelectedContext } from "../types";
-import { getAllFolders } from "../utils/hybrid-search";
-import { resultsToContext as scResultsToContext } from "../utils/lookup-pipeline";
 import { InputContextSelector } from "./context-selector";
-import { KnowledgeResultsFloatingWindow } from "./knowledge-results-floating-window";
 import { FileSelectionWindow, FolderSelectionWindow } from "./modals";
 import { PromptSelectorPopup } from "./prompt-selector";
 
@@ -63,17 +59,10 @@ export class AtTriggerPopup {
     private contextSelector: InputContextSelector | null = null;
     private promptSelector: PromptSelectorPopup | null = null;
     private outsideClickHandler: ((e: MouseEvent) => void) | null = null;
-    private knowledgeResults: SmartConnectionsResult[] = [];
-    private selectedKnowledge: Set<string> = new Set();
-    private knowledgeResultsWindow: KnowledgeResultsFloatingWindow | null = null;
     private historyContainer: HTMLElement | null = null;
     private historyVisible: boolean = false;
     private isDragging: boolean = false;
     private closeGuards: Set<string> = new Set();
-    // SC 风格检索状态
-    private selectedKbFolder: string = ""; // 空字符串表示全部
-    private knowledgeCurrentQuery: string = "";
-    private knowledgeTotalResults: SmartConnectionsResult[] = []; // 全量（用于检索更多）
 
     constructor(
         app: App,
@@ -121,12 +110,6 @@ export class AtTriggerPopup {
         const images = this.imageHandler.getImages();
         const modelId = this.modelSelectEl?.value || "";
         let contextContent = await this.getContextContent();
-        // 合并用户选择的知识库参考（使用 SC 原始结果 + 管线的格式化）
-        const selectedKb = (this.knowledgeResults || []).filter(r => this.selectedKnowledge.has(r.item?.path));
-        const kbCtx = scResultsToContext(selectedKb as any);
-        if (kbCtx) {
-            contextContent = contextContent ? `${contextContent}\n\n${kbCtx}` : kbCtx;
-        }
 
         if (!prompt && images.length === 0 && !contextContent) {
             new Notice("请输入续写要求或上传图片");
@@ -227,20 +210,9 @@ export class AtTriggerPopup {
                         <div class="markdown-next-ai-context-buttons">
                             <button class="markdown-next-ai-select-file-btn" title="选择文档作为上下文"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-text" style="display: inline-block; vertical-align: middle; margin-right: 4px;"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg></button>
                             <button class="markdown-next-ai-select-folder-btn" title="选择文件夹作为上下文"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-folder" style="display: inline-block; vertical-align: middle; margin-right: 4px;"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg></button>
-                            <button class="markdown-next-ai-knowledge-search-btn" title="智能知识库检索"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-search" style="display: inline-block; vertical-align: middle; margin-right: 4px;"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></button>
                         </div>
                     </div>
                     <button class="markdown-next-ai-submit-btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-send" style="display: inline-block; vertical-align: middle; margin-right: 4px;"><path d="m22 2-7 19-4-9-9-4 20-6z"/></svg>提交</button>
-                </div>
-                <div class="markdown-next-ai-knowledge-section" style="display:none;">
-                    <div class="markdown-next-ai-knowledge-header">
-                        <span class="markdown-next-ai-knowledge-title">📚 智能检索参考</span>
-                        <select class="markdown-next-ai-knowledge-folder-select" title="过滤文件夹">
-                            <option value="">全部文件夹</option>
-                        </select>
-                        <button class="markdown-next-ai-knowledge-more-btn" title="检索更多" style="display:none;">更多</button>
-                    </div>
-                    <div class="markdown-next-ai-knowledge-list"></div>
                 </div>
                 <div class="markdown-next-ai-image-previews"></div>
             </div>
@@ -343,34 +315,6 @@ export class AtTriggerPopup {
         clearContextBtn.onclick = () => this.clearContext();
         if (historyBtn) {
             historyBtn.onclick = () => this.toggleHistoryPanel();
-        }
-
-        // 知识库检索按钮
-        const kbBtn = this.popupEl.querySelector(".markdown-next-ai-knowledge-search-btn") as HTMLButtonElement | null;
-        if (kbBtn) {
-            kbBtn.onclick = () => {
-                this.openKnowledgeSearchWindow();
-            };
-        }
-
-        // 知识库文件夹过滤下拉框
-        const folderSelect = this.popupEl.querySelector(".markdown-next-ai-knowledge-folder-select") as HTMLSelectElement | null;
-        if (folderSelect) {
-            // 初始化文件夹列表
-            this.initKnowledgeFolderOptions(folderSelect);
-            folderSelect.onchange = () => {
-                this.selectedKbFolder = folderSelect.value;
-                // 重新渲染当前结果（使用缓存的 knowledgeTotalResults 按文件夹过滤）
-                this.filterAndRenderKnowledgeResults();
-            };
-        }
-
-        // 检索更多按钮
-        const moreBtn = this.popupEl.querySelector(".markdown-next-ai-knowledge-more-btn") as HTMLButtonElement | null;
-        if (moreBtn) {
-            moreBtn.onclick = async () => {
-                await this.loadMoreKnowledgeResults();
-            };
         }
 
         // 模型下拉初始化与切换
@@ -478,8 +422,6 @@ export class AtTriggerPopup {
             if ((e.target as HTMLElement).closest(".markdown-next-ai-file-selection-window")) return;
             if ((e.target as HTMLElement).closest(".markdown-next-ai-folder-selection-window")) return;
             if ((e.target as HTMLElement).closest(".markdown-next-ai-model-dropdown")) return;
-            // 允许点击知识检索浮窗（避免关闭AI对话框）
-            if ((e.target as HTMLElement).closest(".markdown-next-ai-knowledge-floating-window")) return;
             // 允许点击编辑器 / 预览区域（避免改变光标时关闭弹窗）
             if ((e.target as HTMLElement).closest(".cm-editor")) return;
             if ((e.target as HTMLElement).closest(".markdown-source-view")) return;
@@ -705,202 +647,6 @@ export class AtTriggerPopup {
     }
 
     /**
-     * 打开知识检索浮窗（独立展示）
-     */
-    openKnowledgeSearchWindow(): void {
-        // 如果已经打开，直接返回
-        if (this.knowledgeResultsWindow && this.knowledgeResultsWindow.isWindowOpen()) {
-            return;
-        }
-
-        // 计算浮窗位置（在AI对话框下方）
-        let position: CursorPosition | null = null;
-        if (this.popupEl) {
-            const rect = this.popupEl.getBoundingClientRect();
-            position = {
-                left: rect.left,
-                top: rect.bottom,
-                height: 0
-            };
-        }
-
-        // 创建独立浮窗
-        this.knowledgeResultsWindow = new KnowledgeResultsFloatingWindow(this.app, position);
-
-        // 设置选择回调
-        this.knowledgeResultsWindow.setOnSelect((results: SmartConnectionsResult[]) => {
-            // 将选中的结果添加为上下文
-            this.knowledgeResults = results;
-            this.selectedKnowledge = new Set(results.map(r => r.item?.path).filter(Boolean));
-
-            // 更新显示的选中上下文
-            this.updateContextDisplay();
-        });
-
-        // 打开浮窗
-        this.knowledgeResultsWindow.open();
-    }
-
-    /**
-     * 运行知识库检索并渲染结果（已废弃，改用独立浮窗）
-     * 保留此方法以防兼容性问题
-     */
-    async runKnowledgeSearch(): Promise<void> {
-        // 现在直接打开独立浮窗
-        this.openKnowledgeSearchWindow();
-    }
-
-    /**
-     * 初始化知识库文件夹过滤选项
-     */
-    private initKnowledgeFolderOptions(selectEl: HTMLSelectElement): void {
-        const folders = getAllFolders(this.app);
-        selectEl.innerHTML = '<option value="">全部文件夹</option>';
-        folders.forEach((folder: string) => {
-            const opt = document.createElement("option");
-            opt.value = folder;
-            opt.textContent = folder;
-            selectEl.appendChild(opt);
-        });
-    }
-
-    /**
-     * 按选中的文件夹过滤并重新渲染结果
-     */
-    private async filterAndRenderKnowledgeResults(): Promise<void> {
-        if (!this.popupEl) return;
-        const listEl = this.popupEl.querySelector(".markdown-next-ai-knowledge-list") as HTMLElement | null;
-        if (!listEl) return;
-
-        let filtered = this.knowledgeTotalResults;
-        if (this.selectedKbFolder) {
-            filtered = filtered.filter(r => r.item?.path?.startsWith(this.selectedKbFolder + "/") || r.item?.path === this.selectedKbFolder);
-        }
-        this.knowledgeResults = filtered.slice(0, 10);
-
-        const adapter = new SmartConnectionsAdapter(this.app);
-        await adapter.ensureLoaded();
-        const frag = await adapter.renderConnectionsResults(this.knowledgeResults, {});
-        listEl.innerHTML = "";
-        if (frag) {
-            while (frag.firstChild) {
-                listEl.appendChild(frag.firstChild);
-            }
-        }
-        // SC 的 post_process 已经正确设置了 .sc-collapsed，仅注入复选框
-        this.injectSelectionCheckboxes(listEl);
-
-        const moreBtn = this.popupEl.querySelector(".markdown-next-ai-knowledge-more-btn") as HTMLButtonElement | null;
-        if (moreBtn) {
-            moreBtn.style.display = filtered.length > this.knowledgeResults.length ? "inline-block" : "none";
-        }
-    }
-
-    /**
-     * 加载更多知识库结果（SC 风格 fetchMore）
-     */
-    private async loadMoreKnowledgeResults(): Promise<void> {
-        if (!this.popupEl) return;
-        const listEl = this.popupEl.querySelector(".markdown-next-ai-knowledge-list") as HTMLElement | null;
-        if (!listEl) return;
-
-        try {
-            // 加载更多：增加limit并重新检索
-            const currentLimit = this.knowledgeResults.length;
-            const newLimit = currentLimit + 10;
-
-            const adapter = new SmartConnectionsAdapter(this.app);
-            await adapter.ensureLoaded();
-
-            const excludeBlocks = await adapter.shouldExcludeBlocksFromSourceConnections();
-
-            const includeFilter = this.selectedKbFolder || undefined;
-            const results = await adapter.lookup(this.knowledgeCurrentQuery, { limit: newLimit, excludeBlocks, includeFilter });
-            this.knowledgeResults = results;
-            this.knowledgeTotalResults = results;
-
-            const frag = await adapter.renderConnectionsResults(this.knowledgeResults, {});
-            listEl.innerHTML = "";
-            if (frag) {
-                while (frag.firstChild) {
-                    listEl.appendChild(frag.firstChild);
-                }
-            }
-            // SC 的 post_process 已经正确设置了 .sc-collapsed，仅注入复选框
-            this.injectSelectionCheckboxes(listEl);
-
-            const moreBtn = this.popupEl.querySelector(".markdown-next-ai-knowledge-more-btn") as HTMLButtonElement | null;
-            if (moreBtn && results.length === this.knowledgeResults.length) {
-                moreBtn.style.display = "none";
-            }
-        } catch (e) {
-            console.error("加载更多结果失败", e);
-            new Notice("加载更多结果失败");
-        }
-    }
-
-    /**
-     * 注入复选框并绑定 SC 风格交互
-     */
-    /**
-         * 注入复选框到每个 .sc-result，仅选择，不干预点击事件
-         */
-    private injectSelectionCheckboxes(listEl: HTMLElement): void {
-        const results = Array.from(listEl.querySelectorAll('.sc-result')) as HTMLElement[];
-        results.forEach((el) => {
-            const path = el.getAttribute('data-path') || '';
-            const header = el.querySelector('.header');
-            if (!header) return;
-
-            // 创建复选框
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.className = 'markdown-next-ai-knowledge-select';
-            checkbox.title = '将此结果添加为AI参考';
-            checkbox.checked = this.selectedKnowledge.has(path);
-
-            // 仅处理复选框的 change 事件（记录选择），不处理点击事件
-            checkbox.addEventListener('change', (e) => {
-                // 防止 change 事件冒泡给 .sc-result（虽然已经是 input 元素，但保险起见）
-                e.stopPropagation();
-                if (checkbox.checked) {
-                    this.selectedKnowledge.add(path);
-                } else {
-                    this.selectedKnowledge.delete(path);
-                }
-            });
-
-            // 在复选框上拦截 click 事件，防止冒泡（这样不会触发 .sc-result 的展开/打开逻辑）
-            checkbox.addEventListener('click', (e) => {
-                e.stopPropagation();
-            });
-
-            header.insertBefore(checkbox, header.firstChild);
-        });
-    }
-
-    /**
-     * 渲染单个结果的内容（模拟 SC 的延迟渲染）
-     */
-    private async renderResultContent(resultEl: HTMLElement, liEl: HTMLElement): Promise<void> {
-        const path = resultEl.getAttribute('data-path');
-        if (!path) return;
-        try {
-            const file = this.app.vault.getAbstractFileByPath(path);
-            if (file && file instanceof TFile) {
-                const content = await this.app.vault.read(file);
-                const frag = document.createDocumentFragment();
-                const div = document.createElement('div');
-                div.textContent = content;
-                frag.appendChild(div);
-                liEl.appendChild(frag);
-            }
-        } catch (e) {
-            console.error('[renderResultContent] 读取失败:', e);
-        }
-    }
-
-    /**
      * 根据选中的模型名称动态调整选择框宽度
      */
     adjustModelSelectWidth(): void {
@@ -1057,12 +803,6 @@ export class AtTriggerPopup {
         if (this.contextSelector) {
             this.contextSelector.close();
             this.contextSelector = null;
-        }
-
-        // 关闭知识检索浮窗
-        if (this.knowledgeResultsWindow) {
-            this.knowledgeResultsWindow.close();
-            this.knowledgeResultsWindow = null;
         }
 
         this.eventListeners.forEach(({ element, event, handler }) => {
@@ -1314,10 +1054,8 @@ export class AtTriggerPopup {
         const list = this.popupEl!.querySelector(".markdown-next-ai-context-list") as HTMLElement;
 
         // 计算知识库选择的数量
-        const knowledgeCount = this.selectedKnowledge.size;
         const hasAnyContext = this.selectedContext.files.length > 0 ||
-            this.selectedContext.folders.length > 0 ||
-            knowledgeCount > 0;
+            this.selectedContext.folders.length > 0;
 
         if (!hasAnyContext) {
             container.style.display = "none";
@@ -1357,28 +1095,6 @@ export class AtTriggerPopup {
                 list.appendChild(item);
             });
 
-            // 显示知识库选择的文件（使用书本图标区分）
-            if (this.knowledgeResults && this.knowledgeResults.length > 0) {
-                this.knowledgeResults.forEach(result => {
-                    const path = result.item?.path;
-                    if (path && this.selectedKnowledge.has(path)) {
-                        const fileName = path.split('/').pop()?.replace(/\.md$/, '') || path;
-                        const item = document.createElement("div");
-                        item.className = "markdown-next-ai-context-item markdown-next-ai-knowledge-item";
-                        item.innerHTML = `
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-                                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-                            </svg>
-                            <span class="markdown-next-ai-context-name" title="${path}">${fileName}</span>
-                            <span class="markdown-next-ai-knowledge-score">${(result.score * 100).toFixed(0)}%</span>
-                            <button class="markdown-next-ai-remove-context" data-type="knowledge" data-path="${path}">×</button>
-                        `;
-                        list.appendChild(item);
-                    }
-                });
-            }
-
             // 绑定移除按钮事件
             list.querySelectorAll(".markdown-next-ai-remove-context").forEach(btn => {
                 (btn as HTMLButtonElement).onclick = (e) => {
@@ -1399,11 +1115,6 @@ export class AtTriggerPopup {
             this.selectedContext.files = this.selectedContext.files.filter(f => f.path !== path);
         } else if (type === "folder") {
             this.selectedContext.folders = this.selectedContext.folders.filter(f => f.path !== path);
-        } else if (type === "knowledge") {
-            // 从知识库选择中移除
-            this.selectedKnowledge.delete(path);
-            // 同时从结果数组中移除（可选，保持数据一致）
-            // this.knowledgeResults = this.knowledgeResults.filter(r => r.item?.path !== path);
         }
         this.updateContextDisplay();
     }

@@ -55,10 +55,6 @@ export const DEFAULT_SETTINGS: PluginSettings = {
         { id: "translate", name: "翻译", content: "请将这段内容翻译成英文" },
         { id: "continue", name: "继续写作", content: "请根据上下文继续写作，保持风格一致" }
     ],
-    // 知识库检索设置（依赖 Smart Connections 插件）
-    enableKnowledgeSearch: false,
-    knowledgeTopK: 5,
-    knowledgeMinScore: 0.2,
     conversationHistory: [],
     conversationHistoryLimit: 50,
     enableGlobalDialog: false,

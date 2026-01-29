@@ -76,10 +76,7 @@ export interface PluginSettings {
     baseUrl?: string;
     model?: string;
     apiKeyLinks?: Record<string, string>;
-    // Knowledge search settings (使用 smart-connections)
-    enableKnowledgeSearch?: boolean;
-    knowledgeTopK?: number;
-    knowledgeMinScore?: number;
+
     conversationHistory?: ConversationEntry[];
     conversationHistoryLimit?: number;
     enableGlobalDialog?: boolean;
