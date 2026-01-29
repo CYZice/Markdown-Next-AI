@@ -40,17 +40,15 @@ interface EditorView {
  */
 export class AtTriggerPopup {
     private app: App;
-    private onSubmit: (prompt: string, images: ImageData[], modelId: string, contextContent: string, selectedText: string) => void;
+    private onSubmit: (prompt: string, images: ImageData[], modelId: string, contextContent: string, selectedText: string, mode: string) => void;
     private cursorPosition: CursorPosition | null;
     private plugin: PluginInterface;
     private view: EditorView | null;
     private selectedText: string;
+    private mode: string;
     private popupEl: HTMLElement | null = null;
     private inputEl: HTMLElement | null = null;
     private modelSelectEl: HTMLSelectElement | null = null;
-    private modelMenuEl: HTMLElement | null = null;
-    private modelTriggerEl: HTMLButtonElement | null = null;
-    private isModelMenuOpen: boolean = false;
     private isOpen: boolean = false;
     private imageHandler: ImageHandler;
     private eventListeners: EventListenerEntry[] = [];
@@ -66,11 +64,12 @@ export class AtTriggerPopup {
 
     constructor(
         app: App,
-        onSubmit: (prompt: string, images: ImageData[], modelId: string, contextContent: string, selectedText: string) => void,
+        onSubmit: (prompt: string, images: ImageData[], modelId: string, contextContent: string, selectedText: string, mode: string) => void,
         cursorPosition: CursorPosition | null,
         plugin: PluginInterface,
         view: EditorView | null,
-        selectedText: string = ""
+        selectedText: string = "",
+        mode: string = "chat"
     ) {
         this.app = app;
         this.onSubmit = onSubmit;
@@ -78,6 +77,7 @@ export class AtTriggerPopup {
         this.plugin = plugin;
         this.view = view;
         this.selectedText = selectedText;
+        this.mode = mode;
         this.imageHandler = new ImageHandler();
     }
 
@@ -116,7 +116,7 @@ export class AtTriggerPopup {
             return;
         }
 
-        this.onSubmit(prompt, images, modelId, contextContent, this.selectedText);
+        this.onSubmit(prompt, images, modelId, contextContent, this.selectedText, this.mode);
         this.close();
     }
 
@@ -156,9 +156,9 @@ export class AtTriggerPopup {
         this.popupEl = document.createElement("div");
         this.popupEl.addClass("markdown-next-ai-at-popup");
 
-        const isModifyMode = this.selectedText.length > 0;
-        const titleText = isModifyMode ? "修改所选内容" : "Markdown-Next-AI";
-        const placeholderText = isModifyMode ? "请输入修改要求..." : "（@选择文件，#选择常用提示词）...";
+        const isRewriteMode = this.mode === 'edit';
+        const titleText = isRewriteMode ? "修改所选内容" : "Markdown-Next-AI";
+        const placeholderText = isRewriteMode ? "请输入修改要求..." : "（@选择文件，#选择常用提示词）...";
         const selectedTextPreview = this.selectedText;
         const currentModelName = this.getModelNameById(this.plugin.settings.currentModel);
 
@@ -175,10 +175,10 @@ export class AtTriggerPopup {
             </div>
             <div class="markdown-next-ai-history-panel" style="display:none;"></div>
             <div class="markdown-next-ai-popup-content">
-                ${isModifyMode ? `
+                ${this.selectedText ? `
                 <div class="markdown-next-ai-selected-text-section">
                     <div class="markdown-next-ai-selected-text-header">
-                        <span class="markdown-next-ai-selected-text-label">选中文本内容:</span>
+                        <span class="markdown-next-ai-selected-text-label">${isRewriteMode ? "待修改内容:" : "已选中文本:"}</span>
                     </div>
                     <div class="markdown-next-ai-selected-text-preview">${selectedTextPreview}</div>
                 </div>
@@ -195,16 +195,9 @@ export class AtTriggerPopup {
                 <textarea class="markdown-next-ai-continue-input" placeholder="${placeholderText}" rows="3"></textarea>
                 <div class="markdown-next-ai-upload-section">
                     <div class="markdown-next-ai-left-section">
-                        <div class="markdown-next-ai-model-dropdown">
-                            <button type="button" class="markdown-next-ai-model-trigger">
-                                <span class="markdown-next-ai-model-value">${currentModelName}</span>
-                                <span class="markdown-next-ai-model-arrow">▾</span>
-                            </button>
-                            <div class="markdown-next-ai-model-menu"></div>
-                            <select class="markdown-next-ai-model-select" style="display:none;">
-                                ${this.getModelOptions()}
-                            </select>
-                        </div>
+                        <select class="markdown-next-ai-model-select">
+                            ${this.getModelOptions()}
+                        </select>
                         <input type="file" class="markdown-next-ai-file-input" accept="image/*" multiple style="display: none;">
                         <button class="markdown-next-ai-upload-btn" title="上传图片"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-image-up-icon lucide-image-up" style="display: inline-block; vertical-align: middle; margin-right: 4px;"><path d="M10.3 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10l-3.1-3.1a2 2 0 0 0-2.814.014L6 21"/><path d="m14 19.5 3-3 3 3"/><path d="M17 22v-5.5"/><circle cx="9" cy="9" r="2"/></svg></button>
                         <div class="markdown-next-ai-context-buttons">
@@ -219,9 +212,7 @@ export class AtTriggerPopup {
         `;
 
         this.inputEl = this.popupEl.querySelector(".markdown-next-ai-continue-input");
-        this.modelSelectEl = this.popupEl.querySelector(".markdown-next-ai-model-select");
-        this.modelMenuEl = this.popupEl.querySelector(".markdown-next-ai-model-menu") as HTMLElement | null;
-        this.modelTriggerEl = this.popupEl.querySelector(".markdown-next-ai-model-trigger") as HTMLButtonElement | null;
+        this.modelSelectEl = this.popupEl.querySelector(".markdown-next-ai-model-select") as HTMLSelectElement;
 
         const submitBtn = this.popupEl.querySelector(".markdown-next-ai-submit-btn") as HTMLButtonElement;
         const closeBtn = this.popupEl.querySelector(".markdown-next-ai-popup-close") as HTMLButtonElement;
@@ -317,8 +308,20 @@ export class AtTriggerPopup {
             historyBtn.onclick = () => this.toggleHistoryPanel();
         }
 
-        // 模型下拉初始化与切换
-        this.initModelDropdown();
+        // 模型下拉切换
+        if (this.modelSelectEl) {
+            const onModelChange = (e: Event) => {
+                const target = e.target as HTMLSelectElement;
+                if (this.plugin && this.plugin.settings) {
+                    this.plugin.settings.currentModel = target.value;
+                    this.plugin.saveSettings();
+                }
+                this.updateUIForModelType(target.value);
+            };
+            this.modelSelectEl.addEventListener("change", onModelChange);
+            this.eventListeners.push({ element: this.modelSelectEl, event: "change", handler: onModelChange });
+            this.updateUIForModelType(this.modelSelectEl.value);
+        }
 
         // 文件选择处理
         const fileChangeHandler = (e: Event) => {
@@ -646,46 +649,6 @@ export class AtTriggerPopup {
         }
     }
 
-    /**
-     * 根据选中的模型名称动态调整选择框宽度
-     */
-    adjustModelSelectWidth(): void {
-        if (!this.modelSelectEl) return;
-
-        const measureEl = document.createElement("span");
-        measureEl.style.cssText = `
-            position: absolute;
-            visibility: hidden;
-            white-space: nowrap;
-            font-family: inherit;
-            font-size: 12px;
-            font-weight: 600;
-        `;
-
-        document.body.appendChild(measureEl);
-
-        let maxTextWidth = 0;
-        for (const opt of Array.from(this.modelSelectEl.options)) {
-            measureEl.textContent = opt.text;
-            maxTextWidth = Math.max(maxTextWidth, measureEl.offsetWidth);
-        }
-
-        document.body.removeChild(measureEl);
-
-        const paddingAndArrow = 54; // 左右内边距 + 箭头区域（加宽）
-        const minWidth = 140;
-        const maxWidth = 360;
-        const width = Math.min(maxWidth, Math.max(minWidth, maxTextWidth + paddingAndArrow));
-
-        this.modelSelectEl.style.width = width + "px";
-        if (this.modelTriggerEl) {
-            this.modelTriggerEl.style.width = width + "px";
-        }
-        if (this.modelMenuEl) {
-            this.modelMenuEl.style.minWidth = width + "px";
-        }
-    }
-
     private enableDragging(): void {
         if (!this.popupEl) return;
         const header = this.popupEl.querySelector(".markdown-next-ai-popup-header") as HTMLElement | null;
@@ -817,8 +780,6 @@ export class AtTriggerPopup {
 
         this.imageHandler.clearImages();
 
-        this.closeModelMenu();
-
         this.closeGuards.clear();
         if (this.popupEl) {
             this.popupEl.removeAttribute("data-close-guard");
@@ -831,116 +792,7 @@ export class AtTriggerPopup {
         this.inputEl = null;
     }
 
-    private initModelDropdown(): void {
-        if (!this.modelSelectEl || !this.modelMenuEl || !this.modelTriggerEl) return;
 
-        // 渲染菜单并设置初始展示
-        this.renderModelMenu();
-        this.updateModelTrigger(this.modelSelectEl.value);
-        this.updateUIForModelType(this.modelSelectEl.value);
-        this.adjustModelSelectWidth();
-
-        const triggerHandler = (e: Event) => {
-            e.stopPropagation();
-            this.toggleModelMenu();
-        };
-        this.modelTriggerEl.addEventListener("click", triggerHandler);
-        this.eventListeners.push({ element: this.modelTriggerEl, event: "click", handler: triggerHandler as EventListener });
-
-        const menuClickHandler = (e: Event) => {
-            const target = e.target as HTMLElement;
-            const item = target.closest(".markdown-next-ai-model-menu-item") as HTMLElement | null;
-            if (!item) return;
-            const modelId = item.getAttribute("data-model-id");
-            if (!modelId) return;
-            this.selectModel(modelId);
-        };
-        this.modelMenuEl.addEventListener("click", menuClickHandler);
-        this.eventListeners.push({ element: this.modelMenuEl, event: "click", handler: menuClickHandler as EventListener });
-
-        const outsideMenuHandler = (e: Event) => {
-            const target = e.target as HTMLElement;
-            if (target.closest(".markdown-next-ai-model-dropdown")) return;
-            this.closeModelMenu();
-        };
-        document.addEventListener("click", outsideMenuHandler);
-        this.eventListeners.push({ element: document, event: "click", handler: outsideMenuHandler as EventListener });
-    }
-
-    private renderModelMenu(): void {
-        if (!this.modelMenuEl || !this.modelSelectEl) return;
-
-        const currentId = this.modelSelectEl.value || this.plugin.settings.currentModel;
-        const models = this.plugin.getAvailableModels();
-
-        if (!models.length) {
-            this.modelMenuEl.innerHTML = `<div class="markdown-next-ai-model-menu-empty">暂无模型可用</div>`;
-            return;
-        }
-
-        const itemsHtml = models.map(model => {
-            const isActive = model.id === currentId;
-            return `
-                <div class="markdown-next-ai-model-menu-item ${isActive ? "is-active" : ""}" data-model-id="${model.id}">
-                    <div class="markdown-next-ai-model-menu-title">${model.id}</div>
-                    ${isActive ? '<span class="markdown-next-ai-model-check">✓</span>' : ""}
-                </div>
-            `;
-        }).join("");
-
-        this.modelMenuEl.innerHTML = itemsHtml;
-    }
-
-    private updateModelTrigger(modelId: string): void {
-        if (!this.modelTriggerEl) return;
-        const valueEl = this.modelTriggerEl.querySelector(".markdown-next-ai-model-value") as HTMLElement | null;
-        if (valueEl) {
-            valueEl.textContent = this.getModelNameById(modelId);
-        }
-        this.modelTriggerEl.setAttribute("aria-expanded", this.isModelMenuOpen ? "true" : "false");
-    }
-
-    private selectModel(modelId: string): void {
-        if (!this.modelSelectEl) return;
-        // 防抖当前点击引起的外部关闭：在当前事件循环内保持关闭保护
-        this.addCloseGuard("model-selection");
-        this.modelSelectEl.value = modelId;
-        this.plugin.settings.currentModel = modelId;
-        this.plugin.saveSettings();
-
-        this.updateUIForModelType(modelId);
-        this.renderModelMenu();
-        this.updateModelTrigger(modelId);
-        this.adjustModelSelectWidth();
-        this.closeModelMenu();
-
-        // 释放保护放到事件循环末尾，避免与 document click 冲突
-        setTimeout(() => this.removeCloseGuard("model-selection"), 0);
-    }
-
-    private toggleModelMenu(): void {
-        if (this.isModelMenuOpen) {
-            this.closeModelMenu();
-        } else {
-            this.openModelMenu();
-        }
-    }
-
-    private openModelMenu(): void {
-        if (!this.modelMenuEl) return;
-        this.modelMenuEl.style.display = "block";
-        this.isModelMenuOpen = true;
-        this.addCloseGuard("model-menu");
-        this.updateModelTrigger(this.modelSelectEl?.value || "");
-    }
-
-    private closeModelMenu(): void {
-        if (!this.modelMenuEl) return;
-        this.modelMenuEl.style.display = "none";
-        this.isModelMenuOpen = false;
-        this.removeCloseGuard("model-menu");
-        this.updateModelTrigger(this.modelSelectEl?.value || "");
-    }
 
     /**
      * 根据模型类型更新 UI

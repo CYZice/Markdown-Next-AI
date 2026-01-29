@@ -213,24 +213,19 @@ export class AIService {
                         : `上下文（前）：${beforeText}\n\n上下文（后）：${afterText}\n\n请基于上下文完成修改或回答。`;
                 }
                 break;
-            case "insert":
-            case "continue":
-                userPrompt = `光标前的内容：${beforeText}\n\n光标后的内容：${afterText}`;
-                if (hasSelection) {
-                    userPrompt += `\n\n参考选中文本：${selectedText}`;
-                }
-                userPrompt += "\n\n请在光标处插入或续写新内容，保持上下文连贯。";
-                if (hasPrompt) {
-                    userPrompt += `\n\n生成要求：${prompt}`;
-                }
-                break;
             case "chat":
             default:
+                // 统一 Chat 模式：处理问答、续写、解释等所有非修该类需求
                 userPrompt = hasPrompt
                     ? `用户问题或指令：${prompt}`
                     : "请根据下述信息进行回答。";
+                
+                // 只有在确实有上下文时才添加
                 if (hasSelection || beforeText.trim() || afterText.trim()) {
-                    userPrompt += `\n\n可参考的上下文：\n- 光标前：${beforeText}\n- 选中文本：${selectedText}\n- 光标后：${afterText}`;
+                    userPrompt += `\n\n可参考的上下文：`;
+                    if (beforeText.trim()) userPrompt += `\n- 光标前：${beforeText}`;
+                    if (hasSelection) userPrompt += `\n- 选中文本：${selectedText}`;
+                    if (afterText.trim()) userPrompt += `\n- 光标后：${afterText}`;
                 }
                 break;
         }

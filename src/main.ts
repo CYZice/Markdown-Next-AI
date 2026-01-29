@@ -1,10 +1,10 @@
 import { MarkdownView, Menu, Notice, Plugin } from "obsidian";
 import { DEFAULT_SETTINGS } from "./defaults";
-import { AIService, routeByLLM, type LLMBasedRouteDecision, type LLMBasedRouteInput, type RouteMode } from "./services";
+import { AIService } from "./services";
 import { GlobalRuleManager } from "./services/rule-manager";
 import { MarkdownNextAISettingTab } from "./settings";
 import type { CursorPosition, ImageData, PluginSettings } from "./types";
-import { AIPreviewPopup, AIResultFloatingWindow, AtTriggerPopup, PromptSelectorPopup } from "./ui";
+import { AIPreviewPopup, AIResultFloatingWindow, AtTriggerPopup, PromptSelectorPopup, SelectionManager, SelectionToolbar } from "./ui";
 
 interface EventListenerEntry {
     element: Document | HTMLElement | any;
@@ -19,6 +19,8 @@ export default class MarkdownNextAIPlugin extends Plugin {
     settings!: PluginSettings;
     aiService!: AIService;
     ruleManager!: GlobalRuleManager;
+    selectionManager!: SelectionManager;
+    selectionToolbar!: SelectionToolbar;
     private eventListeners: EventListenerEntry[] = [];
     private atTriggerTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -28,65 +30,21 @@ export default class MarkdownNextAIPlugin extends Plugin {
     // Track the last active markdown editor (for global mode when sidebar is active)
     private lastActiveMarkdownView: MarkdownView | null = null;
 
-    private logRoutingTelemetry(decision: LLMBasedRouteDecision, input: LLMBasedRouteInput): void {
-        const payload = {
-            mode: decision.mode,
-            confidence: decision.confidence,
-            fallback: Boolean(decision.appliedFallback),
-            reason: decision.reason,
-            hasSelection: Boolean(input.selectionText && input.selectionText.trim()),
-            hasReferences: Boolean((input.additionalContext || "").trim() || (input.contextContent || "").trim()),
-            promptPreview: (input.prompt || "").slice(0, 80),
-            cursorProvided: Boolean(input.useCursor),
-            locale: input.locale || ""
-        };
-
-        console.info("[markdown-next-ai][routing]", payload);
-    }
-
-    private async decideModeByLLM(routeInput: LLMBasedRouteInput): Promise<RouteMode> {
-        const fallbackMode = (this.settings.fallbackMode as RouteMode) || "chat";
-
-        if (!this.settings.enableAutoRoutingByLLM) {
-            this.logRoutingTelemetry({
-                mode: fallbackMode,
-                confidence: 0,
-                reason: "auto routing disabled",
-                appliedFallback: true
-            }, routeInput);
-            return fallbackMode;
-        }
-
-        try {
-            const decision = await routeByLLM(routeInput, {
-                aiService: this.aiService,
-                minConfidenceForAuto: this.settings.minConfidenceForAuto,
-                fallbackMode
-            });
-
-            if (decision.appliedFallback) {
-                new Notice(`自动路由低置信度，已回退为 ${decision.mode}`);
-            }
-
-            this.logRoutingTelemetry(decision, routeInput);
-            return decision.mode;
-        } catch (error) {
-            console.error("路由判定失败，使用回退模式", error);
-            this.logRoutingTelemetry({
-                mode: fallbackMode,
-                confidence: 0,
-                reason: `routing failed: ${String(error)}`,
-                appliedFallback: true
-            }, routeInput);
-            return fallbackMode;
-        }
-    }
-
     async onload(): Promise<void> {
         await this.loadSettings();
 
         this.aiService = new AIService(this.settings, this.app);
         this.ruleManager = new GlobalRuleManager(this);
+
+        // Initialize Selection Manager and Toolbar
+        this.selectionToolbar = new SelectionToolbar(this.app, this);
+        this.selectionManager = new SelectionManager(this.app, (info) => {
+            if (info) {
+                this.selectionToolbar.show(info);
+            } else {
+                this.selectionToolbar.hide();
+            }
+        });
 
         this.addSettingTab(new MarkdownNextAISettingTab(this.app, this));
         this.addCommands();
@@ -99,6 +57,8 @@ export default class MarkdownNextAIPlugin extends Plugin {
     }
 
     onunload(): void {
+        this.selectionManager?.destroy();
+        this.selectionToolbar?.destroy();
         this.cleanupEventListeners();
         console.log("MarkdownNext AI 插件已卸载");
     }
@@ -444,7 +404,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
         }
     }
 
-    showAtTriggerModal(selectedText: string = ""): void {
+    showAtTriggerModal(selectedText: string = "", mode: string = "chat"): void {
         const view = this.app.workspace.getActiveViewOfType(MarkdownView);
         const cursorPos = this.getCursorPosition(view) || this.lastMouseUpPosition || this.getFallbackPosition(view);
         if (!cursorPos) {
@@ -454,17 +414,18 @@ export default class MarkdownNextAIPlugin extends Plugin {
 
         new AtTriggerPopup(
             this.app,
-            (prompt: string, images: ImageData[], modelId: string, context: string, selectedText: string) => {
-                this.handleContinueWriting(prompt, images, modelId, context, selectedText);
+            (prompt: string, images: ImageData[], modelId: string, context: string, selectedText: string, mode: string) => {
+                this.handleContinueWriting(prompt, images, modelId, context, selectedText, mode);
             },
             cursorPos,
             this,
             view,
-            selectedText
+            selectedText,
+            mode
         ).open();
     }
 
-    showAtTriggerModalGlobal(selectedText: string = ""): void {
+    showAtTriggerModalGlobal(selectedText: string = "", mode: string = "chat"): void {
         console.log("[markdown-next-ai] 进入 showAtTriggerModalGlobal");
 
         // 无需依赖 Markdown 编辑器，直接使用当前屏幕中心作为定位
@@ -476,18 +437,19 @@ export default class MarkdownNextAIPlugin extends Plugin {
         console.log("[markdown-next-ai] 正在创建 AtTriggerPopup (全局模式，无需编辑器)");
         new AtTriggerPopup(
             this.app,
-            (prompt: string, images: ImageData[], modelId: string, context: string, sel: string) => {
+            (prompt: string, images: ImageData[], modelId: string, context: string, sel: string, mode: string) => {
                 const finalSel = sel || mergedSelection;
                 if (this.settings.useFloatingPreview) {
-                    this.handleContinueWritingGlobal(prompt, images, modelId, context, finalSel);
+                    this.handleContinueWritingGlobal(prompt, images, modelId, context, finalSel, mode);
                 } else {
-                    this.handleContinueWriting(prompt, images, modelId, context, finalSel);
+                    this.handleContinueWriting(prompt, images, modelId, context, finalSel, mode);
                 }
             },
             fallbackPos,
             this,
             null,
-            mergedSelection
+            mergedSelection,
+            mode
         ).open();
         console.log("[markdown-next-ai] AtTriggerPopup 已打开");
     }
@@ -606,7 +568,8 @@ export default class MarkdownNextAIPlugin extends Plugin {
         images: ImageData[] = [],
         modelId: string | null = null,
         context: string | null = null,
-        selectedText: string = ""
+        selectedText: string = "",
+        mode: string = "chat"
     ): Promise<void> {
         const view = this.getAnyMarkdownView();
 
@@ -636,20 +599,8 @@ export default class MarkdownNextAIPlugin extends Plugin {
                 : "";
             const cursorPos = view?.editor?.getCursor() || { line: 0, ch: 0 };
 
-            const routeInput: LLMBasedRouteInput = {
-                prompt,
-                selectionText: selectedText,
-                cursorBefore: beforeText,
-                cursorAfter: "",
-                useCursor: true,
-                additionalContext: context || undefined,
-                cursorPosition: cursorPos
-            };
-
-            const routedMode = await this.decideModeByLLM(routeInput);
-
             const result = await this.aiService.sendRequest(
-                routedMode,
+                mode,
                 {
                     selectedText,
                     beforeText,
@@ -750,11 +701,12 @@ export default class MarkdownNextAIPlugin extends Plugin {
         images: ImageData[] = [],
         modelId: string | null = null,
         context: string | null = null,
-        selectedText: string = ""
+        selectedText: string = "",
+        mode: string = "chat"
     ): Promise<void> {
         // 如果启用了浮窗预览模式，转为全局模式处理
         if (this.settings.useFloatingPreview) {
-            return this.handleContinueWritingGlobal(prompt, images, modelId, context, selectedText);
+            return this.handleContinueWritingGlobal(prompt, images, modelId, context, selectedText, mode);
         }
 
         const view = this.app.workspace.getActiveViewOfType(MarkdownView);
@@ -765,7 +717,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
 
         // 如果没有任何输入（文字、图片、上下文），则打开输入框
         if (!prompt && images.length === 0 && !context && !selectedText) {
-            this.showAtTriggerModal();
+            this.showAtTriggerModal("", mode);
             return;
         }
 
@@ -964,19 +916,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
         previewPopup.open(initialCursorPos);
 
         try {
-            const routeInput: LLMBasedRouteInput = {
-                prompt,
-                selectionText: selectedText,
-                cursorBefore: editor.getValue().substring(0, editor.posToOffset(insertPos)),
-                cursorAfter: "",
-                useCursor: true,
-                additionalContext: context || undefined,
-                cursorPosition: cursor
-            };
-
-            const routedMode = await this.decideModeByLLM(routeInput);
-
-            const result = await this.aiService.sendRequest(routedMode, {
+            const result = await this.aiService.sendRequest(mode, {
                 selectedText: selectedText,
                 beforeText: editor.getValue().substring(0, editor.posToOffset(insertPos)),
                 afterText: "",
