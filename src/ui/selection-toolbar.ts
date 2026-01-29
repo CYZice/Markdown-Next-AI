@@ -7,7 +7,7 @@ export class SelectionToolbar {
     private app: App;
     private plugin: any;
     private currentSelection: SelectionInfo | null = null;
-    
+
     private hideTimeout: number | null = null;
     private showTimeout: number | null = null;
     private isHovering: boolean = false;
@@ -15,20 +15,19 @@ export class SelectionToolbar {
     constructor(app: App, plugin: any) {
         this.app = app;
         this.plugin = plugin;
-        
+
         // Create Indicator
         this.indicatorEl = document.createElement("div");
         this.indicatorEl.addClass("markdown-next-ai-selection-indicator");
         setIcon(this.indicatorEl, "sparkles");
         document.body.appendChild(this.indicatorEl);
-        
+
         // Create Menu
         this.menuEl = document.createElement("div");
         this.menuEl.addClass("markdown-next-ai-selection-menu");
         document.body.appendChild(this.menuEl);
-        
+
         this.initEvents();
-        this.renderMenu();
     }
 
     private initEvents() {
@@ -37,12 +36,12 @@ export class SelectionToolbar {
             this.isHovering = true;
             this.scheduleShowMenu();
         });
-        
+
         this.indicatorEl.addEventListener("mouseleave", () => {
             this.isHovering = false;
             this.scheduleHideMenu();
         });
-        
+
         this.indicatorEl.addEventListener("click", (e) => {
             e.stopPropagation();
             this.showMenuNow();
@@ -66,7 +65,7 @@ export class SelectionToolbar {
     private scheduleShowMenu() {
         if (this.showTimeout) window.clearTimeout(this.showTimeout);
         if (this.hideTimeout) window.clearTimeout(this.hideTimeout);
-        
+
         this.showTimeout = window.setTimeout(() => {
             this.showMenuNow();
         }, 150);
@@ -74,7 +73,7 @@ export class SelectionToolbar {
 
     private scheduleHideMenu() {
         if (this.showTimeout) window.clearTimeout(this.showTimeout);
-        
+
         this.hideTimeout = window.setTimeout(() => {
             if (!this.isHovering) {
                 this.menuEl.removeClass("visible");
@@ -84,6 +83,10 @@ export class SelectionToolbar {
 
     private showMenuNow() {
         if (!this.currentSelection) return;
+
+        // Re-render menu content each time to ensure it's up to date with settings
+        this.renderMenu();
+
         this.menuEl.addClass("visible");
         this.updateMenuPosition();
     }
@@ -91,7 +94,8 @@ export class SelectionToolbar {
     private renderMenu() {
         const content = document.createElement("div");
         content.addClass("markdown-next-ai-selection-menu-content");
-        
+
+        // 1. Core Actions
         // AI Modify
         content.appendChild(this.createMenuItem("AI Modify", "pencil", () => {
             if (this.currentSelection) {
@@ -108,21 +112,17 @@ export class SelectionToolbar {
             }
         }));
 
-        // Summarize
-        content.appendChild(this.createMenuItem("Summarize", "file-text", () => {
-            if (this.currentSelection) {
-                this.plugin.handleContinueWriting("Summarize this text", [], null, null, this.currentSelection.text, "chat");
-                this.hide();
-            }
-        }));
-
-        // Explain
-        content.appendChild(this.createMenuItem("Explain", "help-circle", () => {
-            if (this.currentSelection) {
-                this.plugin.handleContinueWriting("Explain this text", [], null, null, this.currentSelection.text, "chat");
-                this.hide();
-            }
-        }));
+        // 2. Custom Prompts from Settings
+        if (this.plugin.settings && this.plugin.settings.commonPrompts) {
+            this.plugin.settings.commonPrompts.forEach((prompt: any) => {
+                content.appendChild(this.createMenuItem(prompt.name, "zap", () => {
+                    if (this.currentSelection) {
+                        this.plugin.handleContinueWriting(prompt.content, [], null, null, this.currentSelection.text, "chat");
+                        this.hide();
+                    }
+                }));
+            });
+        }
 
         this.menuEl.innerHTML = "";
         this.menuEl.appendChild(content);
@@ -131,24 +131,24 @@ export class SelectionToolbar {
     private createMenuItem(label: string, icon: string, onClick: () => void): HTMLElement {
         const item = document.createElement("div");
         item.addClass("markdown-next-ai-selection-menu-item");
-        
+
         const iconEl = document.createElement("div");
         iconEl.addClass("markdown-next-ai-selection-menu-item-icon");
         setIcon(iconEl, icon);
-        
+
         const labelEl = document.createElement("div");
         labelEl.addClass("markdown-next-ai-selection-menu-item-label");
         labelEl.innerText = label;
-        
+
         item.appendChild(iconEl);
         item.appendChild(labelEl);
-        
+
         item.addEventListener("click", (e) => {
             e.preventDefault();
             e.stopPropagation();
             onClick();
         });
-        
+
         return item;
     }
 
@@ -156,7 +156,7 @@ export class SelectionToolbar {
         this.currentSelection = info;
         this.updateIndicatorPosition();
         this.indicatorEl.addClass("visible");
-        
+
         // Hide menu initially when new selection appears
         this.menuEl.removeClass("visible");
     }
@@ -166,30 +166,33 @@ export class SelectionToolbar {
         this.indicatorEl.removeClass("visible");
         this.menuEl.removeClass("visible");
         this.isHovering = false;
-        
+
         if (this.showTimeout) window.clearTimeout(this.showTimeout);
         if (this.hideTimeout) window.clearTimeout(this.hideTimeout);
     }
 
     private updateIndicatorPosition() {
         if (!this.currentSelection) return;
-        
+
         const rect = this.currentSelection.rect;
         const offset = 8;
         const indicatorSize = 28;
-        
-        // Default to right side of selection
-        let left = rect.right + offset;
-        let top = rect.bottom + offset;
 
-        // Boundary checks (basic)
+        // Position at the end of the selection, aligned with the top of the line
+        let left = rect.right + offset;
+        let top = rect.top;
+
+        // Boundary checks
         if (left + indicatorSize > window.innerWidth) {
             left = rect.left - indicatorSize - offset;
         }
-        
+
         // Ensure it's not off-screen top/bottom
         if (top + indicatorSize > window.innerHeight) {
-            top = rect.top - indicatorSize - offset;
+            top = window.innerHeight - indicatorSize - offset;
+        }
+        if (top < 0) {
+            top = offset;
         }
 
         this.indicatorEl.style.left = `${left}px`;
@@ -199,17 +202,20 @@ export class SelectionToolbar {
     private updateMenuPosition() {
         // Position menu relative to indicator
         const indicatorRect = this.indicatorEl.getBoundingClientRect();
-        
+
         let left = indicatorRect.left;
         let top = indicatorRect.bottom + 8;
-        
+
+        const menuWidth = 220; // Estimated max width
+        const menuHeight = 200; // Estimated max height
+
         // Adjust if going off-screen
-        if (left + 200 > window.innerWidth) {
-            left = window.innerWidth - 220;
+        if (left + menuWidth > window.innerWidth) {
+            left = window.innerWidth - menuWidth - 8;
         }
-        
-        if (top + 150 > window.innerHeight) {
-            top = indicatorRect.top - 160; // Show above if no space below
+
+        if (top + menuHeight > window.innerHeight) {
+            top = indicatorRect.top - menuHeight - 8; // Show above if no space below
         }
 
         this.menuEl.style.left = `${left}px`;

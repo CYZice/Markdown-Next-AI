@@ -65,7 +65,7 @@
     {
       "id": "translate",
       "name": "中译英",
-      "content": "将上述内容翻译为地道的英文表达，确保语法正确且符合母语习惯。"
+      "content": "翻译以上内容"
     },
     {
       "id": "continue",
