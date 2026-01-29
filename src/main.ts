@@ -1,10 +1,11 @@
-import { MarkdownView, Menu, Notice, Plugin } from "obsidian";
+import { MarkdownView, Menu, Notice, Plugin, TFile } from "obsidian";
 import { DEFAULT_SETTINGS } from "./defaults";
 import { AIService } from "./services";
 import { GlobalRuleManager } from "./services/rule-manager";
 import { MarkdownNextAISettingTab } from "./settings";
 import type { CursorPosition, ImageData, PluginSettings } from "./types";
 import { AIPreviewPopup, AIResultFloatingWindow, AtTriggerPopup, PromptSelectorPopup, SelectionManager, SelectionToolbar } from "./ui";
+import { APPLY_VIEW_TYPE, ApplyView } from "./ui/apply-view/ApplyView";
 
 interface EventListenerEntry {
     element: Document | HTMLElement | any;
@@ -54,6 +55,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
         this.setupLastActiveViewTracker();
 
         console.log("MarkdownNext AI 插件已加载");
+        this.registerView(APPLY_VIEW_TYPE, (leaf) => new ApplyView(leaf));
     }
 
     onunload(): void {
@@ -244,6 +246,17 @@ export default class MarkdownNextAIPlugin extends Plugin {
         }
 
         return null;
+    }
+
+    private openApplyView(file: TFile, originalContent: string, newContent: string): void {
+        const workspace = this.app.workspace;
+        const leaf = workspace.getLeaf(true);
+        leaf.setViewState({
+            type: APPLY_VIEW_TYPE,
+            state: { file, originalContent, newContent },
+            active: true
+        });
+        workspace.setActiveLeaf(leaf, { focus: true });
     }
 
     setupRightClickListener(): void {
@@ -735,239 +748,44 @@ export default class MarkdownNextAIPlugin extends Plugin {
         }
 
         const isModification = selectedText.length > 0;
-        // 记录插入起始位置 (如果是修改模式，使用选区开头)
         const insertPos = isModification ? editor.getCursor("from") : { line: cursor.line, ch: cursor.ch };
-
-        // 用<span>包裹AI输出，实现绿色背景；修改模式下还用橙色背景包裹原文（无删除线）
-        const previewId = "markdown-next-ai-preview-" + Date.now();
-        const originalId = "markdown-next-ai-original-" + Date.now();
-        const greenOpenTag = `<span style="background:#90EE90;" data-preview-id="${previewId}">`;
-        // 修改为暖橙色背景，移除删除线，添加底部边框以示聚焦
-        const redOpenTag = `<span style="background:#FFF3E0;border-bottom: 2px solid #FFB74D;" data-original-id="${originalId}">`;
-        const closingTag = "</span>";
-
-        // 插入/替换标签
-        if (isModification) {
-            // 修改模式：橙色背景包裹原文 + 绿色背景用于AI生成内容
-            const combinedTags = `${redOpenTag}${selectedText}${closingTag}${greenOpenTag}${closingTag}`;
-            editor.replaceSelection(combinedTags);
-        } else {
-            // 续写模式：只有绿色背景
-            editor.replaceRange(`${greenOpenTag}${closingTag}`, insertPos);
-        }
-
-        // 计算内容区域的偏移量
-        let startOffset: number;
-        if (isModification) {
-            // 修改模式：AI内容插入在红色span之后的绿色span内
-            startOffset = editor.posToOffset(insertPos) + redOpenTag.length + selectedText.length + closingTag.length + greenOpenTag.length;
-        } else {
-            startOffset = editor.posToOffset(insertPos) + greenOpenTag.length;
-        }
-        let currentContentLength = 0;
-        let hasStarted = false;
         let finalContent = "";
-
-        // 获取光标的屏幕坐标（用于定位弹窗）
-        const cursorCoords = (editor as any).coordsAtPos(insertPos);
-        const initialCursorPos = cursorCoords ? { left: cursorCoords.left, top: cursorCoords.top } : null;
-
-        // 创建并显示预览弹窗
+        // 恢复“正在思考中”状态框，仅显示状态，不显示确认按钮
+        const cursorPos = this.getCursorPosition(view) || this.lastMouseUpPosition || this.getFallbackPosition(view);
         const previewPopup = new AIPreviewPopup(
             this.app,
             editor,
             view,
-            () => {
-                // 替换（原接受）：删除橙色span及其内容（原文），移除绿色span标签但保留内容（AI生成）
-                const docText = editor.getValue();
-                const greenOpenTagStr = `<span style="background:#90EE90;" data-preview-id="${previewId}">`;
-                const redOpenTagStr = `<span style="background:#FFF3E0;border-bottom: 2px solid #FFB74D;" data-original-id="${originalId}">`;
-
-                if (isModification) {
-                    // 修改模式：先处理绿色span，再处理橙色span
-                    // 1. 找到并移除绿色span标签（保留内容）
-                    let currentDoc = editor.getValue();
-                    const greenStart = currentDoc.indexOf(greenOpenTagStr);
-                    if (greenStart !== -1) {
-                        const greenOpenEnd = greenStart + greenOpenTagStr.length;
-                        // 找到对应的闭合标签（绿色span后的第一个</span>）
-                        const greenCloseStart = currentDoc.indexOf(closingTag, greenOpenEnd);
-                        if (greenCloseStart !== -1) {
-                            const greenCloseEnd = greenCloseStart + closingTag.length;
-                            // 先删除闭合标签
-                            editor.replaceRange("", editor.offsetToPos(greenCloseStart), editor.offsetToPos(greenCloseEnd));
-                            // 再删除开始标签
-                            editor.replaceRange("", editor.offsetToPos(greenStart), editor.offsetToPos(greenOpenEnd));
-                        }
-                    }
-
-                    // 2. 找到并删除橙色span及其内容（整个删除）
-                    currentDoc = editor.getValue();
-                    const redStart = currentDoc.indexOf(redOpenTagStr);
-                    if (redStart !== -1) {
-                        const redOpenEnd = redStart + redOpenTagStr.length;
-                        const redCloseStart = currentDoc.indexOf(closingTag, redOpenEnd);
-                        if (redCloseStart !== -1) {
-                            const redCloseEnd = redCloseStart + closingTag.length;
-                            editor.replaceRange("", editor.offsetToPos(redStart), editor.offsetToPos(redCloseEnd));
-                            editor.setCursor(editor.offsetToPos(redStart));
-                        }
-                    }
-                } else {
-                    // 续写模式：只移除绿色span标签
-                    const greenStart = docText.indexOf(greenOpenTagStr);
-                    if (greenStart !== -1) {
-                        const greenOpenEnd = greenStart + greenOpenTagStr.length;
-                        const greenCloseStart = docText.indexOf(closingTag, greenOpenEnd);
-                        if (greenCloseStart !== -1) {
-                            const greenCloseEnd = greenCloseStart + closingTag.length;
-                            editor.replaceRange("", editor.offsetToPos(greenCloseStart), editor.offsetToPos(greenCloseEnd));
-                            editor.replaceRange("", editor.offsetToPos(greenStart), editor.offsetToPos(greenOpenEnd));
-                            const contentEndOffset = greenCloseStart - greenOpenTagStr.length;
-                            editor.setCursor(editor.offsetToPos(contentEndOffset));
-                        }
-                    }
-                }
-                new Notice("已替换原文");
-            },
-            () => {
-                // 放弃（原拒绝）：删除绿色span及其内容（AI生成），移除橙色span标签但保留内容（原文）
-                const docText = editor.getValue();
-                const greenOpenTagStr = `<span style="background:#90EE90;" data-preview-id="${previewId}">`;
-                const redOpenTagStr = `<span style="background:#FFF3E0;border-bottom: 2px solid #FFB74D;" data-original-id="${originalId}">`;
-
-                if (isModification) {
-                    // 修改模式：先删除绿色span及其内容，再移除橙色span标签
-                    // 1. 删除绿色span及其内容
-                    let currentDoc = editor.getValue();
-                    const greenStart = currentDoc.indexOf(greenOpenTagStr);
-                    if (greenStart !== -1) {
-                        const greenOpenEnd = greenStart + greenOpenTagStr.length;
-                        const greenCloseStart = currentDoc.indexOf(closingTag, greenOpenEnd);
-                        if (greenCloseStart !== -1) {
-                            const greenCloseEnd = greenCloseStart + closingTag.length;
-                            editor.replaceRange("", editor.offsetToPos(greenStart), editor.offsetToPos(greenCloseEnd));
-                        }
-                    }
-
-                    // 2. 移除橙色span标签（保留内容）
-                    currentDoc = editor.getValue();
-                    const redStart = currentDoc.indexOf(redOpenTagStr);
-                    if (redStart !== -1) {
-                        const redOpenEnd = redStart + redOpenTagStr.length;
-                        const redCloseStart = currentDoc.indexOf(closingTag, redOpenEnd);
-                        if (redCloseStart !== -1) {
-                            const redCloseEnd = redCloseStart + closingTag.length;
-                            // 先删除闭合标签
-                            editor.replaceRange("", editor.offsetToPos(redCloseStart), editor.offsetToPos(redCloseEnd));
-                            // 再删除开始标签
-                            editor.replaceRange("", editor.offsetToPos(redStart), editor.offsetToPos(redOpenEnd));
-                            editor.setCursor(editor.offsetToPos(redStart));
-                        }
-                    }
-                } else {
-                    // 续写模式：删除绿色span及其内容
-                    const greenStart = docText.indexOf(greenOpenTagStr);
-                    if (greenStart !== -1) {
-                        const greenOpenEnd = greenStart + greenOpenTagStr.length;
-                        const greenCloseStart = docText.indexOf(closingTag, greenOpenEnd);
-                        if (greenCloseStart !== -1) {
-                            const greenCloseEnd = greenCloseStart + closingTag.length;
-                            editor.replaceRange("", editor.offsetToPos(greenStart), editor.offsetToPos(greenCloseEnd));
-                            editor.setCursor(editor.offsetToPos(greenStart));
-                        }
-                    }
-                }
-                new Notice("已放弃生成");
-            },
-            // 追加（新增）：移除橙色span标签（保留原文），移除绿色span标签（保留AI生成）
-            isModification ? () => {
-                const greenOpenTagStr = `<span style="background:#90EE90;" data-preview-id="${previewId}">`;
-                const redOpenTagStr = `<span style="background:#FFF3E0;border-bottom: 2px solid #FFB74D;" data-original-id="${originalId}">`;
-
-                // 1. 移除绿色span标签（保留内容）
-                let currentDoc = editor.getValue();
-                const greenStart = currentDoc.indexOf(greenOpenTagStr);
-                if (greenStart !== -1) {
-                    const greenOpenEnd = greenStart + greenOpenTagStr.length;
-                    const greenCloseStart = currentDoc.indexOf(closingTag, greenOpenEnd);
-                    if (greenCloseStart !== -1) {
-                        const greenCloseEnd = greenCloseStart + closingTag.length;
-                        editor.replaceRange("", editor.offsetToPos(greenCloseStart), editor.offsetToPos(greenCloseEnd));
-                        editor.replaceRange("", editor.offsetToPos(greenStart), editor.offsetToPos(greenOpenEnd));
-                    }
-                }
-
-                // 2. 移除橙色span标签（保留内容）
-                currentDoc = editor.getValue();
-                const redStart = currentDoc.indexOf(redOpenTagStr);
-                if (redStart !== -1) {
-                    const redOpenEnd = redStart + redOpenTagStr.length;
-                    const redCloseStart = currentDoc.indexOf(closingTag, redOpenEnd);
-                    if (redCloseStart !== -1) {
-                        const redCloseEnd = redCloseStart + closingTag.length;
-                        editor.replaceRange("", editor.offsetToPos(redCloseStart), editor.offsetToPos(redCloseEnd));
-                        editor.replaceRange("", editor.offsetToPos(redStart), editor.offsetToPos(redOpenEnd));
-                    }
-                }
-                new Notice("已追加内容");
-            } : null
+            () => { },
+            () => { },
+            null
         );
-        previewPopup.open(initialCursorPos);
-
+        previewPopup.open(cursorPos);
+        previewPopup.updateStatus("正在思考中");
         try {
-            const result = await this.aiService.sendRequest(mode, {
-                selectedText: selectedText,
-                beforeText: editor.getValue().substring(0, editor.posToOffset(insertPos)),
-                afterText: "",
-                cursorPosition: cursor,
-                additionalContext: context || undefined
-            }, prompt, images, [], (streamData) => {
-                if (streamData.content != null) {
-                    const contentStartPos = editor.offsetToPos(startOffset);
-                    const contentEndPos = editor.offsetToPos(startOffset + currentContentLength);
-                    editor.replaceRange(streamData.content, contentStartPos, contentEndPos);
-
-                    currentContentLength = streamData.content.length;
-                    finalContent = streamData.content;
-                    const newCursorPos = editor.offsetToPos(startOffset + currentContentLength);
-                    editor.setCursor(newCursorPos);
-                    hasStarted = true;
-
-                    previewPopup.updateStatus(`正在生成中(${currentContentLength}字)`);
-                }
-
-                if (streamData.isComplete) {
-                    previewPopup.showActions();
-                    // 使用生成内容的末尾位置来定位弹窗
-                    const endPos = editor.offsetToPos(startOffset + currentContentLength);
-                    const endCoords = (editor as any).coordsAtPos(endPos);
-                    if (endCoords) {
-                        // 优先显示在下方，符合阅读顺序
-                        previewPopup.positionAt(endCoords.left, endCoords.bottom, "below");
+            const result = await this.aiService.sendRequest(
+                mode,
+                {
+                    selectedText: selectedText,
+                    beforeText: editor.getValue().substring(0, editor.posToOffset(insertPos)),
+                    afterText: "",
+                    cursorPosition: cursor,
+                    additionalContext: context || undefined
+                },
+                prompt,
+                images,
+                [],
+                (streamData) => {
+                    if (streamData.content != null) {
+                        finalContent = streamData.content;
+                        previewPopup.updateStatus(`正在生成中(${streamData.content.length}字)`);
                     }
                 }
-            });
-
-            if (!hasStarted && result && result.content) {
-                const contentStartPos = editor.offsetToPos(startOffset);
-                const contentEndPos = editor.offsetToPos(startOffset + currentContentLength);
-                editor.replaceRange(result.content, contentStartPos, contentEndPos);
-                currentContentLength = result.content.length;
+            );
+            if (!finalContent && result && result.content) {
                 finalContent = result.content;
-                const newCursorPos = editor.offsetToPos(startOffset + currentContentLength);
-                editor.setCursor(newCursorPos);
-
-                previewPopup.showActions();
-                // 使用生成内容的末尾位置来定位弹窗
-                const endPos = editor.offsetToPos(startOffset + currentContentLength);
-                const endCoords = (editor as any).coordsAtPos(endPos);
-                if (endCoords) {
-                    previewPopup.positionAt(endCoords.left, endCoords.bottom, "below");
-                }
             }
-
-            const responseText = finalContent || (result && result.content) || "";
+            const responseText = finalContent || "";
             if (responseText.trim()) {
                 const contextForHistory = context || "";
                 await this.recordConversation({
@@ -978,50 +796,28 @@ export default class MarkdownNextAIPlugin extends Plugin {
                     selectedText
                 });
             }
-        } catch (error: any) {
-            // 错误处理：恢复原始状态
-            const greenOpenTagStr = `<span style="background:#90EE90;" data-preview-id="${previewId}">`;
-            const redOpenTagStr = `<span style="background:#FFCCCB;text-decoration:line-through;" data-original-id="${originalId}">`;
-
-            if (isModification) {
-                // 修改模式：删除两个span，恢复原文
-                let currentDoc = editor.getValue();
-                // 1. 删除绿色span及其内容
-                const greenStart = currentDoc.indexOf(greenOpenTagStr);
-                if (greenStart !== -1) {
-                    const greenOpenEnd = greenStart + greenOpenTagStr.length;
-                    const greenCloseStart = currentDoc.indexOf(closingTag, greenOpenEnd);
-                    if (greenCloseStart !== -1) {
-                        const greenCloseEnd = greenCloseStart + closingTag.length;
-                        editor.replaceRange("", editor.offsetToPos(greenStart), editor.offsetToPos(greenCloseEnd));
-                    }
-                }
-                // 2. 移除红色span标签（保留原文内容）
-                currentDoc = editor.getValue();
-                const redStart = currentDoc.indexOf(redOpenTagStr);
-                if (redStart !== -1) {
-                    const redOpenEnd = redStart + redOpenTagStr.length;
-                    const redCloseStart = currentDoc.indexOf(closingTag, redOpenEnd);
-                    if (redCloseStart !== -1) {
-                        const redCloseEnd = redCloseStart + closingTag.length;
-                        editor.replaceRange("", editor.offsetToPos(redCloseStart), editor.offsetToPos(redCloseEnd));
-                        editor.replaceRange("", editor.offsetToPos(redStart), editor.offsetToPos(redOpenEnd));
-                    }
-                }
-            } else {
-                // 续写模式：删除绿色span及其内容
-                const docText = editor.getValue();
-                const greenStart = docText.indexOf(greenOpenTagStr);
-                if (greenStart !== -1) {
-                    const greenOpenEnd = greenStart + greenOpenTagStr.length;
-                    const greenCloseStart = docText.indexOf(closingTag, greenOpenEnd);
-                    if (greenCloseStart !== -1) {
-                        const greenCloseEnd = greenCloseStart + closingTag.length;
-                        editor.replaceRange("", editor.offsetToPos(greenStart), editor.offsetToPos(greenCloseEnd));
-                    }
-                }
+            // 生成内容为空时，避免打开空的 Apply View
+            if (!finalContent || finalContent.trim().length === 0) {
+                previewPopup.close();
+                new Notice("生成结果为空，已取消打开差异视图");
+                return;
             }
-            editor.setCursor(insertPos);
+            const originalDoc = editor.getValue();
+            const newDoc = (() => {
+                if (isModification) {
+                    const from = editor.getCursor("from");
+                    const to = editor.getCursor("to");
+                    const fromOffset = editor.posToOffset(from);
+                    const toOffset = editor.posToOffset(to);
+                    return originalDoc.slice(0, fromOffset) + (finalContent || selectedText) + originalDoc.slice(toOffset);
+                } else {
+                    const offset = editor.posToOffset(insertPos);
+                    return originalDoc.slice(0, offset) + (finalContent || "") + originalDoc.slice(offset);
+                }
+            })();
+            previewPopup.close();
+            this.openApplyView(view.file!, originalDoc, newDoc);
+        } catch (error: any) {
             previewPopup.close();
             new Notice("续写失败: " + error.message);
         }

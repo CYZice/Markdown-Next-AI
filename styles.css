@@ -3234,3 +3234,256 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+
+/* ============================================
+   diff
+   ============================================ */
+
+#markdown-next-ai-apply-view {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-interface);
+
+  --markdown-next-ai-current-color-rgb: 185, 28, 28;
+  /* red-700 */
+  --markdown-next-ai-incoming-color-rgb: 4, 120, 87;
+  /* emerald-700 */
+}
+
+#markdown-next-ai-apply-view .view-content {
+  padding: 0;
+}
+
+#markdown-next-ai-apply-view .markdown-source-view.mod-cm6 {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+#markdown-next-ai-apply-view .cm-editor {
+  flex: 1 1 0;
+  min-height: 0;
+  position: relative !important;
+  box-sizing: border-box;
+  display: flex !important;
+  flex-direction: column;
+}
+
+#markdown-next-ai-apply-view .cm-scroller {
+  padding: var(--file-margins);
+  display: flex !important;
+  align-items: flex-start !important;
+  line-height: 1.4;
+  height: 100%;
+  overflow-x: auto;
+  position: relative;
+  z-index: 0;
+}
+
+#markdown-next-ai-apply-view .cm-sizer {
+  max-width: var(--file-line-width);
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding-bottom: 488px;
+}
+
+#markdown-next-ai-apply-view .view-header {
+  height: var(--header-height);
+  display: flex;
+  border-bottom: var(--file-header-border);
+  background-color: var(--background-primary);
+  z-index: 1;
+  position: relative;
+  gap: var(--size-4-2);
+  padding: 0 var(--size-4-3);
+}
+
+#markdown-next-ai-apply-view .view-header-title-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex: 1;
+}
+
+#markdown-next-ai-apply-view .view-actions button {
+  color: var(--text-normal);
+  font-weight: var(--font-medium);
+  gap: 2px;
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-diff-block {
+  white-space: pre-wrap;
+  word-break: break-word;
+  display: flex;
+  align-items: start;
+  gap: var(--size-4-1);
+  color: var(--text-normal);
+  line-height: var(--line-height-normal);
+  border-radius: var(--radius-s);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-diff-block.added {
+  background-color: rgba(var(--markdown-next-ai-incoming-color-rgb), 0.15);
+  border-left: 3px solid rgb(var(--markdown-next-ai-incoming-color-rgb));
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-diff-block.removed {
+  background-color: rgba(var(--markdown-next-ai-current-color-rgb), 0.15);
+  border-left: 3px solid rgb(var(--markdown-next-ai-current-color-rgb));
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-diff-block-content {
+  padding: var(--size-4-2) var(--size-4-3);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-diff-block-container {
+  position: relative;
+  scroll-margin-top: var(--size-4-8);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-diff-block-actions {
+  position: absolute;
+  right: 0;
+  top: 0;
+  transform: translateY(-100%);
+  display: flex;
+  gap: 0;
+  border-radius: var(--radius-s) var(--radius-s) 0 0;
+  overflow: hidden;
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-diff-block-actions button {
+  padding: var(--size-4-1) var(--size-4-2);
+  font-size: var(--font-ui-smaller);
+  border-radius: 0;
+  height: fit-content;
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-accept {
+  color: white;
+  background: rgba(var(--markdown-next-ai-incoming-color-rgb), 0.8);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-accept:hover {
+  background: rgba(var(--markdown-next-ai-incoming-color-rgb), 1);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-exclude {
+  color: white;
+  background: rgba(var(--markdown-next-ai-current-color-rgb), 0.8);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-exclude:hover {
+  background: rgba(var(--markdown-next-ai-current-color-rgb), 1);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-diff-navigation {
+  display: flex;
+  align-items: center;
+}
+
+/* Toolbar styles */
+#markdown-next-ai-apply-view .markdown-next-ai-apply-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--size-4-2) var(--size-4-3);
+  background-color: var(--background-secondary);
+  border-bottom: 1px solid var(--background-modifier-border);
+  gap: var(--size-4-2);
+  flex-wrap: wrap;
+  position: sticky;
+  top: var(--header-height);
+  z-index: 2;
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-apply-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-apply-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: var(--size-4-2);
+  flex-wrap: wrap;
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-apply-progress {
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-toolbar-btn {
+  padding: var(--size-4-1) var(--size-4-2);
+  font-size: var(--font-ui-smaller);
+  border-radius: var(--radius-s);
+  cursor: pointer;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-normal);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-toolbar-btn:hover {
+  background: var(--background-modifier-hover);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-apply-btn {
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  border: none;
+  font-weight: var(--font-medium);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-apply-btn:hover {
+  background: var(--interactive-accent-hover);
+}
+
+/* Decided block styles */
+#markdown-next-ai-apply-view .markdown-next-ai-diff-block-container.decided {
+  opacity: 0.8;
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-diff-block.decided-preview {
+  background-color: var(--background-secondary);
+  border-left: 3px solid var(--interactive-accent);
+  padding-left: var(--size-4-2);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-decided-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--size-4-1) 0;
+  margin-bottom: var(--size-4-1);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-decided-label {
+  font-size: var(--font-ui-smaller);
+  color: var(--text-accent);
+  font-weight: var(--font-medium);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-undo-btn {
+  padding: var(--size-2-1) var(--size-4-1);
+  font-size: var(--font-ui-smaller);
+  border-radius: var(--radius-s);
+  cursor: pointer;
+  border: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  color: var(--text-muted);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-undo-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
