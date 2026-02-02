@@ -672,23 +672,44 @@
 .markdown-next-ai-modal-body .markdown-next-ai-model-select {
   width: auto;
   max-width: none;
-  background: transparent;
+  background: var(--background-secondary);
   color: var(--text-normal);
-  font-size: 12px;
+  font-size: 13px;
   cursor: pointer;
   transition: all 0.15s ease;
   margin-right: 4px;
-  padding-right: 4px;
-  appearance: auto;
-  -webkit-appearance: auto;
+  padding: 0 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  height: 30px;
+  line-height: 30px;
+  min-height: 30px;
+  box-sizing: border-box;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: none !important;
   box-shadow: none !important;
 }
 
+.markdown-next-ai-popup-content .markdown-next-ai-model-select:hover,
+.markdown-next-ai-modal-body .markdown-next-ai-model-select:hover {
+  background: var(--background-secondary-alt);
+  border-color: var(--interactive-accent);
+}
+
+.markdown-next-ai-popup-content .markdown-next-ai-model-select:focus,
+.markdown-next-ai-modal-body .markdown-next-ai-model-select:focus {
+  outline: none;
+  border-color: var(--interactive-accent);
+}
 
 .markdown-next-ai-model-select option {
   background: var(--background-primary);
   color: var(--text-normal);
-  padding: 8px;
+  padding: 10px;
+  line-height: 1.6;
+  font-size: 13px;
+  white-space: nowrap;
 }
 
 /* 右键菜单样式增强 */
@@ -925,6 +946,210 @@
 
 .markdown-next-ai-config-table tr:hover {
   background: var(--background-modifier-hover);
+}
+
+.markdown-next-ai-history-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  height: auto;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+  line-height: normal;
+  appearance: none;
+  -webkit-appearance: none;
+  box-shadow: none;
+}
+
+background: var(--background-secondary);
+background: var(--background-secondary-alt);
+color: var(--text-normal);
+border-color: var(--interactive-accent);
+
+.markdown-next-ai-history-btn svg {
+  width: 16px;
+  height: 16px;
+  display: inline-block;
+  vertical-align: middle;
+  fill: none;
+  stroke: currentColor;
+}
+
+.markdown-next-ai-history-panel {
+  margin: 8px 0 12px 0;
+  padding: 8px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.markdown-next-ai-history-empty {
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 6px 8px;
+}
+
+.markdown-next-ai-history-item {
+  border: none;
+  border-radius: 0;
+  padding: 8px;
+  margin-bottom: 8px;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+
+.markdown-next-ai-history-item:hover {
+  background: var(--background-modifier-hover);
+  border-color: var(--interactive-accent);
+}
+
+.markdown-next-ai-history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.markdown-next-ai-history-time {
+  font-weight: 600;
+}
+
+.markdown-next-ai-history-model {
+  font-weight: 500;
+}
+
+.markdown-next-ai-history-prompt {
+  color: var(--text-normal);
+  font-size: 12px;
+  line-height: 1.4;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.markdown-next-ai-history-response {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ============================= */
+/* @ 选择器（文件/文件夹/图片）  */
+/* ============================= */
+.markdown-next-ai-context-suggestions {
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  min-width: 420px;
+  max-width: 640px;
+  overflow: hidden;
+  backdrop-filter: saturate(1.2);
+  z-index: 10000;
+}
+
+.markdown-next-ai-model-dropdown {
+  min-width: auto;
+  max-width: none;
+  width: auto;
+}
+
+.markdown-next-ai-suggestions-header {
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--background-secondary);
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.markdown-next-ai-suggestions-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 300px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.markdown-next-ai-suggestions-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.markdown-next-ai-suggestions-list::-webkit-scrollbar-track {
+  background: var(--background-secondary);
+  border-radius: 8px;
+}
+
+.markdown-next-ai-suggestions-list::-webkit-scrollbar-thumb {
+  background: var(--background-modifier-border);
+  border-radius: 8px;
+}
+
+.markdown-next-ai-suggestions-list::-webkit-scrollbar-thumb:hover {
+  background: var(--background-modifier-border-hover);
+}
+
+.markdown-next-ai-suggestion-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background-color 0.12s ease, transform 0.06s ease;
+}
+
+.markdown-next-ai-suggestion-item:hover {
+  background: var(--background-modifier-hover);
+}
+
+.markdown-next-ai-suggestion-item.selected {
+  background: var(--background-modifier-hover);
+  border-left: 3px solid var(--interactive-accent);
+}
+
+.markdown-next-ai-suggestion-icon {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.markdown-next-ai-suggestion-content {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.markdown-next-ai-suggestion-name {
+  color: var(--text-normal);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.markdown-next-ai-suggestion-path {
+  display: none;
 }
 
 .markdown-next-ai-config-table .markdown-next-ai-api-key-cell {
@@ -1383,7 +1608,7 @@
   padding-bottom: 0px;
   padding-top: 0px;
   box-shadow: none !important;
-  background: var(--background-secondary);
+  background: transparent;
 }
 
 
@@ -1504,6 +1729,7 @@
   gap: 2px;
 }
 
+.markdown-next-ai-popup-header .markdown-next-ai-upload-btn,
 .markdown-next-ai-popup-content .markdown-next-ai-upload-btn,
 .markdown-next-ai-modal-body .markdown-next-ai-upload-btn {
   background: transparent;
@@ -3486,4 +3712,93 @@
 #markdown-next-ai-apply-view .markdown-next-ai-undo-btn:hover {
   background: var(--background-modifier-hover);
   color: var(--text-normal);
+}
+
+:root {
+  --mn-accent-600: #7C6BF5;
+  --mn-accent-500: #8A7BFF;
+  --mn-accent-100: #F5F2FF;
+  --mn-fg-900: #1F2233;
+  --mn-fg-700: #3E4157;
+  --mn-fg-600: #5D6075;
+  --mn-bg: #FFFFFF;
+  --mn-bg-soft: #FAFAFF;
+  --mn-border: #E8E6F6;
+  --mn-radius-lg: 14px;
+  --mn-radius-sm: 10px;
+  --mn-shadow: 0 12px 28px rgba(24, 20, 60, 0.08), 0 2px 8px rgba(24, 20, 60, 0.06);
+  --mn-focus-ring: 0 0 0 2px rgba(138, 123, 255, 0.45);
+  --mn-space-1: 4px;
+  --mn-space-2: 8px;
+  --mn-space-3: 12px;
+  --mn-space-4: 16px;
+  --mn-space-5: 24px;
+}
+
+.markdown-next-ai-context-suggestions {
+  background: var(--mn-bg);
+  border: 1px solid var(--mn-border);
+  border-radius: var(--mn-radius-lg);
+  box-shadow: var(--mn-shadow);
+}
+
+.markdown-next-ai-model-dropdown {
+  background: var(--mn-bg);
+  border: 1px solid var(--mn-border);
+  border-radius: var(--mn-radius-lg);
+  box-shadow: var(--mn-shadow);
+}
+
+.markdown-next-ai-suggestion-item {
+  border-radius: var(--mn-radius-sm);
+  color: var(--mn-fg-700);
+}
+
+.markdown-next-ai-suggestion-item:hover {
+  background: var(--mn-accent-100);
+  color: var(--mn-accent-600);
+}
+
+.markdown-next-ai-suggestion-item.selected {
+  background: var(--mn-accent-100);
+  color: var(--mn-accent-600);
+  border-left: 3px solid var(--mn-accent-500);
+}
+
+.markdown-next-ai-suggestion-item:focus-visible {
+  outline: none;
+  box-shadow: var(--mn-focus-ring);
+}
+
+.markdown-next-ai-model-option {
+  padding: var(--mn-space-3) var(--mn-space-4);
+  border-radius: var(--mn-radius-sm);
+  color: var(--mn-fg-700);
+}
+
+.markdown-next-ai-model-option:hover {
+  background: var(--mn-accent-100);
+  color: var(--mn-accent-600);
+}
+
+.markdown-next-ai-model-option.is-active {
+  background: var(--mn-accent-100);
+  color: var(--mn-accent-600);
+}
+
+.markdown-next-ai-icon-btn {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--mn-fg-600);
+  padding: 0;
+}
+
+.markdown-next-ai-icon-btn:hover {
+  color: var(--mn-accent-600);
+}
+
+.markdown-next-ai-icon-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--mn-focus-ring);
 }

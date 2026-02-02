@@ -14,6 +14,9 @@ export class PromptSelectorPopup {
     private eventListeners: EventListenerInfo[] = [];
     private selectedIndex: number = 0;
     private commonPrompts: CommonPrompt[] = [];
+    private scrollHandler: ((e: Event) => void) | null = null;
+    private wheelHandler: ((e: WheelEvent) => void) | null = null;
+    private touchMoveHandler: ((e: TouchEvent) => void) | null = null;
 
     constructor(app: App, plugin: any, onSelect: (content: string) => void) {
         this.app = app;
@@ -87,7 +90,7 @@ export class PromptSelectorPopup {
             });
 
             const outsideClickHandler = (e: MouseEvent) => {
-                if ((e.target as HTMLElement).closest(".markdown-next-ai-at-popup") || this.modalEl!.contains(e.target as Node)) return;
+                if (this.modalEl && this.modalEl.contains(e.target as Node)) return;
                 this.close();
             };
             document.addEventListener("click", outsideClickHandler as EventListener);
@@ -114,6 +117,39 @@ export class PromptSelectorPopup {
             document.body.appendChild(this.modalEl);
             this.positionPopup(inputEl);
 
+            if (this.scrollHandler) {
+                document.removeEventListener("scroll", this.scrollHandler as EventListener, true);
+            }
+            this.scrollHandler = (e: Event) => {
+                const target = e.target as HTMLElement | null;
+                if (this.modalEl && target && (this.modalEl === target || this.modalEl.contains(target))) {
+                    return;
+                }
+                this.close();
+            };
+            document.addEventListener("scroll", this.scrollHandler as EventListener, true);
+            this.eventListeners.push({ element: document, event: "scroll", handler: this.scrollHandler as EventListener });
+
+            this.wheelHandler = (e: WheelEvent) => {
+                const target = e.target as HTMLElement | null;
+                if (this.modalEl && target && (this.modalEl === target || this.modalEl.contains(target))) {
+                    return;
+                }
+                this.close();
+            };
+            document.addEventListener("wheel", this.wheelHandler as EventListener, true);
+            this.eventListeners.push({ element: document, event: "wheel", handler: this.wheelHandler as EventListener });
+
+            this.touchMoveHandler = (e: TouchEvent) => {
+                const target = e.target as HTMLElement | null;
+                if (this.modalEl && target && (this.modalEl === target || this.modalEl.contains(target))) {
+                    return;
+                }
+                this.close();
+            };
+            document.addEventListener("touchmove", this.touchMoveHandler as EventListener, true);
+            this.eventListeners.push({ element: document, event: "touchmove", handler: this.touchMoveHandler as EventListener });
+
         } catch (e) {
             console.error("Failed to open prompt selector:", e);
         }
@@ -132,6 +168,19 @@ export class PromptSelectorPopup {
             }
         });
         this.eventListeners = [];
+
+        if (this.scrollHandler) {
+            document.removeEventListener("scroll", this.scrollHandler as EventListener, true);
+            this.scrollHandler = null;
+        }
+        if (this.wheelHandler) {
+            document.removeEventListener("wheel", this.wheelHandler as EventListener, true);
+            this.wheelHandler = null;
+        }
+        if (this.touchMoveHandler) {
+            document.removeEventListener("touchmove", this.touchMoveHandler as EventListener, true);
+            this.touchMoveHandler = null;
+        }
 
         if (this.modalEl && this.modalEl.parentNode) {
             this.modalEl.parentNode.removeChild(this.modalEl);

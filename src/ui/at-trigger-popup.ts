@@ -1,9 +1,8 @@
-import { App, Notice, TAbstractFile, TFile, TFolder } from "obsidian";
+import { App, Notice, TFile, TFolder } from "obsidian";
 import { MODEL_CATEGORIES } from "../constants";
 import { ImageHandler } from "../services/image-handler";
 import { CursorPosition, ImageData, PluginSettings, SelectedContext } from "../types";
 import { InputContextSelector } from "./context-selector";
-import { FileSelectionWindow, FolderSelectionWindow } from "./modals";
 import { PromptSelectorPopup } from "./prompt-selector";
 
 interface FileInfo {
@@ -61,6 +60,11 @@ export class AtTriggerPopup {
     private historyVisible: boolean = false;
     private isDragging: boolean = false;
     private closeGuards: Set<string> = new Set();
+    private modelDropdownEl: HTMLElement | null = null;
+    private modelDropdownScrollHandler: ((e: Event) => void) | null = null;
+    private modelDropdownWheelHandler: ((e: WheelEvent) => void) | null = null;
+    private modelDropdownTouchHandler: ((e: TouchEvent) => void) | null = null;
+    private modelDropdownKeydownHandler: ((e: KeyboardEvent) => void) | null = null;
 
     constructor(
         app: App,
@@ -169,7 +173,7 @@ export class AtTriggerPopup {
                     ${titleText}
                 </span>
                 <div class="markdown-next-ai-popup-actions">
-                    <button class="markdown-next-ai-history-btn" title="查看历史"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-history" style="display: inline-block; vertical-align: middle; margin-right: 4px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>
+                    <button class="markdown-next-ai-upload-btn markdown-next-ai-history-btn" title="查看历史"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-history" style="display: inline-block; vertical-align: middle; margin-right: 4px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>
                     <button class="markdown-next-ai-popup-close">✕</button>
                 </div>
             </div>
@@ -183,15 +187,6 @@ export class AtTriggerPopup {
                     <div class="markdown-next-ai-selected-text-preview">${selectedTextPreview}</div>
                 </div>
                 ` : ''}
-                <div class="markdown-next-ai-context-section">
-                    <div class="markdown-next-ai-selected-context" style="display: none;">
-                        <div class="markdown-next-ai-context-header">
-                            <span class="markdown-next-ai-context-title">已选择上下文:</span>
-                            <button class="markdown-next-ai-clear-context-btn" title="清除上下文">✕</button>
-                        </div>
-                        <div class="markdown-next-ai-context-list"></div>
-                    </div>
-                </div>
                 <textarea class="markdown-next-ai-continue-input" placeholder="${placeholderText}" rows="3"></textarea>
                 <div class="markdown-next-ai-upload-section">
                     <div class="markdown-next-ai-left-section">
@@ -200,10 +195,6 @@ export class AtTriggerPopup {
                         </select>
                         <input type="file" class="markdown-next-ai-file-input" accept="image/*" multiple style="display: none;">
                         <button class="markdown-next-ai-upload-btn" title="上传图片"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-image-up-icon lucide-image-up" style="display: inline-block; vertical-align: middle; margin-right: 4px;"><path d="M10.3 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10l-3.1-3.1a2 2 0 0 0-2.814.014L6 21"/><path d="m14 19.5 3-3 3 3"/><path d="M17 22v-5.5"/><circle cx="9" cy="9" r="2"/></svg></button>
-                        <div class="markdown-next-ai-context-buttons">
-                            <button class="markdown-next-ai-select-file-btn" title="选择文档作为上下文"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-text" style="display: inline-block; vertical-align: middle; margin-right: 4px;"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14,2 14,8 20,8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10,9 9,9 8,9"/></svg></button>
-                            <button class="markdown-next-ai-select-folder-btn" title="选择文件夹作为上下文"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-folder" style="display: inline-block; vertical-align: middle; margin-right: 4px;"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg></button>
-                        </div>
                     </div>
                     <button class="markdown-next-ai-submit-btn"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-send" style="display: inline-block; vertical-align: middle; margin-right: 4px;"><path d="m22 2-7 19-4-9-9-4 20-6z"/></svg>提交</button>
                 </div>
@@ -219,16 +210,15 @@ export class AtTriggerPopup {
         const fileInput = this.popupEl.querySelector(".markdown-next-ai-file-input") as HTMLInputElement;
         const uploadBtn = this.popupEl.querySelector(".markdown-next-ai-upload-btn") as HTMLButtonElement;
         const imagePreviewsEl = this.popupEl.querySelector(".markdown-next-ai-image-previews") as HTMLElement;
-        const selectFileBtn = this.popupEl.querySelector(".markdown-next-ai-select-file-btn") as HTMLButtonElement;
-        const selectFolderBtn = this.popupEl.querySelector(".markdown-next-ai-select-folder-btn") as HTMLButtonElement;
-        const clearContextBtn = this.popupEl.querySelector(".markdown-next-ai-clear-context-btn") as HTMLButtonElement;
         const historyBtn = this.popupEl.querySelector(".markdown-next-ai-history-btn") as HTMLButtonElement;
         this.historyContainer = this.popupEl.querySelector(".markdown-next-ai-history-panel") as HTMLElement | null;
 
         this.contextSelector = new InputContextSelector(
             this.app,
             this.inputEl as HTMLTextAreaElement,
-            () => { }
+            () => {
+                this.updateContextDisplay();
+            }
         );
         this.contextSelector.convertToContentEditable();
         this.inputEl = this.contextSelector.inputEl;
@@ -301,9 +291,6 @@ export class AtTriggerPopup {
         closeBtn.onclick = () => this.close();
         submitBtn.onclick = () => this.submit();
         uploadBtn.onclick = () => fileInput.click();
-        selectFileBtn.onclick = () => this.showFileSelector();
-        selectFolderBtn.onclick = () => this.showFolderSelector();
-        clearContextBtn.onclick = () => this.clearContext();
         if (historyBtn) {
             historyBtn.onclick = () => this.toggleHistoryPanel();
         }
@@ -321,6 +308,22 @@ export class AtTriggerPopup {
             this.modelSelectEl.addEventListener("change", onModelChange);
             this.eventListeners.push({ element: this.modelSelectEl, event: "change", handler: onModelChange });
             this.updateUIForModelType(this.modelSelectEl.value);
+
+            const onModelMouseDown = (e: MouseEvent) => {
+                e.preventDefault();
+                this.openModelDropdown(this.modelSelectEl as unknown as HTMLElement);
+            };
+            this.modelSelectEl.addEventListener("mousedown", onModelMouseDown as EventListener);
+            this.eventListeners.push({ element: this.modelSelectEl, event: "mousedown", handler: onModelMouseDown as EventListener });
+
+            const onModelKeyDown = (e: KeyboardEvent) => {
+                if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    this.openModelDropdown(this.modelSelectEl as unknown as HTMLElement);
+                }
+            };
+            this.modelSelectEl.addEventListener("keydown", onModelKeyDown as EventListener);
+            this.eventListeners.push({ element: this.modelSelectEl, event: "keydown", handler: onModelKeyDown as EventListener });
         }
 
         // 文件选择处理
@@ -422,8 +425,6 @@ export class AtTriggerPopup {
             if ((e.target as HTMLElement).closest(".markdown-next-ai-prompt-selector-popup")) return;
             if ((e.target as HTMLElement).closest(".markdown-next-ai-context-suggestions")) return;
             if (this.contextSelector && this.contextSelector.isOpen) return;
-            if ((e.target as HTMLElement).closest(".markdown-next-ai-file-selection-window")) return;
-            if ((e.target as HTMLElement).closest(".markdown-next-ai-folder-selection-window")) return;
             if ((e.target as HTMLElement).closest(".markdown-next-ai-model-dropdown")) return;
             // 允许点击编辑器 / 预览区域（避免改变光标时关闭弹窗）
             if ((e.target as HTMLElement).closest(".cm-editor")) return;
@@ -550,14 +551,12 @@ export class AtTriggerPopup {
         const textWidth = measureEl.offsetWidth;
         document.body.removeChild(measureEl);
 
-        const historyWidth = this.historyContainer && this.historyVisible ? this.historyContainer.scrollWidth + 40 : 0;
-
         const minWidth = 520;
         const maxWidth = Math.min(window.innerWidth * 0.8, 900);
         const padding = 120;
-        const calculatedWidth = Math.max(
-            minWidth,
-            Math.min(Math.max(textWidth + padding, historyWidth), maxWidth)
+        const calculatedWidth = Math.min(
+            Math.max(textWidth + padding, minWidth),
+            maxWidth
         );
 
         this.popupEl.style.width = calculatedWidth + "px";
@@ -628,25 +627,30 @@ export class AtTriggerPopup {
      */
     private restoreHistoryEntry(historyId: string): void {
         if (!this.inputEl) return;
-
         const entry = (this.plugin.settings.conversationHistory || []).find(e => e.id === historyId);
         if (!entry) return;
-
-        // 恢复提示词到输入框
+        const text = entry.prompt || "";
         if (this.inputEl instanceof HTMLTextAreaElement) {
-            this.inputEl.value = entry.prompt;
-            this.inputEl.focus();
-            this.adjustPopupWidth();
-
-            // 隐藏历史面板
-            if (this.historyContainer) {
-                this.historyVisible = false;
-                this.historyContainer.style.display = "none";
-            }
-
-            // 显示提示
-            new Notice(`已恢复: "${entry.prompt.slice(0, 50)}${entry.prompt.length > 50 ? "..." : ""}"`);
+            this.inputEl.value = text;
+        } else {
+            this.inputEl.textContent = text;
         }
+        if (this.modelSelectEl && entry.modelId) {
+            this.modelSelectEl.value = entry.modelId;
+            this.updateUIForModelType(entry.modelId);
+        }
+        this.contextSelector?.updatePlaceholder();
+        this.adjustPopupWidth();
+        if (this.historyContainer) {
+            this.historyVisible = false;
+            this.historyContainer.style.display = "none";
+        }
+        if (!(this.inputEl instanceof HTMLTextAreaElement)) {
+            const pos = text.length;
+            this.contextSelector?.setCursorPosition(pos);
+        }
+        this.inputEl.focus();
+        new Notice(`已恢复: "${text.slice(0, 50)}${text.length > 50 ? "..." : ""}"`);
     }
 
     private enableDragging(): void {
@@ -790,6 +794,7 @@ export class AtTriggerPopup {
         }
         this.popupEl = null;
         this.inputEl = null;
+        this.closeModelDropdown();
     }
 
 
@@ -830,72 +835,135 @@ export class AtTriggerPopup {
         }
     }
 
-    /**
-     * 显示文件选择器
-     */
-    showFileSelector(): void {
-        const extensions = ["md", "txt", "docx", "doc", "pdf", "xlsx", "xls", "epub", "mobi", "csv", "json"];
-        const files = (this.plugin.app.vault.getFiles() as TFile[])
-            .filter(file => extensions.includes(file.extension.toLowerCase()))
-            .map(file => ({
-                name: file.basename,
-                path: file.path,
-                extension: file.extension.toLowerCase()
-            }));
-
-        const header = this.popupEl!.querySelector(".markdown-next-ai-popup-header");
-        if (header) {
-            const rect = header.getBoundingClientRect();
-            this.addCloseGuard("file-window");
-            new FileSelectionWindow(this.plugin.app, files, (selected) => {
-                this.addFilesToContext(selected);
-            }, () => this.removeCloseGuard("file-window")).open(rect);
-        }
-    }
-
-    /**
-     * 显示文件夹选择器
-     */
-    showFolderSelector(): void {
-        const folders = (this.plugin.app.vault.getAllLoadedFiles() as TAbstractFile[])
-            .filter((f): f is TFolder => !!(f as TFolder).children)
-            .map(f => ({
-                name: f.name,
-                path: f.path
-            }));
-
-        const header = this.popupEl!.querySelector(".markdown-next-ai-popup-header");
-        if (header) {
-            const rect = header.getBoundingClientRect();
-            this.addCloseGuard("folder-window");
-            new FolderSelectionWindow(this.plugin.app, folders, (selected) => {
-                this.addFoldersToContext(selected);
-            }, () => this.removeCloseGuard("folder-window")).open(rect);
-        }
-    }
-
-    /**
-     * 添加文件到上下文
-     */
-    addFilesToContext(files: FileInfo[]): void {
-        files.forEach(file => {
-            if (!this.selectedContext.files.find(f => f.path === file.path)) {
-                this.selectedContext.files.push(file);
-            }
+    private openModelDropdown(anchorEl: HTMLElement): void {
+        if (this.modelDropdownEl) this.closeModelDropdown();
+        const models = this.plugin.getAvailableModels();
+        const currentModel = this.plugin.settings.currentModel;
+        this.modelDropdownEl = document.createElement("div");
+        this.modelDropdownEl.className = "markdown-next-ai-context-suggestions markdown-next-ai-model-dropdown";
+        const header = document.createElement("div");
+        header.className = "markdown-next-ai-suggestions-header";
+        header.textContent = `选择模型 (${models.length})`;
+        this.modelDropdownEl.appendChild(header);
+        const list = document.createElement("div");
+        list.className = "markdown-next-ai-suggestions-list";
+        let selectedIndex = Math.max(0, models.findIndex(m => m.id === currentModel));
+        models.forEach((m, idx) => {
+            const item = document.createElement("div");
+            item.className = "markdown-next-ai-suggestion-item" + (idx === selectedIndex ? " selected" : "");
+            item.innerHTML = `<div class="markdown-next-ai-suggestion-content"><div class="markdown-next-ai-suggestion-name">${m.name}</div></div>`;
+            item.addEventListener("mouseenter", () => {
+                selectedIndex = idx;
+                list.querySelectorAll(".markdown-next-ai-suggestion-item").forEach(el => el.classList.remove("selected"));
+                item.classList.add("selected");
+            });
+            item.addEventListener("click", () => {
+                this.selectModelId(m.id);
+                this.closeModelDropdown();
+            });
+            list.appendChild(item);
         });
-        this.updateContextDisplay();
+        this.modelDropdownEl.appendChild(list);
+        document.body.appendChild(this.modelDropdownEl);
+        const rect = anchorEl.getBoundingClientRect();
+        this.modelDropdownEl.style.position = "fixed";
+        this.modelDropdownEl.style.left = rect.left + "px";
+        this.modelDropdownEl.style.top = (rect.bottom + 5) + "px";
+        this.modelDropdownEl.style.zIndex = "10002";
+        this.modelDropdownEl.style.width = rect.width + "px";
+        this.modelDropdownEl.style.minWidth = rect.width + "px";
+        this.modelDropdownEl.style.maxWidth = rect.width + "px";
+
+        const outsideClickHandler = (e: MouseEvent) => {
+            if (!this.modelDropdownEl) return;
+            const t = e.target as HTMLElement;
+            if (this.modelDropdownEl.contains(t) || anchorEl.contains(t)) return;
+            this.closeModelDropdown();
+        };
+        document.addEventListener("click", outsideClickHandler as EventListener, true);
+        this.eventListeners.push({ element: document, event: "click", handler: outsideClickHandler as EventListener });
+
+        this.modelDropdownScrollHandler = (e: Event) => {
+            const t = e.target as HTMLElement | null;
+            if (this.modelDropdownEl && t && (this.modelDropdownEl === t || this.modelDropdownEl.contains(t))) return;
+            this.closeModelDropdown();
+        };
+        document.addEventListener("scroll", this.modelDropdownScrollHandler as EventListener, true);
+        this.eventListeners.push({ element: document, event: "scroll", handler: this.modelDropdownScrollHandler as EventListener });
+
+        this.modelDropdownWheelHandler = (e: WheelEvent) => {
+            const t = e.target as HTMLElement | null;
+            if (this.modelDropdownEl && t && (this.modelDropdownEl === t || this.modelDropdownEl.contains(t))) return;
+            this.closeModelDropdown();
+        };
+        document.addEventListener("wheel", this.modelDropdownWheelHandler as EventListener, true);
+        this.eventListeners.push({ element: document, event: "wheel", handler: this.modelDropdownWheelHandler as EventListener });
+
+        this.modelDropdownTouchHandler = (e: TouchEvent) => {
+            const t = e.target as HTMLElement | null;
+            if (this.modelDropdownEl && t && (this.modelDropdownEl === t || this.modelDropdownEl.contains(t))) return;
+            this.closeModelDropdown();
+        };
+        document.addEventListener("touchmove", this.modelDropdownTouchHandler as EventListener, true);
+        this.eventListeners.push({ element: document, event: "touchmove", handler: this.modelDropdownTouchHandler as EventListener });
+
+        this.modelDropdownKeydownHandler = (e: KeyboardEvent) => {
+            if (!this.modelDropdownEl) return;
+            const items = Array.from(this.modelDropdownEl.querySelectorAll(".markdown-next-ai-suggestion-item"));
+            if (e.key === "Escape") {
+                e.preventDefault();
+                this.closeModelDropdown();
+                return;
+            }
+            if (e.key === "ArrowDown") {
+                e.preventDefault();
+                selectedIndex = Math.min(selectedIndex + 1, items.length - 1);
+            } else if (e.key === "ArrowUp") {
+                e.preventDefault();
+                selectedIndex = Math.max(selectedIndex - 1, 0);
+            } else if (e.key === "Enter") {
+                e.preventDefault();
+                const m = models[selectedIndex];
+                if (m) {
+                    this.selectModelId(m.id);
+                    this.closeModelDropdown();
+                    return;
+                }
+            } else {
+                return;
+            }
+            items.forEach(el => el.classList.remove("selected"));
+            const sel = items[selectedIndex] as HTMLElement | undefined;
+            if (sel) {
+                sel.classList.add("selected");
+                sel.scrollIntoView({ block: "nearest", behavior: "smooth" });
+            }
+        };
+        document.addEventListener("keydown", this.modelDropdownKeydownHandler as EventListener, true);
+        this.eventListeners.push({ element: document, event: "keydown", handler: this.modelDropdownKeydownHandler as EventListener });
     }
 
-    /**
-     * 添加文件夹到上下文
-     */
-    addFoldersToContext(folders: FolderInfo[]): void {
-        folders.forEach(folder => {
-            if (!this.selectedContext.folders.find(f => f.path === folder.path)) {
-                this.selectedContext.folders.push(folder);
-            }
-        });
-        this.updateContextDisplay();
+    private closeModelDropdown(): void {
+        if (this.modelDropdownEl && this.modelDropdownEl.parentNode) {
+            this.modelDropdownEl.parentNode.removeChild(this.modelDropdownEl);
+        }
+        this.modelDropdownEl = null;
+        this.modelDropdownScrollHandler = null;
+        this.modelDropdownWheelHandler = null;
+        this.modelDropdownTouchHandler = null;
+        this.modelDropdownKeydownHandler = null;
+    }
+
+    private selectModelId(modelId: string): void {
+        if (this.modelSelectEl) {
+            this.modelSelectEl.value = modelId;
+            const evt = new Event("change");
+            this.modelSelectEl.dispatchEvent(evt);
+        } else {
+            this.plugin.settings.currentModel = modelId;
+            this.plugin.saveSettings();
+            this.updateUIForModelType(modelId);
+        }
     }
 
     /**
@@ -904,79 +972,61 @@ export class AtTriggerPopup {
     updateContextDisplay(): void {
         const container = this.popupEl!.querySelector(".markdown-next-ai-selected-context") as HTMLElement;
         const list = this.popupEl!.querySelector(".markdown-next-ai-context-list") as HTMLElement;
-
-        // 计算知识库选择的数量
-        const hasAnyContext = this.selectedContext.files.length > 0 ||
-            this.selectedContext.folders.length > 0;
-
-        if (!hasAnyContext) {
+        if (!container || !list || !this.inputEl) return;
+        const tags = Array.from(this.inputEl.querySelectorAll(".markdown-next-ai-inline-tag")) as HTMLElement[];
+        if (tags.length === 0) {
             container.style.display = "none";
-        } else {
-            container.style.display = "block";
             list.innerHTML = "";
-
-            // 显示 @ 选择的文件
-            this.selectedContext.files.forEach(file => {
-                const item = document.createElement("div");
-                item.className = "markdown-next-ai-context-item";
-                item.innerHTML = `
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
-                        <polyline points="14,2 14,8 20,8"/>
-                        <line x1="16" y1="13" x2="8" y2="13"/>
-                        <line x1="16" y1="17" x2="8" y2="17"/>
-                        <polyline points="10,9 9,9 8,9"/>
-                    </svg>
-                    <span class="markdown-next-ai-context-name">${file.name}</span>
-                    <button class="markdown-next-ai-remove-context" data-type="file" data-path="${file.path}">×</button>
-                `;
-                list.appendChild(item);
-            });
-
-            // 显示 @ 选择的文件夹
-            this.selectedContext.folders.forEach(folder => {
-                const item = document.createElement("div");
-                item.className = "markdown-next-ai-context-item";
-                item.innerHTML = `
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>
-                    </svg>
-                    <span class="markdown-next-ai-context-name">${folder.name}</span>
-                    <button class="markdown-next-ai-remove-context" data-type="folder" data-path="${folder.path}">×</button>
-                `;
-                list.appendChild(item);
-            });
-
-            // 绑定移除按钮事件
-            list.querySelectorAll(".markdown-next-ai-remove-context").forEach(btn => {
-                (btn as HTMLButtonElement).onclick = (e) => {
-                    e.stopPropagation();
-                    const type = btn.getAttribute("data-type")!;
-                    const path = btn.getAttribute("data-path")!;
-                    this.removeFromContext(type, path);
-                };
-            });
+            return;
         }
+        container.style.display = "block";
+        list.innerHTML = "";
+        tags.forEach(tag => {
+            const type = tag.getAttribute("data-type") || "file";
+            const path = tag.getAttribute("data-path") || "";
+            const nameEl = tag.querySelector(".markdown-next-ai-inline-tag-name") as HTMLElement | null;
+            const name = nameEl ? nameEl.textContent || "" : "";
+            const item = document.createElement("div");
+            item.className = "markdown-next-ai-context-item";
+            item.innerHTML = `
+                <span class="markdown-next-ai-context-name">${name}</span>
+                <button class="markdown-next-ai-remove-context" data-type="${type}" data-path="${path}">×</button>
+            `;
+            list.appendChild(item);
+        });
+        list.querySelectorAll(".markdown-next-ai-remove-context").forEach(btn => {
+            (btn as HTMLButtonElement).onclick = (e) => {
+                e.stopPropagation();
+                const type = btn.getAttribute("data-type")!;
+                const path = btn.getAttribute("data-path")!;
+                this.removeFromContext(type, path);
+            };
+        });
     }
 
     /**
      * 从上下文中移除
      */
     removeFromContext(type: string, path: string): void {
-        if (type === "file") {
-            this.selectedContext.files = this.selectedContext.files.filter(f => f.path !== path);
-        } else if (type === "folder") {
-            this.selectedContext.folders = this.selectedContext.folders.filter(f => f.path !== path);
+        if (!this.inputEl) return;
+        const tags = Array.from(this.inputEl.querySelectorAll(".markdown-next-ai-inline-tag")) as HTMLElement[];
+        const toRemove = tags.find(t => t.getAttribute("data-type") === type && t.getAttribute("data-path") === path);
+        if (toRemove && toRemove.parentNode) {
+            toRemove.parentNode.removeChild(toRemove);
         }
         this.updateContextDisplay();
+        this.contextSelector?.updatePlaceholder();
     }
 
     /**
      * 清除上下文
      */
     clearContext(): void {
-        this.selectedContext = { files: [], folders: [] };
+        if (!this.inputEl) return;
+        const tags = Array.from(this.inputEl.querySelectorAll(".markdown-next-ai-inline-tag"));
+        tags.forEach(tag => tag.parentNode && tag.parentNode.removeChild(tag));
         this.updateContextDisplay();
+        this.contextSelector?.updatePlaceholder();
     }
 
     /**
@@ -1042,19 +1092,8 @@ export class AtTriggerPopup {
      */
     async getContextContent(): Promise<string> {
         let content = "";
-
-        for (const file of this.selectedContext.files) {
-            try {
-                const fileObj = this.plugin.app.vault.getAbstractFileByPath(file.path) as TFile;
-                if (fileObj) {
-                    const text = await this.plugin.app.vault.read(fileObj);
-                    content += `\n\n=== 文档: ${file.name} ===\n${text}`;
-                }
-            } catch (error) {
-                console.error("读取文件失败:", error);
-            }
-        }
-
+        if (!this.inputEl) return content;
+        const tags = Array.from(this.inputEl.querySelectorAll(".markdown-next-ai-inline-tag")) as HTMLElement[];
         const getAllMarkdownFiles = (folder: TFolder, baseFolderName: string): { file: TFile; sourcePath: string; baseFolderName: string }[] => {
             const files: { file: TFile; sourcePath: string; baseFolderName: string }[] = [];
             if (folder && folder.children) {
@@ -1073,22 +1112,31 @@ export class AtTriggerPopup {
             }
             return files;
         };
-
-        for (const folder of this.selectedContext.folders) {
+        for (const tag of tags) {
+            const type = tag.getAttribute("data-type");
+            const path = tag.getAttribute("data-path") || "";
+            if (!type || !path) continue;
             try {
-                const folderObj = this.plugin.app.vault.getAbstractFileByPath(folder.path) as TFolder;
-                if (folderObj) {
-                    const mdFiles = getAllMarkdownFiles(folderObj, folder.name);
-                    for (const { file, sourcePath, baseFolderName } of mdFiles) {
-                        const text = await this.plugin.app.vault.read(file);
-                        content += `\n\n=== 文档: ${file.basename} (来自文件夹: ${baseFolderName}, 路径: ${sourcePath}) ===\n${text}`;
+                if (type === "file") {
+                    const fileObj = this.plugin.app.vault.getAbstractFileByPath(path) as TFile;
+                    if (fileObj) {
+                        const text = await this.plugin.app.vault.read(fileObj);
+                        content += `\n\n=== 文档: ${fileObj.basename} ===\n${text}`;
+                    }
+                } else if (type === "folder") {
+                    const folderObj = this.plugin.app.vault.getAbstractFileByPath(path) as TFolder;
+                    if (folderObj) {
+                        const mdFiles = getAllMarkdownFiles(folderObj, folderObj.name);
+                        for (const { file, sourcePath, baseFolderName } of mdFiles) {
+                            const text = await this.plugin.app.vault.read(file);
+                            content += `\n\n=== 文档: ${file.basename} (来自文件夹: ${baseFolderName}, 路径: ${sourcePath}) ===\n${text}`;
+                        }
                     }
                 }
             } catch (error) {
-                console.error("读取文件夹失败:", error);
+                console.error("读取上下文失败:", error);
             }
         }
-
         return content.trim();
     }
 }

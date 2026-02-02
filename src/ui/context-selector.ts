@@ -18,6 +18,10 @@ export class InputContextSelector {
     private atPosition: number = 0;
     public selectedTags: ContextItem[] = [];
     private keydownHandler: ((e: KeyboardEvent) => void) | null = null;
+    private scrollHandler: ((e: Event) => void) | null = null;
+    private wheelHandler: ((e: WheelEvent) => void) | null = null;
+    private touchMoveHandler: ((e: TouchEvent) => void) | null = null;
+    private outsideClickHandler: ((e: MouseEvent) => void) | null = null;
 
     constructor(app: App, inputEl: HTMLElement, onSelect: (item: ContextItem) => void) {
         this.app = app;
@@ -180,22 +184,144 @@ export class InputContextSelector {
         this.render();
         this.position();
         this.bindKeyboardEvents();
+
+        if (this.scrollHandler) {
+            document.removeEventListener("scroll", this.scrollHandler as EventListener, true);
+        }
+        this.scrollHandler = (e: Event) => {
+            if (!this.isOpen) return;
+            const target = e.target as HTMLElement | null;
+            if (this.suggestionEl && target && (this.suggestionEl === target || this.suggestionEl.contains(target))) {
+                return;
+            }
+            this.close();
+        };
+        document.addEventListener("scroll", this.scrollHandler as EventListener, true);
+
+        if (this.wheelHandler) {
+            document.removeEventListener("wheel", this.wheelHandler as EventListener, true);
+        }
+        this.wheelHandler = (e: WheelEvent) => {
+            if (!this.isOpen) return;
+            const target = e.target as HTMLElement | null;
+            if (this.suggestionEl && target && (this.suggestionEl === target || this.suggestionEl.contains(target))) {
+                return;
+            }
+            this.close();
+        };
+        document.addEventListener("wheel", this.wheelHandler as EventListener, true);
+
+        if (this.touchMoveHandler) {
+            document.removeEventListener("touchmove", this.touchMoveHandler as EventListener, true);
+        }
+        this.touchMoveHandler = (e: TouchEvent) => {
+            if (!this.isOpen) return;
+            const target = e.target as HTMLElement | null;
+            if (this.suggestionEl && target && (this.suggestionEl === target || this.suggestionEl.contains(target))) {
+                return;
+            }
+            this.close();
+        };
+        document.addEventListener("touchmove", this.touchMoveHandler as EventListener, true);
+
+        if (this.outsideClickHandler) {
+            document.removeEventListener("click", this.outsideClickHandler as EventListener, true);
+        }
+        this.outsideClickHandler = (e: MouseEvent) => {
+            const target = e.target as HTMLElement;
+            if (this.suggestionEl && this.suggestionEl.contains(target)) return;
+            this.close();
+        };
+        document.addEventListener("click", this.outsideClickHandler as EventListener, true);
     }
 
     /**
      * 获取所有可选项
      */
     getAllItems(searchQuery: string): ContextItem[] {
-        const items: ContextItem[] = [];
-        const query = searchQuery.toLowerCase();
+        const query = (searchQuery || "").toLowerCase().trim();
         const imageExtensions = FILE_EXTENSIONS.IMAGE;
         const docExtensions = FILE_EXTENSIONS.DOCUMENT;
+
+        const activeFile = this.app.workspace.getActiveFile();
+        const activePath = activeFile?.path || null;
+
+        const scoreFuzzy = (q: string, text: string): number => {
+            if (!q) return 0.5;
+            const t = text.toLowerCase();
+            if (q === t) return 1;
+            let i = 0;
+            let lastPos = -1;
+            let firstPos = -1;
+            for (const ch of q) {
+                const pos = t.indexOf(ch, i);
+                if (pos === -1) return 0;
+                if (firstPos === -1) firstPos = pos;
+                lastPos = pos;
+                i = pos + 1;
+            }
+            const span = Math.max(lastPos - firstPos + 1, q.length);
+            const closeness = q.length / span;
+            const coverage = q.length / Math.max(t.length, q.length);
+            const includesBonus = t.includes(q) ? 1 : 0;
+            const startBonus = firstPos === 0 ? 0.2 : Math.max(0, 0.1 - firstPos / 50);
+            const base = 0.4 * closeness + 0.3 * coverage + 0.3 * includesBonus;
+            return Math.min(1, base + startBonus);
+        };
+
+        const pathDistance = (a: string, b: string | null): number | null => {
+            if (!b) return null;
+            const split = (p: string) => p.split(/[\\/]/).filter(Boolean);
+            const sa = split(a);
+            const sb = split(b);
+            let common = 0;
+            const len = Math.min(sa.length, sb.length);
+            for (let i = 0; i < len; i++) {
+                if (sa[i] === sb[i]) common++;
+                else break;
+            }
+            return sa.length + sb.length - 2 * common;
+        };
+
+        const scoreWithBoost = (opts: {
+            type: "file" | "folder" | "image";
+            pathScore: number;
+            nameScore: number;
+            opened?: boolean;
+            distance?: number | null;
+            daysSinceLastModified?: number;
+        }): number => {
+            const { type, pathScore, nameScore } = opts;
+            const base = Math.max(pathScore, nameScore);
+            let boost = 1;
+            if (type === "file") {
+                if (opts.opened) boost = Math.max(boost, 3);
+                const days = opts.daysSinceLastModified ?? 9999;
+                if (days < 30) {
+                    const recentBoost = 1 + 2 / (days + 2);
+                    boost = Math.max(boost, recentBoost);
+                }
+                const d = opts.distance ?? null;
+                if (d !== null && d > 0 && d <= 5) {
+                    const nearbyBoost = 1 + 0.5 / Math.max(d - 1, 1);
+                    boost = Math.max(boost, nearbyBoost);
+                }
+            } else if (type === "folder") {
+                const d = opts.distance ?? null;
+                if (d !== null && d > 0 && d <= 5) {
+                    const nearbyBoost = 1 + 0.5 / Math.max(d - 1, 1);
+                    boost = Math.max(boost, nearbyBoost);
+                }
+            }
+            return boost > 1 ? Math.log(boost * base + 1) / Math.log(boost + 1) : base;
+        };
+
+        const candidates: { item: ContextItem; score: number }[] = [];
 
         this.app.vault.getFiles().forEach(file => {
             const ext = file.extension.toLowerCase();
             let type: "file" | "folder" | "image" = "file";
             let icon = "📄";
-
             if (ext === "md") {
                 type = "file";
                 icon = "📄";
@@ -212,36 +338,50 @@ export class InputContextSelector {
             } else {
                 return;
             }
-
-            if (searchQuery && !file.basename.toLowerCase().includes(query) &&
-                !file.path.toLowerCase().includes(query)) {
-                return;
-            }
-
-            items.push({
-                type: type,
-                name: file.basename,
-                path: file.path,
-                icon: icon
+            const name = file.basename;
+            const path = file.path;
+            const nameScore = scoreFuzzy(query, name);
+            const pathScore = scoreFuzzy(query, path);
+            if (query && Math.max(nameScore, pathScore) === 0) return;
+            const opened = activePath ? activePath === path : false;
+            const daysSinceLastModified = Math.floor((Date.now() - (file.stat?.mtime || Date.now())) / (24 * 3600 * 1000));
+            const distance = pathDistance(path, activePath);
+            const score = scoreWithBoost({
+                type,
+                pathScore,
+                nameScore,
+                opened,
+                distance,
+                daysSinceLastModified
+            });
+            candidates.push({
+                item: { type, name, path, icon },
+                score
             });
         });
 
         const folders = this.app.vault.getAllLoadedFiles().filter((f: any) => f.children);
         folders.forEach((folder: any) => {
-            if (searchQuery && !folder.name.toLowerCase().includes(query) &&
-                !folder.path.toLowerCase().includes(query)) {
-                return;
-            }
-
-            items.push({
+            const name = folder.name;
+            const path = folder.path;
+            const nameScore = scoreFuzzy(query, name);
+            const pathScore = scoreFuzzy(query, path);
+            if (query && Math.max(nameScore, pathScore) === 0) return;
+            const distance = pathDistance(path, activePath);
+            const score = scoreWithBoost({
                 type: "folder",
-                name: folder.name,
-                path: folder.path,
-                icon: "📁"
+                pathScore,
+                nameScore,
+                distance
+            });
+            candidates.push({
+                item: { type: "folder", name, path, icon: "📁" },
+                score
             });
         });
 
-        return items.slice(0, 50);
+        candidates.sort((a, b) => b.score - a.score);
+        return candidates.slice(0, 20).map(c => c.item);
     }
 
     /**
@@ -271,7 +411,6 @@ export class InputContextSelector {
                 <span class="markdown-next-ai-suggestion-icon">${item.icon}</span>
                 <div class="markdown-next-ai-suggestion-content">
                     <div class="markdown-next-ai-suggestion-name">${item.name}</div>
-                    <div class="markdown-next-ai-suggestion-path">${item.path}</div>
                 </div>
             `;
 
@@ -475,6 +614,23 @@ export class InputContextSelector {
         if (this.keydownHandler) {
             this.inputEl.removeEventListener("keydown", this.keydownHandler);
             this.keydownHandler = null;
+        }
+
+        if (this.scrollHandler) {
+            document.removeEventListener("scroll", this.scrollHandler as EventListener, true);
+            this.scrollHandler = null;
+        }
+        if (this.wheelHandler) {
+            document.removeEventListener("wheel", this.wheelHandler as EventListener, true);
+            this.wheelHandler = null;
+        }
+        if (this.touchMoveHandler) {
+            document.removeEventListener("touchmove", this.touchMoveHandler as EventListener, true);
+            this.touchMoveHandler = null;
+        }
+        if (this.outsideClickHandler) {
+            document.removeEventListener("click", this.outsideClickHandler as EventListener, true);
+            this.outsideClickHandler = null;
         }
     }
 }
