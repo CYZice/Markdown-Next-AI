@@ -1,4 +1,4 @@
-import { App, Notice, TFile, TFolder } from "obsidian";
+import { App, Notice, TFile, TFolder, setIcon } from "obsidian";
 import { MODEL_CATEGORIES } from "../constants";
 import { ImageHandler } from "../services/image-handler";
 import { CursorPosition, ImageData, PluginSettings, SelectedContext } from "../types";
@@ -115,7 +115,8 @@ export class AtTriggerPopup {
         const modelId = this.modelSelectEl?.value || "";
         let contextContent = await this.getContextContent();
 
-        if (!prompt && images.length === 0 && !contextContent) {
+        const hasSelectedText = Boolean(this.selectedText && this.selectedText.trim());
+        if (!prompt && images.length === 0 && !contextContent && !hasSelectedText) {
             new Notice("请输入续写要求或上传图片");
             return;
         }
@@ -159,6 +160,7 @@ export class AtTriggerPopup {
         this.isOpen = true;
         this.popupEl = document.createElement("div");
         this.popupEl.addClass("markdown-next-ai-at-popup");
+        this.addCloseGuard("initial-click");
 
         const isRewriteMode = this.mode === 'edit';
         const titleText = isRewriteMode ? "修改所选内容" : "Markdown-Next-AI";
@@ -168,10 +170,7 @@ export class AtTriggerPopup {
 
         this.popupEl.innerHTML = `
             <div class="markdown-next-ai-popup-header">
-                <span class="markdown-next-ai-popup-title">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#863097" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bot-icon lucide-bot" style="display: inline-block; vertical-align: middle; margin-right: 4px;"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>
-                    ${titleText}
-                </span>
+                <span class="markdown-next-ai-popup-title"><span class="markdown-next-ai-title-icon"></span><span class="markdown-next-ai-title-text">${titleText}</span></span>
                 <div class="markdown-next-ai-popup-actions">
                     <button class="markdown-next-ai-upload-btn markdown-next-ai-history-btn" title="查看历史"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-history" style="display: inline-block; vertical-align: middle; margin-right: 4px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>
                     <button class="markdown-next-ai-popup-close">✕</button>
@@ -201,6 +200,19 @@ export class AtTriggerPopup {
                 <div class="markdown-next-ai-image-previews"></div>
             </div>
         `;
+
+        // 设置标题图标为 atom
+        const titleEl = this.popupEl.querySelector(".markdown-next-ai-popup-title") as HTMLElement | null;
+        const iconSlot = this.popupEl.querySelector(".markdown-next-ai-title-icon") as HTMLElement | null;
+        if (iconSlot) {
+            setIcon(iconSlot, "atom");
+            (iconSlot as HTMLElement).style.display = "inline-block";
+            (iconSlot as HTMLElement).style.verticalAlign = "middle";
+            (iconSlot as HTMLElement).style.marginRight = "4px";
+            (iconSlot as HTMLElement).style.width = "16px";
+            (iconSlot as HTMLElement).style.height = "16px";
+            (iconSlot as HTMLElement).style.color = "#863097";
+        }
 
         this.inputEl = this.popupEl.querySelector(".markdown-next-ai-continue-input");
         this.modelSelectEl = this.popupEl.querySelector(".markdown-next-ai-model-select") as HTMLSelectElement;
@@ -441,6 +453,9 @@ export class AtTriggerPopup {
             document.addEventListener("click", outsideClickHandler);
         }, 100);
         this.outsideClickHandler = outsideClickHandler;
+        setTimeout(() => {
+            this.removeCloseGuard("initial-click");
+        }, 200);
 
         // 找到编辑器的滚动容器
         if (this.view) {
@@ -809,11 +824,13 @@ export class AtTriggerPopup {
         if (model) {
             const isImageModel = model.category === MODEL_CATEGORIES.IMAGE;
 
-            const titleEl = this.popupEl.querySelector(".markdown-next-ai-popup-title");
-            if (titleEl) {
-                titleEl.innerHTML = isImageModel ?
-                    '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#863097" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-image-icon lucide-image" style="display: inline-block; vertical-align: middle; margin-right: 4px;"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>AI图片生成' :
-                    '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#863097" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bot-icon lucide-bot" style="display: inline-block; vertical-align: middle; margin-right: 4px;"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2"/><path d="M20 14h2"/><path d="M15 13v2"/><path d="M9 13v2"/></svg>Markdown-Next-AI';
+            const titleEl = this.popupEl.querySelector(".markdown-next-ai-popup-title") as HTMLElement | null;
+            const titleTextEl = this.popupEl.querySelector(".markdown-next-ai-title-text") as HTMLElement | null;
+            const iconSlot = this.popupEl.querySelector(".markdown-next-ai-title-icon") as HTMLElement | null;
+            if (titleEl && titleTextEl && iconSlot) {
+                titleTextEl.textContent = isImageModel ? "AI图片生成" : "Markdown-Next-AI";
+                setIcon(iconSlot, isImageModel ? "image" : "atom");
+                (iconSlot as HTMLElement).style.color = "#863097";
             }
 
             if (this.inputEl) {

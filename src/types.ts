@@ -79,13 +79,7 @@ export interface PluginSettings {
 
     conversationHistory?: ConversationEntry[];
     conversationHistoryLimit?: number;
-    enableGlobalDialog?: boolean;
-    useFloatingPreview?: boolean;
     lastInsertAction?: string;
-    // LLM 路由设置
-    enableAutoRoutingByLLM?: boolean;
-    minConfidenceForAuto?: number;
-    fallbackMode?: "edit" | "chat" | "insert";
 }
 
 export interface ConversationEntry {

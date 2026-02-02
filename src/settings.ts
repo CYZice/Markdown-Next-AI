@@ -313,74 +313,9 @@ export class MarkdownNextAISettingTab extends PluginSettingTab {
                     }
                 }));
 
-        // 全局对话模式设置
-        containerEl.createEl("h3", { text: "全局对话模式（Beta）" });
-        containerEl.createEl("p", {
-            text: "启用全局对话模式后，可以在非编辑器上下文打开AI对话框，生成的内容先显示在浮窗确认后再写入编辑器",
-            attr: { style: "color: var(--text-muted); margin-bottom: 15px;" }
-        });
+        // 全局对话固定使用浮窗确认，编辑器模式不使用；不再提供设置项
 
-        new Setting(containerEl)
-            .setName("启用全局对话框模式")
-            .setDesc("允许在非Markdown编辑器上下文打开对话框（快捷键: Ctrl+Shift+M）")
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.enableGlobalDialog ?? false)
-                .onChange(async (value) => {
-                    this.plugin.settings.enableGlobalDialog = value;
-                    await this.plugin.saveSettings();
-                }));
-
-        new Setting(containerEl)
-            .setName("使用浮窗确认模式")
-            .setDesc("AI生成结果先显示在浮窗中，用户确认后再写入编辑器")
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.useFloatingPreview ?? false)
-                .onChange(async (value) => {
-                    this.plugin.settings.useFloatingPreview = value;
-                    await this.plugin.saveSettings();
-                }));
-
-        // 自动路由设置
-        containerEl.createEl("h3", { text: "自动路由（LLM 判定模式）" });
-        new Setting(containerEl)
-            .setName("启用自动路由")
-            .setDesc("由 LLM 根据选区/光标/指令判定 edit/chat/insert 模式")
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.enableAutoRoutingByLLM ?? true)
-                .onChange(async (value) => {
-                    this.plugin.settings.enableAutoRoutingByLLM = value;
-                    await this.plugin.saveSettings();
-                }));
-
-        new Setting(containerEl)
-            .setName("自动执行的最低置信度")
-            .setDesc("低于此值将回退到默认模式或提示用户（0~1，默认0.6）")
-            .addText(text => text
-                .setPlaceholder("0.6")
-                .setValue(String(this.plugin.settings.minConfidenceForAuto ?? 0.6))
-                .onChange(async (value) => {
-                    const num = Number(value);
-                    if (!Number.isNaN(num) && num >= 0 && num <= 1) {
-                        this.plugin.settings.minConfidenceForAuto = num;
-                        await this.plugin.saveSettings();
-                    } else {
-                        new Notice("请输入 0~1 之间的数字");
-                    }
-                }));
-
-        new Setting(containerEl)
-            .setName("路由失败/低置信度回退模式")
-            .setDesc("路由失败或置信度过低时使用的模式")
-            .addDropdown(drop => {
-                drop.addOption("chat", "chat");
-                drop.addOption("edit", "edit");
-                drop.addOption("insert", "insert");
-                drop.setValue(this.plugin.settings.fallbackMode || "chat");
-                drop.onChange(async (value) => {
-                    this.plugin.settings.fallbackMode = value as any;
-                    await this.plugin.saveSettings();
-                });
-            });
+        // 已移除：自动路由与模式回退设置
 
         // 常用提示词管理
         containerEl.createEl("h3", { text: "常用提示词管理" });

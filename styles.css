@@ -726,62 +726,6 @@
   opacity: 0.8;
 }
 
-/* 加载指示器样�?*/
-.markdown-next-ai-loading {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--text-normal);
-  font-size: 14px;
-  font-weight: 500;
-  padding: 6px 12px;
-  background: var(--background-secondary);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 6px;
-  transition: all 0.2s ease;
-}
-
-.markdown-next-ai-loading::after {
-  content: '';
-  width: 12px;
-  height: 12px;
-  border: 2px solid var(--background-modifier-border);
-  border-top: 2px solid var(--text-muted);
-  border-radius: 50%;
-  animation: markdown-next-ai-spin 1s linear infinite;
-}
-
-.markdown-next-ai-dots {
-  display: inline-block;
-  min-width: 20px;
-  text-align: left;
-  font-weight: bold;
-  animation: markdown-next-ai-blink 1s ease-in-out infinite;
-}
-
-/* 加载动画 */
-@keyframes markdown-next-ai-spin {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes markdown-next-ai-blink {
-
-  0%,
-  50% {
-    opacity: 1;
-  }
-
-  51%,
-  100% {
-    opacity: 0.3;
-  }
-}
 
 /* 设置面板样式 */
 .markdown-next-ai-config-desc {
@@ -1313,6 +1257,123 @@ border-color: var(--interactive-accent);
   .markdown-next-ai-button-group button {
     border-width: 2px;
   }
+}
+
+.markdown-next-ai-result-floating-window {
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  width: min(80vw, 900px);
+  min-width: 520px;
+  max-width: 900px;
+  overflow: hidden;
+  z-index: 10002;
+}
+
+.markdown-next-ai-result-floating-window .result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+}
+
+.markdown-next-ai-result-floating-window .result-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.markdown-next-ai-result-floating-window .model-info {
+  color: var(--text-accent);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.markdown-next-ai-result-floating-window .char-count {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.markdown-next-ai-result-floating-window .result-close-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.markdown-next-ai-result-floating-window .result-close-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.markdown-next-ai-result-floating-window .result-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.markdown-next-ai-result-floating-window .result-status.thinking {
+  background: #FFF4CC;
+  color: #7A5C00;
+}
+
+.markdown-next-ai-result-floating-window .result-status.generating {
+  background: #E6F4FF;
+  color: #014C7A;
+}
+
+.markdown-next-ai-result-floating-window .result-content {
+  padding: 12px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.markdown-next-ai-result-floating-window .result-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.markdown-next-ai-result-floating-window .result-content::-webkit-scrollbar-track {
+  background: var(--scrollbar-bg);
+  border-radius: 4px;
+}
+
+.markdown-next-ai-result-floating-window .result-content::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb-bg);
+  border-radius: 4px;
+}
+
+.markdown-next-ai-result-floating-window .result-content::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover-bg);
+}
+
+.markdown-next-ai-result-floating-window .result-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  padding: 8px 12px;
+  border-top: 1px solid var(--background-modifier-border);
+  background: var(--background-secondary);
+}
+
+.markdown-next-ai-result-floating-window .result-actions button {
+  padding: 6px 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  cursor: pointer;
+}
+
+.markdown-next-ai-result-floating-window .result-actions button:hover {
+  background: var(--background-secondary-alt);
+  border-color: var(--interactive-accent);
 }
 
 /* @符号触发弹出窗口样式 */
@@ -3154,175 +3215,6 @@ border-color: var(--interactive-accent);
     min-height: 40px;
   }
 
-  /* ContentProtection验证相关样式 */
-  .plugin-activation-notice {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: var(--background-primary);
-    border: 2px solid var(--text-error);
-    border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    z-index: 10000;
-    max-width: 400px;
-    width: 90vw;
-    animation: markdown-next-ai-notice-appear 0.3s ease-out;
-  }
-
-  @keyframes markdown-next-ai-notice-appear {
-    from {
-      opacity: 0;
-      transform: translate(-50%, -50%) scale(0.9);
-    }
-
-    to {
-      opacity: 1;
-      transform: translate(-50%, -50%) scale(1);
-    }
-  }
-
-  .plugin-activation-notice h3 {
-    margin: 0 0 10px 0;
-    color: var(--text-error);
-    font-size: 16px;
-    font-weight: 600;
-  }
-
-  .plugin-activation-notice p {
-    margin: 0 0 8px 0;
-    color: var(--text-normal);
-    font-size: 14px;
-    line-height: 1.4;
-  }
-
-  .plugin-activation-notice p:last-child {
-    margin-bottom: 0;
-  }
-
-  /* 设置页面中的激活状态提�?*/
-  .markdown-next-ai-activation-warning {
-    background: var(--background-modifier-error);
-    color: var(--text-error);
-    padding: 15px;
-    border-radius: 6px;
-    margin-bottom: 20px;
-    border: 1px solid var(--text-error);
-  }
-
-  .markdown-next-ai-activation-warning h3 {
-    margin: 0 0 10px 0;
-    font-size: 16px;
-    font-weight: 600;
-  }
-
-  .markdown-next-ai-activation-warning p {
-    margin: 0 0 8px 0;
-    font-size: 14px;
-    line-height: 1.4;
-  }
-
-  .markdown-next-ai-activation-warning p:last-child {
-    margin-bottom: 0;
-  }
-
-  /* 禁用状态的UI元素 */
-  .markdown-next-ai-disabled {
-    opacity: 0.5;
-    pointer-events: none;
-  }
-
-  .markdown-next-ai-disabled .markdown-next-ai-button,
-  .markdown-next-ai-disabled .markdown-next-ai-input,
-  .markdown-next-ai-disabled .markdown-next-ai-select {
-    cursor: not-allowed;
-  }
-
-  /* 标题栏按钮禁用状�?*/
-  .markdown-next-ai-full-modify-btn.markdown-next-ai-disabled {
-    opacity: 0.3;
-    cursor: not-allowed;
-  }
-
-  .markdown-next-ai-full-modify-btn.markdown-next-ai-disabled:hover {
-    background: transparent !important;
-    opacity: 0.3;
-  }
-
-  /* 右键菜单禁用状�?*/
-  .menu .menu-item[data-markdown-next-ai-disabled] {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  .menu .menu-item[data-markdown-next-ai-disabled]:hover {
-    background: transparent;
-  }
-
-  /* 状态指示器 */
-  .markdown-next-ai-status-indicator {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 500;
-  }
-
-  .markdown-next-ai-status-indicator.markdown-next-ai-status-active {
-    background: var(--background-modifier-success);
-    color: var(--text-success);
-    border: 1px solid var(--text-success);
-  }
-
-  .markdown-next-ai-status-indicator.markdown-next-ai-status-inactive {
-    background: var(--background-modifier-error);
-    color: var(--text-error);
-    border: 1px solid var(--text-error);
-  }
-
-  .markdown-next-ai-status-indicator.markdown-next-ai-status-warning {
-    background: var(--background-modifier-warning);
-    color: var(--text-warning);
-    border: 1px solid var(--text-warning);
-  }
-
-  /* 状态指示器图标 */
-  .markdown-next-ai-status-indicator::before {
-    content: '';
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    display: inline-block;
-  }
-
-  .markdown-next-ai-status-indicator.markdown-next-ai-status-active::before {
-    background: var(--text-success);
-    animation: markdown-next-ai-status-pulse 2s ease-in-out infinite;
-  }
-
-  .markdown-next-ai-status-indicator.markdown-next-ai-status-inactive::before {
-    background: var(--text-error);
-  }
-
-  .markdown-next-ai-status-indicator.markdown-next-ai-status-warning::before {
-    background: var(--text-warning);
-    animation: markdown-next-ai-status-pulse 1s ease-in-out infinite;
-  }
-
-  @keyframes markdown-next-ai-status-pulse {
-
-    0%,
-    100% {
-      opacity: 1;
-      transform: scale(1);
-    }
-
-    50% {}
-
-    transform: scale(1.1);
-  }
 }
 
 /* ============================================

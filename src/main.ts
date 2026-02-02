@@ -1,4 +1,4 @@
-import { MarkdownView, Menu, Notice, Plugin, TFile } from "obsidian";
+import { MarkdownView, Notice, Plugin, TFile, setIcon } from "obsidian";
 import { DEFAULT_SETTINGS } from "./defaults";
 import { AIService } from "./services";
 import { GlobalRuleManager } from "./services/rule-manager";
@@ -30,6 +30,8 @@ export default class MarkdownNextAIPlugin extends Plugin {
 
     // Track the last active markdown editor (for global mode when sidebar is active)
     private lastActiveMarkdownView: MarkdownView | null = null;
+    private headerButtons: HTMLElement[] = [];
+    private headerButtonListeners: Array<{ element: HTMLElement | any; event: string; handler: any }> = [];
 
     async onload(): Promise<void> {
         await this.loadSettings();
@@ -50,6 +52,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
         this.addSettingTab(new MarkdownNextAISettingTab(this.app, this));
         this.addCommands();
         this.updateEventListeners();
+        this.setupHeaderButton();
 
         // 追踪最后活跃的编辑器视图
         this.setupLastActiveViewTracker();
@@ -62,6 +65,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
         this.selectionManager?.destroy();
         this.selectionToolbar?.destroy();
         this.cleanupEventListeners();
+        this.cleanupHeaderButton();
         console.log("MarkdownNext AI 插件已卸载");
     }
 
@@ -112,6 +116,48 @@ export default class MarkdownNextAIPlugin extends Plugin {
         }
     }
 
+    setupHeaderButton(): void {
+        const addBtn = (view: MarkdownView) => {
+            const header = view.containerEl.querySelector(".view-header") as HTMLElement | null;
+            const actions = view.containerEl.querySelector(".view-actions") as HTMLElement | null;
+            if (header && !header.querySelector(".markdown-next-ai-global-dialog-btn")) {
+                const btn = document.createElement("button");
+                btn.className = "markdown-next-ai-global-dialog-btn clickable-icon";
+                btn.setAttribute("aria-label", "AI对话");
+                const handler = (e: MouseEvent) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const sel = window.getSelection()?.toString().trim() || "";
+                    this.showAtTriggerModalGlobal(sel);
+                };
+                btn.addEventListener("click", handler as EventListener);
+                this.headerButtons.push(btn);
+                if (actions) {
+                    actions.insertBefore(btn, actions.firstChild);
+                } else {
+                    header.appendChild(btn);
+                }
+                setIcon(btn, "atom");
+            }
+        };
+        const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+        if (view) addBtn(view);
+        const layoutChangeHandler = () => {
+            this.app.workspace.getLeavesOfType("markdown").forEach(leaf => {
+                if (leaf.view instanceof MarkdownView) {
+                    addBtn(leaf.view);
+                }
+            });
+        };
+        this.registerEvent(this.app.workspace.on("layout-change", layoutChangeHandler));
+    }
+
+    cleanupHeaderButton(): void {
+        this.headerButtons.forEach(btn => btn.remove());
+        this.headerButtons = [];
+        document.querySelectorAll(".markdown-next-ai-global-dialog-btn").forEach(el => el.remove());
+    }
+
     async saveSettings(): Promise<void> {
         await this.saveData(this.settings);
         if (this.aiService) {
@@ -134,7 +180,6 @@ export default class MarkdownNextAIPlugin extends Plugin {
         this.addCommand({
             id: "open-ai-popup",
             name: "唤出AI对话框",
-            hotkeys: [{ modifiers: ["Alt"], key: "v" }],
             callback: () => {
                 try {
                     const view = this.app.workspace.getActiveViewOfType(MarkdownView);
@@ -158,7 +203,6 @@ export default class MarkdownNextAIPlugin extends Plugin {
         this.addCommand({
             id: "open-ai-popup-global",
             name: "唤出AI对话框（全局模式）",
-            hotkeys: [{ modifiers: ["Ctrl", "Shift"], key: "m" }],
             callback: () => {
                 try {
                     console.log("[markdown-next-ai] 执行全局对话框命令");
@@ -267,7 +311,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
                     menu.addItem((item) => {
                         item
                             .setTitle("Markdown-Next-AI：修改所选内容")
-                            .setIcon("bot")
+                            .setIcon("atom")
                             .onClick(() => {
                                 this.showAtTriggerModal(selection);
                             });
@@ -276,39 +320,14 @@ export default class MarkdownNextAIPlugin extends Plugin {
             })
         );
 
-        // 全局模式：在非编辑器区域也能触发右键菜单
-        if (this.settings.enableGlobalDialog) {
-            document.addEventListener("contextmenu", (event: MouseEvent) => {
-                const selection = window.getSelection()?.toString().trim() || "";
-
-                // 只在编辑器外部的选中文本上显示菜单
-                if (selection && !this.isInEditor(event.target as HTMLElement)) {
-                    // 显示自定义上下文菜单
-                    this.showGlobalContextMenu(selection, event);
-                }
-            }, true);
-        }
+        // 移除全局右键菜单逻辑
     }
 
     private isInEditor(el: HTMLElement): boolean {
         return !!(el.closest(".cm-editor") || el.closest(".markdown-source-view") || el.closest(".markdown-preview-view"));
     }
 
-    private showGlobalContextMenu(selectedText: string, event: MouseEvent): void {
-        const menu = new Menu();
-        menu.addItem((item) => {
-            item
-                .setTitle("Markdown-Next-AI：修改所选内容")
-                .setIcon("bot")
-                .onClick(() => {
-                    this.showAtTriggerModalGlobal(selectedText);
-                });
-        });
-        menu.showAtPosition({
-            x: event.clientX,
-            y: event.clientY
-        });
-    }
+    // 删除全局右键菜单函数
 
     setupPromptTriggerListener(): void {
         // 原本的 # 触发逻辑已移除，改为在各组件内部独立处理
@@ -452,11 +471,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
             this.app,
             (prompt: string, images: ImageData[], modelId: string, context: string, sel: string, mode: string) => {
                 const finalSel = sel || mergedSelection;
-                if (this.settings.useFloatingPreview) {
-                    this.handleContinueWritingGlobal(prompt, images, modelId, context, finalSel, mode);
-                } else {
-                    this.handleContinueWriting(prompt, images, modelId, context, finalSel, mode);
-                }
+                this.handleContinueWritingGlobal(prompt, images, modelId, context, finalSel, mode);
             },
             fallbackPos,
             this,
@@ -680,12 +695,24 @@ export default class MarkdownNextAIPlugin extends Plugin {
         selectedText: string
     ): Promise<void> {
         if (!view || !view.editor) {
-            navigator.clipboard.writeText(content);
-            new Notice("无可用编辑器，内容已复制到剪贴板");
+            new Notice("请先聚焦编辑器");
             return;
         }
 
         const editor = view.editor;
+        const activeEl = document.activeElement as HTMLElement | null;
+        if (action === "insert") {
+            if (!activeEl || !this.isInEditor(activeEl)) {
+                new Notice("请先聚焦编辑器");
+                return;
+            }
+        }
+        if (action === "replace") {
+            if (!activeEl || !this.isInEditor(activeEl)) {
+                new Notice("请先聚焦编辑器");
+                return;
+            }
+        }
         const isModification = selectedText.length > 0 && action === "replace";
 
         try {
@@ -717,10 +744,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
         selectedText: string = "",
         mode: string = "chat"
     ): Promise<void> {
-        // 如果启用了浮窗预览模式，转为全局模式处理
-        if (this.settings.useFloatingPreview) {
-            return this.handleContinueWritingGlobal(prompt, images, modelId, context, selectedText, mode);
-        }
+        // 编辑器模式：不使用浮窗确认，按预览+差异视图流程处理
 
         const view = this.app.workspace.getActiveViewOfType(MarkdownView);
         if (!view || !view.editor) {

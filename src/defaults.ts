@@ -57,11 +57,6 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     ],
     conversationHistory: [],
     conversationHistoryLimit: 50,
-    enableGlobalDialog: false,
-    useFloatingPreview: false,
     lastInsertAction: "insert",
-    // LLM 路由默认配置
-    enableAutoRoutingByLLM: true,
-    minConfidenceForAuto: 0.6,
-    fallbackMode: "chat"
+    // 已移除：LLM 路由默认配置
 };
