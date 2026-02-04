@@ -66,6 +66,7 @@ export class AtTriggerPopup {
     private modelDropdownTouchHandler: ((e: TouchEvent) => void) | null = null;
     private modelDropdownKeydownHandler: ((e: KeyboardEvent) => void) | null = null;
     private resizeObserver: ResizeObserver | null = null;
+    private dropdownEventListeners: EventListenerEntry[] = [];
 
     constructor(
         app: App,
@@ -165,7 +166,7 @@ export class AtTriggerPopup {
 
         const isRewriteMode = this.mode === 'edit';
         const titleText = isRewriteMode ? "修改所选内容" : "Markdown-Next-AI";
-        const placeholderText = isRewriteMode ? "请输入修改要求..." : "（@选择文件，#选择常用提示词）...";
+        const placeholderText = isRewriteMode ? "请输入修改要求..." : "@选择文件，#选择常用提示词...";
         const selectedTextPreview = this.selectedText;
         const currentModelName = this.getModelNameById(this.plugin.settings.currentModel);
 
@@ -173,8 +174,8 @@ export class AtTriggerPopup {
             <div class="markdown-next-ai-popup-header">
                 <span class="markdown-next-ai-popup-title"><span class="markdown-next-ai-title-icon"></span><span class="markdown-next-ai-title-text">${titleText}</span></span>
                 <div class="markdown-next-ai-popup-actions">
-                    <button class="markdown-next-ai-upload-btn markdown-next-ai-history-btn" title="查看历史"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-history" style="display: inline-block; vertical-align: middle; margin-right: 4px;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>
-                    <button class="markdown-next-ai-popup-close">✕</button>
+                    <button class="markdown-next-ai-header-btn markdown-next-ai-history-trigger" title="查看历史"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-history"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>
+                    <button class="markdown-next-ai-header-btn markdown-next-ai-popup-close"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
                 </div>
             </div>
             <div class="markdown-next-ai-history-panel" style="display:none;"></div>
@@ -207,12 +208,6 @@ export class AtTriggerPopup {
         const iconSlot = this.popupEl.querySelector(".markdown-next-ai-title-icon") as HTMLElement | null;
         if (iconSlot) {
             setIcon(iconSlot, "atom");
-            (iconSlot as HTMLElement).style.display = "inline-block";
-            (iconSlot as HTMLElement).style.verticalAlign = "middle";
-            (iconSlot as HTMLElement).style.marginRight = "4px";
-            (iconSlot as HTMLElement).style.width = "16px";
-            (iconSlot as HTMLElement).style.height = "16px";
-            (iconSlot as HTMLElement).style.color = "#863097";
         }
 
         this.inputEl = this.popupEl.querySelector(".markdown-next-ai-continue-input");
@@ -223,7 +218,7 @@ export class AtTriggerPopup {
         const fileInput = this.popupEl.querySelector(".markdown-next-ai-file-input") as HTMLInputElement;
         const uploadBtn = this.popupEl.querySelector(".markdown-next-ai-upload-btn") as HTMLButtonElement;
         const imagePreviewsEl = this.popupEl.querySelector(".markdown-next-ai-image-previews") as HTMLElement;
-        const historyBtn = this.popupEl.querySelector(".markdown-next-ai-history-btn") as HTMLButtonElement;
+        const historyBtn = this.popupEl.querySelector(".markdown-next-ai-history-trigger") as HTMLButtonElement;
         this.historyContainer = this.popupEl.querySelector(".markdown-next-ai-history-panel") as HTMLElement | null;
 
         this.contextSelector = new InputContextSelector(
@@ -324,7 +319,12 @@ export class AtTriggerPopup {
 
             const onModelMouseDown = (e: MouseEvent) => {
                 e.preventDefault();
-                this.openModelDropdown(this.modelSelectEl as unknown as HTMLElement);
+                e.stopPropagation(); // 防止事件冒泡
+                if (this.modelDropdownEl) {
+                    this.closeModelDropdown();
+                } else {
+                    this.openModelDropdown(this.modelSelectEl as unknown as HTMLElement);
+                }
             };
             this.modelSelectEl.addEventListener("mousedown", onModelMouseDown as EventListener);
             this.eventListeners.push({ element: this.modelSelectEl, event: "mousedown", handler: onModelMouseDown as EventListener });
@@ -840,7 +840,7 @@ export class AtTriggerPopup {
             }
 
             if (this.inputEl) {
-                this.inputEl.setAttribute("data-placeholder", isImageModel ? "请描述您想要生成的图片..." : "(@选择文件，#选择常用提示词)");
+                this.inputEl.setAttribute("data-placeholder", isImageModel ? "请描述您想要生成的图片..." : "@选择文件，#选择常用提示词");
                 this.contextSelector?.updatePlaceholder();
             }
 
@@ -904,7 +904,7 @@ export class AtTriggerPopup {
             this.closeModelDropdown();
         };
         document.addEventListener("click", outsideClickHandler as EventListener, true);
-        this.eventListeners.push({ element: document, event: "click", handler: outsideClickHandler as EventListener });
+        this.dropdownEventListeners.push({ element: document, event: "click", handler: outsideClickHandler as EventListener });
 
         this.modelDropdownScrollHandler = (e: Event) => {
             const t = e.target as HTMLElement | null;
@@ -912,7 +912,7 @@ export class AtTriggerPopup {
             this.closeModelDropdown();
         };
         document.addEventListener("scroll", this.modelDropdownScrollHandler as EventListener, true);
-        this.eventListeners.push({ element: document, event: "scroll", handler: this.modelDropdownScrollHandler as EventListener });
+        this.dropdownEventListeners.push({ element: document, event: "scroll", handler: this.modelDropdownScrollHandler as EventListener });
 
         this.modelDropdownWheelHandler = (e: WheelEvent) => {
             const t = e.target as HTMLElement | null;
@@ -920,7 +920,7 @@ export class AtTriggerPopup {
             this.closeModelDropdown();
         };
         document.addEventListener("wheel", this.modelDropdownWheelHandler as EventListener, true);
-        this.eventListeners.push({ element: document, event: "wheel", handler: this.modelDropdownWheelHandler as EventListener });
+        this.dropdownEventListeners.push({ element: document, event: "wheel", handler: this.modelDropdownWheelHandler as EventListener });
 
         this.modelDropdownTouchHandler = (e: TouchEvent) => {
             const t = e.target as HTMLElement | null;
@@ -928,7 +928,7 @@ export class AtTriggerPopup {
             this.closeModelDropdown();
         };
         document.addEventListener("touchmove", this.modelDropdownTouchHandler as EventListener, true);
-        this.eventListeners.push({ element: document, event: "touchmove", handler: this.modelDropdownTouchHandler as EventListener });
+        this.dropdownEventListeners.push({ element: document, event: "touchmove", handler: this.modelDropdownTouchHandler as EventListener });
 
         this.modelDropdownKeydownHandler = (e: KeyboardEvent) => {
             if (!this.modelDropdownEl) return;
@@ -963,7 +963,7 @@ export class AtTriggerPopup {
             }
         };
         document.addEventListener("keydown", this.modelDropdownKeydownHandler as EventListener, true);
-        this.eventListeners.push({ element: document, event: "keydown", handler: this.modelDropdownKeydownHandler as EventListener });
+        this.dropdownEventListeners.push({ element: document, event: "keydown", handler: this.modelDropdownKeydownHandler as EventListener });
     }
 
     private closeModelDropdown(): void {
@@ -971,6 +971,13 @@ export class AtTriggerPopup {
             this.modelDropdownEl.parentNode.removeChild(this.modelDropdownEl);
         }
         this.modelDropdownEl = null;
+
+        // 清理下拉菜单特定的事件监听器
+        this.dropdownEventListeners.forEach(({ element, event, handler }) => {
+            element.removeEventListener(event, handler, true); // 注意：这里使用了 capture=true，因为添加时也是 true
+        });
+        this.dropdownEventListeners = [];
+
         this.modelDropdownScrollHandler = null;
         this.modelDropdownWheelHandler = null;
         this.modelDropdownTouchHandler = null;

@@ -892,37 +892,7 @@
   background: var(--background-modifier-hover);
 }
 
-.markdown-next-ai-history-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: auto;
-  height: auto;
-  border: none;
-  background: transparent;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: all 0.15s ease;
-  padding: 0;
-  line-height: normal;
-  appearance: none;
-  -webkit-appearance: none;
-  box-shadow: none;
-}
-
-background: var(--background-secondary);
-background: var(--background-secondary-alt);
-color: var(--text-normal);
-border-color: var(--interactive-accent);
-
-.markdown-next-ai-history-btn svg {
-  width: 16px;
-  height: 16px;
-  display: inline-block;
-  vertical-align: middle;
-  fill: none;
-  stroke: currentColor;
-}
+/* markdown-next-ai-history-btn removed */
 
 .markdown-next-ai-history-panel {
   margin: 8px 0 12px 0;
@@ -1051,9 +1021,11 @@ border-color: var(--interactive-accent);
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
+  padding: 8px 12px;
   cursor: pointer;
-  transition: background-color 0.12s ease, transform 0.06s ease;
+  transition: background-color 0.12s ease;
+  border-radius: 6px;
+  margin: 2px 4px;
 }
 
 .markdown-next-ai-suggestion-item:hover {
@@ -1061,8 +1033,8 @@ border-color: var(--interactive-accent);
 }
 
 .markdown-next-ai-suggestion-item.selected {
-  background: var(--background-modifier-hover);
-  border-left: 3px solid var(--interactive-accent);
+  background: var(--background-modifier-selected);
+  color: var(--text-normal);
 }
 
 .markdown-next-ai-suggestion-icon {
@@ -1667,8 +1639,7 @@ border-color: var(--interactive-accent);
 
 
 .markdown-next-ai-popup-header {
-  padding: 4px 8px;
-  padding-bottom: 0px;
+  padding: 0 8px;
   background: var(--background-secondary);
   border-radius: 8px 8px 0 0;
   box-sizing: border-box;
@@ -1685,7 +1656,64 @@ border-color: var(--interactive-accent);
   color: var(--text-normal);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  line-height: 16px;
+  /* Explicit line-height to match icon height */
+}
+
+.markdown-next-ai-title-text {
+  line-height: 1;
+  display: block;
+  padding-top: 1px;
+  /* Optical adjustment for text baseline */
+}
+
+.markdown-next-ai-title-icon {
+  width: 16px;
+  height: 16px;
+  color: #863097;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.markdown-next-ai-title-icon svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.markdown-next-ai-popup-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.markdown-next-ai-header-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  line-height: 1;
+}
+
+.markdown-next-ai-header-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+.markdown-next-ai-header-btn svg {
+  width: 16px;
+  height: 16px;
+  display: block;
 }
 
 .markdown-next-ai-popup-content {
@@ -3709,7 +3737,6 @@ border-color: var(--interactive-accent);
 .markdown-next-ai-suggestion-item.selected {
   background: var(--mn-accent-100);
   color: var(--mn-accent-600);
-  border-left: 3px solid var(--mn-accent-500);
 }
 
 .markdown-next-ai-suggestion-item:focus-visible {
