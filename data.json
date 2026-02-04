@@ -2,7 +2,7 @@
   "providers": {
     "openai": {
       "apiKey": "",
-      "baseUrl": "",
+      "baseUrl": "https://yunwu.ai/v1",
       "enabled": true,
       "apiKeyLink": "https://platform.openai.com/api-keys"
     }
@@ -74,7 +74,7 @@
       "content": "承接上文语境和风格，继续撰写后续内容，保持思路连贯。"
     }
   ],
+  "lastInsertAction": "insert",
   "conversationHistory": [],
-  "conversationHistoryLimit": 50,
-  "lastInsertAction": "insert"
+  "conversationHistoryLimit": 50
 }

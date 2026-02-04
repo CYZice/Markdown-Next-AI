@@ -108,13 +108,6 @@ export default class MarkdownNextAIPlugin extends Plugin {
         if (!Array.isArray(this.settings.commonPrompts)) {
             this.settings.commonPrompts = [...DEFAULT_SETTINGS.commonPrompts];
         }
-
-        if (!Array.isArray(this.settings.conversationHistory)) {
-            this.settings.conversationHistory = [];
-        }
-        if (!this.settings.conversationHistoryLimit || this.settings.conversationHistoryLimit <= 0) {
-            this.settings.conversationHistoryLimit = DEFAULT_SETTINGS.conversationHistoryLimit;
-        }
     }
 
     setupHeaderButton(): void {
@@ -679,7 +672,8 @@ export default class MarkdownNextAIPlugin extends Plugin {
                 new Notice("已复制到剪贴板");
             });
 
-            // 记录对话
+            // 记录对话 - 已移除
+            /*
             await this.recordConversation({
                 prompt,
                 response: streamedContent,
@@ -687,6 +681,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
                 selectedText,
                 contextSnippet: context || undefined
             });
+            */
 
         } catch (error: any) {
             if (this.lastAtTriggerPopup) {
@@ -820,14 +815,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
             }
             const responseText = finalContent || "";
             if (responseText.trim()) {
-                const contextForHistory = context || "";
-                await this.recordConversation({
-                    prompt,
-                    response: responseText,
-                    modelId: modelId || this.settings.currentModel,
-                    contextSnippet: contextForHistory,
-                    selectedText
-                });
+                // History recording removed
             }
             // 生成内容为空时，避免打开空的 Apply View
             if (!finalContent || finalContent.trim().length === 0) {
@@ -859,26 +847,5 @@ export default class MarkdownNextAIPlugin extends Plugin {
         }
     }
 
-    private async recordConversation(entry: { prompt: string; response: string; modelId: string; contextSnippet?: string; selectedText?: string }): Promise<void> {
-        if (!this.settings.conversationHistory) {
-            this.settings.conversationHistory = [];
-        }
-
-        const limit = this.settings.conversationHistoryLimit || DEFAULT_SETTINGS.conversationHistoryLimit || 50;
-        const trimmedContext = (entry.contextSnippet || "").slice(0, 4000);
-        const newEntry = {
-            id: `conv-${Date.now()}`,
-            timestamp: Date.now(),
-            ...entry,
-            contextSnippet: trimmedContext
-        };
-
-        this.settings.conversationHistory.push(newEntry);
-
-        if (this.settings.conversationHistory.length > limit) {
-            this.settings.conversationHistory = this.settings.conversationHistory.slice(-limit);
-        }
-
-        await this.saveSettings();
-    }
+    // History recording removed
 }

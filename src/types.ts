@@ -76,21 +76,10 @@ export interface PluginSettings {
     baseUrl?: string;
     model?: string;
     apiKeyLinks?: Record<string, string>;
-
-    conversationHistory?: ConversationEntry[];
-    conversationHistoryLimit?: number;
     lastInsertAction?: string;
 }
 
-export interface ConversationEntry {
-    id: string;
-    prompt: string;
-    response: string;
-    modelId: string;
-    timestamp: number;
-    contextSnippet?: string;
-    selectedText?: string;
-}
+// ConversationEntry removed
 
 /**
  * 图片数据接口

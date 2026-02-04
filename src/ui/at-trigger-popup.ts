@@ -56,7 +56,6 @@ export class AtTriggerPopup {
     private contextSelector: InputContextSelector | null = null;
     private promptSelector: PromptSelectorPopup | null = null;
     private outsideClickHandler: ((e: MouseEvent) => void) | null = null;
-    private historyContainer: HTMLElement | null = null;
     private historyVisible: boolean = false;
     private isDragging: boolean = false;
     private closeGuards: Set<string> = new Set();
@@ -174,11 +173,9 @@ export class AtTriggerPopup {
             <div class="markdown-next-ai-popup-header">
                 <span class="markdown-next-ai-popup-title"><span class="markdown-next-ai-title-icon"></span><span class="markdown-next-ai-title-text">${titleText}</span></span>
                 <div class="markdown-next-ai-popup-actions">
-                    <button class="markdown-next-ai-header-btn markdown-next-ai-history-trigger" title="查看历史"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-history"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></button>
                     <button class="markdown-next-ai-header-btn markdown-next-ai-popup-close"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
                 </div>
             </div>
-            <div class="markdown-next-ai-history-panel" style="display:none;"></div>
             <div class="markdown-next-ai-popup-content">
                 ${this.selectedText ? `
                 <div class="markdown-next-ai-selected-text-section">
@@ -218,8 +215,6 @@ export class AtTriggerPopup {
         const fileInput = this.popupEl.querySelector(".markdown-next-ai-file-input") as HTMLInputElement;
         const uploadBtn = this.popupEl.querySelector(".markdown-next-ai-upload-btn") as HTMLButtonElement;
         const imagePreviewsEl = this.popupEl.querySelector(".markdown-next-ai-image-previews") as HTMLElement;
-        const historyBtn = this.popupEl.querySelector(".markdown-next-ai-history-trigger") as HTMLButtonElement;
-        this.historyContainer = this.popupEl.querySelector(".markdown-next-ai-history-panel") as HTMLElement | null;
 
         this.contextSelector = new InputContextSelector(
             this.app,
@@ -299,9 +294,6 @@ export class AtTriggerPopup {
         closeBtn.onclick = () => this.close();
         submitBtn.onclick = () => this.submit();
         uploadBtn.onclick = () => fileInput.click();
-        if (historyBtn) {
-            historyBtn.onclick = () => this.toggleHistoryPanel();
-        }
 
         // 模型下拉切换
         if (this.modelSelectEl) {
@@ -576,97 +568,6 @@ export class AtTriggerPopup {
     adjustPopupWidth(): void {
         // 保持固定宽度，不再动态调整
         return;
-    }
-
-    private toggleHistoryPanel(): void {
-        if (!this.historyContainer) return;
-
-        this.historyVisible = !this.historyVisible;
-        this.historyContainer.style.display = this.historyVisible ? "block" : "none";
-
-        if (this.historyVisible) {
-            this.renderHistoryPanel();
-        }
-
-        this.adjustPopupWidth();
-    }
-
-    private renderHistoryPanel(): void {
-        if (!this.historyContainer) return;
-
-        const history = (this.plugin.settings.conversationHistory || []).slice(-10).reverse();
-
-        if (!history.length) {
-            this.historyContainer.innerHTML = "<div class=\"markdown-next-ai-history-empty\">暂无历史记录</div>";
-            return;
-        }
-
-        const formatTime = (ts: number): string => {
-            const d = new Date(ts);
-            const pad = (n: number) => n.toString().padStart(2, "0");
-            return `${d.getMonth() + 1}-${d.getDate()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-        };
-
-        const itemsHtml = history.map((entry, idx) => {
-            const promptPreview = entry.prompt.length > 80 ? `${entry.prompt.slice(0, 80)}...` : entry.prompt;
-            const responsePreview = entry.response.length > 120 ? `${entry.response.slice(0, 120)}...` : entry.response;
-            return `
-                <div class="markdown-next-ai-history-item" 
-                     data-history-id="${entry.id}" 
-                     data-history-idx="${idx}"
-                     title="点击恢复此对话">
-                    <div class="markdown-next-ai-history-header">
-                        <span class="markdown-next-ai-history-time">${formatTime(entry.timestamp)}</span>
-                        <span class="markdown-next-ai-history-model">${entry.modelId}</span>
-                    </div>
-                    <div class="markdown-next-ai-history-prompt">${promptPreview || "(空提示)"}</div>
-                    <div class="markdown-next-ai-history-response">${responsePreview || "(无回复)"}</div>
-                </div>
-            `;
-        }).join("");
-
-        this.historyContainer.innerHTML = itemsHtml;
-
-        // 添加点击事件委托
-        this.historyContainer.querySelectorAll(".markdown-next-ai-history-item").forEach(item => {
-            item.addEventListener("click", () => {
-                const historyId = item.getAttribute("data-history-id");
-                if (historyId) {
-                    this.restoreHistoryEntry(historyId);
-                }
-            });
-        });
-    }
-
-    /**
-     * 恢复历史对话条目
-     */
-    private restoreHistoryEntry(historyId: string): void {
-        if (!this.inputEl) return;
-        const entry = (this.plugin.settings.conversationHistory || []).find(e => e.id === historyId);
-        if (!entry) return;
-        const text = entry.prompt || "";
-        if (this.inputEl instanceof HTMLTextAreaElement) {
-            this.inputEl.value = text;
-        } else {
-            this.inputEl.textContent = text;
-        }
-        if (this.modelSelectEl && entry.modelId) {
-            this.modelSelectEl.value = entry.modelId;
-            this.updateUIForModelType(entry.modelId);
-        }
-        this.contextSelector?.updatePlaceholder();
-        this.adjustPopupWidth();
-        if (this.historyContainer) {
-            this.historyVisible = false;
-            this.historyContainer.style.display = "none";
-        }
-        if (!(this.inputEl instanceof HTMLTextAreaElement)) {
-            const pos = text.length;
-            this.contextSelector?.setCursorPosition(pos);
-        }
-        this.inputEl.focus();
-        new Notice(`已恢复: "${text.slice(0, 50)}${text.length > 50 ? "..." : ""}"`);
     }
 
     private enableDragging(): void {
