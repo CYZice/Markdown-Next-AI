@@ -1,5 +1,8 @@
 import { App } from "obsidian";
 import type { CommonPrompt, EventListenerInfo } from "../types";
+import { OverlayCloseManager } from "./overlay/close-manager";
+import { positionFixedBelowOrAbove } from "./overlay/positioning";
+import { SuggestionList } from "./overlay/suggestion-list";
 
 /**
  * 提示词选择弹窗
@@ -17,6 +20,7 @@ export class PromptSelectorPopup {
     private scrollHandler: ((e: Event) => void) | null = null;
     private wheelHandler: ((e: WheelEvent) => void) | null = null;
     private touchMoveHandler: ((e: TouchEvent) => void) | null = null;
+    private closeManager: OverlayCloseManager | null = null;
 
     constructor(app: App, plugin: any, onSelect: (content: string) => void) {
         this.app = app;
@@ -58,43 +62,23 @@ export class PromptSelectorPopup {
                     </div>
                 `;
             } else {
-                const itemsHtml = this.commonPrompts.map((prompt, index) => `
-                    <div class="markdown-next-ai-suggestion-item ${index === 0 ? "selected" : ""}" data-index="${index}">
-                        <span class="markdown-next-ai-suggestion-icon">💡</span>
-                        <div class="markdown-next-ai-suggestion-content">
-                            <div class="markdown-next-ai-suggestion-name">${prompt.name}</div>
-                            <div class="markdown-next-ai-suggestion-path">${prompt.content.substring(0, 50)}${prompt.content.length > 50 ? "..." : ""}</div>
-                        </div>
-                    </div>
-                `).join("");
-                list.innerHTML = itemsHtml;
+                new SuggestionList({
+                    container: list,
+                    items: this.commonPrompts,
+                    renderItem: (prompt) => ({
+                        icon: "💡",
+                        name: prompt.name,
+                        path: `${prompt.content.substring(0, 50)}${prompt.content.length > 50 ? "..." : ""}`,
+                    }),
+                    onSelect: (index) => this.selectPrompt(index),
+                    selectedIndex: 0,
+                });
             }
             this.modalEl.appendChild(list);
 
             this.modalEl.querySelectorAll(".markdown-next-ai-suggestion-item").forEach(item => {
-                if (this.commonPrompts.length === 0) return; // 跳过空状态项
-
-                const clickHandler = () => {
-                    const index = parseInt((item as HTMLElement).dataset.index || "0");
-                    this.selectPrompt(index);
-                };
-                item.addEventListener("click", clickHandler);
-                this.eventListeners.push({ element: item as HTMLElement, event: "click", handler: clickHandler });
-
-                const mouseEnterHandler = () => {
-                    const index = parseInt((item as HTMLElement).dataset.index || "0");
-                    this.updateSelection(index);
-                };
-                item.addEventListener("mouseenter", mouseEnterHandler);
-                this.eventListeners.push({ element: item as HTMLElement, event: "mouseenter", handler: mouseEnterHandler });
+                if (this.commonPrompts.length === 0) return;
             });
-
-            const outsideClickHandler = (e: MouseEvent) => {
-                if (this.modalEl && this.modalEl.contains(e.target as Node)) return;
-                this.close();
-            };
-            document.addEventListener("click", outsideClickHandler as EventListener);
-            this.eventListeners.push({ element: document, event: "click", handler: outsideClickHandler as EventListener });
 
             const keydownHandler = (e: KeyboardEvent) => {
                 if (e.key === "Escape") {
@@ -117,38 +101,17 @@ export class PromptSelectorPopup {
             document.body.appendChild(this.modalEl);
             this.positionPopup(inputEl);
 
-            if (this.scrollHandler) {
-                document.removeEventListener("scroll", this.scrollHandler as EventListener, true);
+            if (this.closeManager) {
+                this.closeManager.destroy();
+                this.closeManager = null;
             }
-            this.scrollHandler = (e: Event) => {
-                const target = e.target as HTMLElement | null;
-                if (this.modalEl && target && (this.modalEl === target || this.modalEl.contains(target))) {
-                    return;
-                }
-                this.close();
-            };
-            document.addEventListener("scroll", this.scrollHandler as EventListener, true);
-            this.eventListeners.push({ element: document, event: "scroll", handler: this.scrollHandler as EventListener });
-
-            this.wheelHandler = (e: WheelEvent) => {
-                const target = e.target as HTMLElement | null;
-                if (this.modalEl && target && (this.modalEl === target || this.modalEl.contains(target))) {
-                    return;
-                }
-                this.close();
-            };
-            document.addEventListener("wheel", this.wheelHandler as EventListener, true);
-            this.eventListeners.push({ element: document, event: "wheel", handler: this.wheelHandler as EventListener });
-
-            this.touchMoveHandler = (e: TouchEvent) => {
-                const target = e.target as HTMLElement | null;
-                if (this.modalEl && target && (this.modalEl === target || this.modalEl.contains(target))) {
-                    return;
-                }
-                this.close();
-            };
-            document.addEventListener("touchmove", this.touchMoveHandler as EventListener, true);
-            this.eventListeners.push({ element: document, event: "touchmove", handler: this.touchMoveHandler as EventListener });
+            this.closeManager = new OverlayCloseManager({
+                overlayEl: this.modalEl,
+                anchorEl: inputEl,
+                onClose: () => this.close(),
+                onEsc: () => this.close(),
+            });
+            this.closeManager.start();
 
         } catch (e) {
             console.error("Failed to open prompt selector:", e);
@@ -169,17 +132,9 @@ export class PromptSelectorPopup {
         });
         this.eventListeners = [];
 
-        if (this.scrollHandler) {
-            document.removeEventListener("scroll", this.scrollHandler as EventListener, true);
-            this.scrollHandler = null;
-        }
-        if (this.wheelHandler) {
-            document.removeEventListener("wheel", this.wheelHandler as EventListener, true);
-            this.wheelHandler = null;
-        }
-        if (this.touchMoveHandler) {
-            document.removeEventListener("touchmove", this.touchMoveHandler as EventListener, true);
-            this.touchMoveHandler = null;
+        if (this.closeManager) {
+            this.closeManager.destroy();
+            this.closeManager = null;
         }
 
         if (this.modalEl && this.modalEl.parentNode) {
@@ -192,35 +147,8 @@ export class PromptSelectorPopup {
      * 定位弹窗
      */
     positionPopup(inputEl: HTMLElement): void {
-        if (this.modalEl && inputEl) {
-            try {
-                const inputRect = inputEl.getBoundingClientRect();
-                const modalRect = this.modalEl.getBoundingClientRect();
-                const windowWidth = window.innerWidth;
-                const windowHeight = window.innerHeight;
-
-                let left = inputRect.left;
-                let top = inputRect.bottom + 5;
-
-                if (left + modalRect.width > windowWidth) {
-                    left = windowWidth - modalRect.width - 10;
-                }
-
-                if (top + modalRect.height > windowHeight) {
-                    top = inputRect.top - modalRect.height - 5;
-                }
-
-                left = Math.max(10, left);
-                top = Math.max(10, top);
-
-                this.modalEl.style.position = "fixed";
-                this.modalEl.style.left = left + "px";
-                this.modalEl.style.top = top + "px";
-                this.modalEl.style.zIndex = "10002";
-            } catch (e) {
-                console.error("Failed to position prompt selector:", e);
-            }
-        }
+        if (!this.modalEl) return;
+        positionFixedBelowOrAbove(inputEl, this.modalEl, 5);
     }
 
     /**

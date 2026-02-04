@@ -4,7 +4,7 @@ import { AIService } from "./services";
 import { GlobalRuleManager } from "./services/rule-manager";
 import { MarkdownNextAISettingTab } from "./settings";
 import type { CursorPosition, ImageData, PluginSettings } from "./types";
-import { AIPreviewPopup, AIResultFloatingWindow, AtTriggerPopup, PromptSelectorPopup, SelectionManager, SelectionToolbar } from "./ui";
+import { AIPreviewPopup, AIResultFloatingWindow, PromptSelectorPopup, QuickAskOverlay, SelectionManager, SelectionToolbar } from "./ui";
 import { APPLY_VIEW_TYPE, ApplyView } from "./ui/apply-view/ApplyView";
 
 interface EventListenerEntry {
@@ -24,6 +24,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
     selectionToolbar!: SelectionToolbar;
     private eventListeners: EventListenerEntry[] = [];
     private atTriggerTimeout: ReturnType<typeof setTimeout> | null = null;
+    private lastQuickAskOverlay: QuickAskOverlay | null = null;
 
     // Add a global variable to store the last mouseup position
     private lastMouseUpPosition: CursorPosition | null = null;
@@ -107,13 +108,6 @@ export default class MarkdownNextAIPlugin extends Plugin {
         if (!Array.isArray(this.settings.commonPrompts)) {
             this.settings.commonPrompts = [...DEFAULT_SETTINGS.commonPrompts];
         }
-
-        if (!Array.isArray(this.settings.conversationHistory)) {
-            this.settings.conversationHistory = [];
-        }
-        if (!this.settings.conversationHistoryLimit || this.settings.conversationHistoryLimit <= 0) {
-            this.settings.conversationHistoryLimit = DEFAULT_SETTINGS.conversationHistoryLimit;
-        }
     }
 
     setupHeaderButton(): void {
@@ -184,12 +178,11 @@ export default class MarkdownNextAIPlugin extends Plugin {
                 try {
                     const view = this.app.workspace.getActiveViewOfType(MarkdownView);
                     if (!view || !view.editor) {
-                        // 如果没有活跃编辑器，尝试全局模式
-                        this.showAtTriggerModalGlobal("");
+                        this.showQuickAskOverlayGlobal("");
                         return true;
                     }
                     const selectedText = view.editor.getSelection() || "";
-                    this.showAtTriggerModal(selectedText);
+                    this.showQuickAskOverlay(selectedText);
                     return true;
                 } catch (error) {
                     console.error("唤出AI对话框命令执行错误:", error);
@@ -207,7 +200,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
                 try {
                     console.log("[markdown-next-ai] 执行全局对话框命令");
                     const globalSelection = window.getSelection()?.toString().trim() || "";
-                    this.showAtTriggerModalGlobal(globalSelection);
+                    this.showQuickAskOverlayGlobal(globalSelection);
                     console.log("[markdown-next-ai] 全局对话框已打开");
                     return true;
                 } catch (error) {
@@ -444,17 +437,19 @@ export default class MarkdownNextAIPlugin extends Plugin {
             return;
         }
 
-        new AtTriggerPopup(
+        const overlay = new QuickAskOverlay(
             this.app,
             (prompt: string, images: ImageData[], modelId: string, context: string, selectedText: string, mode: string) => {
                 this.handleContinueWriting(prompt, images, modelId, context, selectedText, mode);
             },
             cursorPos,
-            this,
+            this as any,
             view,
             selectedText,
             mode
-        ).open();
+        );
+        this.lastQuickAskOverlay = overlay;
+        overlay.open();
     }
 
     showAtTriggerModalGlobal(selectedText: string = "", mode: string = "chat"): void {
@@ -466,20 +461,63 @@ export default class MarkdownNextAIPlugin extends Plugin {
 
         const mergedSelection = selectedText || window.getSelection()?.toString().trim() || "";
 
-        console.log("[markdown-next-ai] 正在创建 AtTriggerPopup (全局模式，无需编辑器)");
-        new AtTriggerPopup(
+        console.log("[markdown-next-ai] 正在创建 QuickAskOverlay (全局模式，无需编辑器)");
+        const overlay = new QuickAskOverlay(
             this.app,
             (prompt: string, images: ImageData[], modelId: string, context: string, sel: string, mode: string) => {
                 const finalSel = sel || mergedSelection;
                 this.handleContinueWritingGlobal(prompt, images, modelId, context, finalSel, mode);
             },
-            fallbackPos,
-            this,
+            fallbackPos!,
+            this as any,
             null,
             mergedSelection,
             mode
-        ).open();
-        console.log("[markdown-next-ai] AtTriggerPopup 已打开");
+        );
+        this.lastQuickAskOverlay = overlay;
+        overlay.open();
+        console.log("[markdown-next-ai] QuickAskOverlay 已打开");
+    }
+
+    showQuickAskOverlayGlobal(selectedText: string = "", mode: string = "chat"): void {
+        const fallbackPos = this.getFallbackPosition(null);
+        const mergedSelection = selectedText || window.getSelection()?.toString().trim() || "";
+        const overlay = new QuickAskOverlay(
+            this.app,
+            (prompt: string, images: ImageData[], modelId: string, context: string, sel: string, mode: string) => {
+                const finalSel = sel || mergedSelection;
+                this.handleContinueWritingGlobal(prompt, images, modelId, context, finalSel, mode);
+            },
+            fallbackPos!,
+            this as any,
+            null,
+            mergedSelection,
+            mode
+        );
+        this.lastQuickAskOverlay = overlay;
+        overlay.open();
+    }
+
+    showQuickAskOverlay(selectedText: string = "", mode: string = "chat"): void {
+        const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+        if (!view || !view.editor) {
+            this.showQuickAskOverlayGlobal(selectedText, mode);
+            return;
+        }
+        const cursorPos = this.getCursorPosition(view) || this.lastMouseUpPosition || this.getFallbackPosition(view);
+        const overlay = new QuickAskOverlay(
+            this.app,
+            (prompt: string, images: ImageData[], modelId: string, context: string, sel: string, mode: string) => {
+                this.handleContinueWriting(prompt, images, modelId, context, sel, mode);
+            },
+            cursorPos!,
+            this as any,
+            view,
+            selectedText,
+            mode
+        );
+        this.lastQuickAskOverlay = overlay;
+        overlay.open();
     }
 
     getCursorPosition(view: MarkdownView | null = null): CursorPosition | null {
@@ -645,6 +683,9 @@ export default class MarkdownNextAIPlugin extends Plugin {
                         resultWindow.updateContent(streamedContent);
                         resultWindow.updateStatus(`正在生成中(${streamData.content.length}字)`);
                     }
+                    if (this.lastQuickAskOverlay) {
+                        this.lastQuickAskOverlay.updateAssistantStreaming(streamData.content || "", !!streamData.isComplete);
+                    }
                     if (streamData.isComplete) {
                         resultWindow.showActions();
                         void resultWindow.renderMarkdown(streamedContent);
@@ -673,14 +714,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
                 new Notice("已复制到剪贴板");
             });
 
-            // 记录对话
-            await this.recordConversation({
-                prompt,
-                response: streamedContent,
-                modelId: modelId || this.settings.currentModel,
-                selectedText,
-                contextSnippet: context || undefined
-            });
+
 
         } catch (error: any) {
             resultWindow.showError(`生成失败: ${error.message}`);
@@ -804,22 +838,15 @@ export default class MarkdownNextAIPlugin extends Plugin {
                         finalContent = streamData.content;
                         previewPopup.updateStatus(`正在生成中(${streamData.content.length}字)`);
                     }
+                    if (this.lastQuickAskOverlay) {
+                        this.lastQuickAskOverlay.updateAssistantStreaming(streamData.content || "", !!streamData.isComplete);
+                    }
                 }
             );
             if (!finalContent && result && result.content) {
                 finalContent = result.content;
             }
-            const responseText = finalContent || "";
-            if (responseText.trim()) {
-                const contextForHistory = context || "";
-                await this.recordConversation({
-                    prompt,
-                    response: responseText,
-                    modelId: modelId || this.settings.currentModel,
-                    contextSnippet: contextForHistory,
-                    selectedText
-                });
-            }
+
             // 生成内容为空时，避免打开空的 Apply View
             if (!finalContent || finalContent.trim().length === 0) {
                 previewPopup.close();
@@ -847,26 +874,5 @@ export default class MarkdownNextAIPlugin extends Plugin {
         }
     }
 
-    private async recordConversation(entry: { prompt: string; response: string; modelId: string; contextSnippet?: string; selectedText?: string }): Promise<void> {
-        if (!this.settings.conversationHistory) {
-            this.settings.conversationHistory = [];
-        }
 
-        const limit = this.settings.conversationHistoryLimit || DEFAULT_SETTINGS.conversationHistoryLimit || 50;
-        const trimmedContext = (entry.contextSnippet || "").slice(0, 4000);
-        const newEntry = {
-            id: `conv-${Date.now()}`,
-            timestamp: Date.now(),
-            ...entry,
-            contextSnippet: trimmedContext
-        };
-
-        this.settings.conversationHistory.push(newEntry);
-
-        if (this.settings.conversationHistory.length > limit) {
-            this.settings.conversationHistory = this.settings.conversationHistory.slice(-limit);
-        }
-
-        await this.saveSettings();
-    }
 }
