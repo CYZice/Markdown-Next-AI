@@ -38,8 +38,6 @@ export class InputContextSelector {
             div.className = this.inputEl.className + " markdown-next-ai-editable-input";
             div.contentEditable = "true";
             div.setAttribute("data-placeholder", (this.inputEl as HTMLTextAreaElement).placeholder);
-            div.style.minHeight = "80px";
-            div.style.maxHeight = "300px";
             div.style.overflowY = "auto";
             div.textContent = (this.inputEl as HTMLTextAreaElement).value;
 

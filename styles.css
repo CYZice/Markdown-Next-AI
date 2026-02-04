@@ -672,14 +672,14 @@
 .markdown-next-ai-modal-body .markdown-next-ai-model-select {
   width: auto;
   max-width: none;
-  background: var(--background-secondary);
+  background: transparent;
   color: var(--text-normal);
   font-size: 13px;
   cursor: pointer;
   transition: all 0.15s ease;
   margin-right: 4px;
   padding: 0 10px;
-  border: 1px solid var(--background-modifier-border);
+  border: none;
   border-radius: 6px;
   height: 30px;
   line-height: 30px;
@@ -693,14 +693,14 @@
 
 .markdown-next-ai-popup-content .markdown-next-ai-model-select:hover,
 .markdown-next-ai-modal-body .markdown-next-ai-model-select:hover {
-  background: var(--background-secondary-alt);
-  border-color: var(--interactive-accent);
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
 }
 
 .markdown-next-ai-popup-content .markdown-next-ai-model-select:focus,
 .markdown-next-ai-modal-body .markdown-next-ai-model-select:focus {
   outline: none;
-  border-color: var(--interactive-accent);
+  border: none;
 }
 
 .markdown-next-ai-model-select option {
@@ -1382,12 +1382,24 @@ border-color: var(--interactive-accent);
   border: 1px solid var(--background-modifier-border);
   border-radius: 8px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-  min-width: 480px;
+  --mn-ai-popup-header-height: 40px;
+  --mn-ai-popup-toolbar-height: 36px;
+  width: 400px;
+  /* 固定宽度 */
   max-width: 80vw;
-  width: fit-content;
+  min-width: 330px;
+  /* 限制最小宽度，确保内部组件不被遮挡 */
+  min-height: 155px;
+  /* width: fit-content; 移除 fit-content */
   font-family: var(--font-interface);
   animation: markdown-next-ai-popup-appear 0.2s ease-out;
-  transition: width 0.15s ease-out;
+
+  /* 允许手动调整大小 */
+  resize: both;
+  /* overflow: hidden; 改为 auto 防止内容被隐式截断，同时保持 resize 可用 */
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
 }
 
 /* 选中文本预览区域样式 */
@@ -1532,7 +1544,7 @@ border-color: var(--interactive-accent);
 /* Contenteditable输入框样式 */
 .markdown-next-ai-editable-input {
   width: 100%;
-  min-width: 420px;
+  /* min-width: 420px; 移除固定最小宽度，避免撑开 */
   padding: 12px 14px;
   border: 1px solid var(--background-modifier-border);
   border-radius: 6px;
@@ -1542,7 +1554,16 @@ border-color: var(--interactive-accent);
   line-height: 1.5;
   outline: none;
   white-space: pre-wrap;
-  word-wrap: break-word;
+  word-break: break-all;
+  /* 强制长字符换行 */
+  overflow-wrap: break-word;
+  /* 兼容性换行 */
+  overflow-y: auto;
+  box-sizing: border-box;
+  min-width: 0;
+  flex: 1;
+  height: auto;
+  position: relative;
 }
 
 .markdown-next-ai-editable-input:focus {
@@ -1646,13 +1667,16 @@ border-color: var(--interactive-accent);
 
 
 .markdown-next-ai-popup-header {
-  padding: 12px 16px;
+  padding: 4px 8px;
   padding-bottom: 0px;
   background: var(--background-secondary);
   border-radius: 8px 8px 0 0;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  min-height: var(--mn-ai-popup-header-height);
+  height: var(--mn-ai-popup-header-height);
 }
 
 .markdown-next-ai-popup-title {
@@ -1665,13 +1689,35 @@ border-color: var(--interactive-accent);
 }
 
 .markdown-next-ai-popup-content {
-  padding: 16px;
+  padding: 2px 8px 0 6px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   padding-bottom: 0px;
   padding-top: 0px;
   box-shadow: none !important;
   background: transparent;
+  width: 100%;
+  /* 确保填满容器 */
+  min-width: 0;
+  /* 关键：防止 Flex 子元素被内容撑大 */
 }
 
+.markdown-next-ai-continue-input {
+  margin-bottom: 0;
+  padding-bottom: 0;
+  resize: none;
+  overflow-y: auto;
+  line-height: 1.5;
+  width: 100%;
+  box-sizing: border-box;
+  flex: 1;
+  min-height: 30px;
+  word-break: break-all;
+  white-space: pre-wrap;
+  min-width: 0;
+}
 
 .markdown-next-ai-popup-content .markdown-next-ai-continue-input::placeholder {
   color: var(--text-muted);
@@ -1776,11 +1822,15 @@ border-color: var(--interactive-accent);
 
 /* 图片上传相关样式 */
 .markdown-next-ai-upload-section {
-  margin: 8px 0;
+  margin: 2px 0 2px 0;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
-
   justify-content: space-between;
+  flex-shrink: 0;
+  flex: 0 0 var(--mn-ai-popup-toolbar-height);
+  min-height: var(--mn-ai-popup-toolbar-height);
+  height: var(--mn-ai-popup-toolbar-height);
 }
 
 .markdown-next-ai-left-section {
@@ -1816,6 +1866,11 @@ border-color: var(--interactive-accent);
   margin: 8px 0;
   max-height: 200px;
   overflow-y: auto;
+}
+
+.markdown-next-ai-image-previews:empty {
+  margin: 0;
+  display: none;
 }
 
 .markdown-next-ai-image-preview {

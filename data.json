@@ -12,32 +12,32 @@
       "id": "gemini-3-pro-preview",
       "name": "gemini-3-pro-preview",
       "provider": "openai",
-      "actualModel": "gemini-3-pro-preview",
       "model": "gemini-3-pro-preview",
+      "enabled": true,
       "category": "multimodal",
-      "enabled": true
+      "actualModel": "gemini-3-pro-preview"
     },
     "gemini-3-flash-preview": {
       "id": "gemini-3-flash-preview",
       "name": "gemini-3-flash-preview",
       "provider": "openai",
-      "actualModel": "gemini-3-flash-preview",
       "model": "gemini-3-flash-preview",
+      "enabled": true,
       "category": "multimodal",
-      "enabled": true
+      "actualModel": "gemini-3-flash-preview"
     },
     "gpt-5": {
       "id": "gpt-5",
       "name": "GPT-5",
       "provider": "openai",
       "model": "gpt-5",
-      "actualModel": "gpt-5",
-      "type": "chat",
       "enabled": true,
-      "category": "multimodal"
+      "category": "multimodal",
+      "actualModel": "gpt-5",
+      "type": "chat"
     }
   },
-  "currentModel": "gemini-3-flash-preview",
+  "currentModel": "gemini-3-pro-preview",
   "timeout": 30000,
   "enableRightClick": true,
   "enableAtTrigger": true,
@@ -45,6 +45,7 @@
   "maxContextLines": 20,
   "maxContextChars": 3000,
   "globalRules": [],
+  "ruleTemplates": [],
   "enableGlobalRules": true,
   "commonPrompts": [
     {
@@ -72,5 +73,8 @@
       "name": "续写创作",
       "content": "承接上文语境和风格，继续撰写后续内容，保持思路连贯。"
     }
-  ]
+  ],
+  "conversationHistory": [],
+  "conversationHistoryLimit": 50,
+  "lastInsertAction": "insert"
 }

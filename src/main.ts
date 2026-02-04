@@ -24,6 +24,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
     selectionToolbar!: SelectionToolbar;
     private eventListeners: EventListenerEntry[] = [];
     private atTriggerTimeout: ReturnType<typeof setTimeout> | null = null;
+    private lastAtTriggerPopup: AtTriggerPopup | null = null;
 
     // Add a global variable to store the last mouseup position
     private lastMouseUpPosition: CursorPosition | null = null;
@@ -439,12 +440,13 @@ export default class MarkdownNextAIPlugin extends Plugin {
     showAtTriggerModal(selectedText: string = "", mode: string = "chat"): void {
         const view = this.app.workspace.getActiveViewOfType(MarkdownView);
         const cursorPos = this.getCursorPosition(view) || this.lastMouseUpPosition || this.getFallbackPosition(view);
+
         if (!cursorPos) {
             new Notice("未找到可用的光标位置，请先点击文档区域");
             return;
         }
 
-        new AtTriggerPopup(
+        const popup = new AtTriggerPopup(
             this.app,
             (prompt: string, images: ImageData[], modelId: string, context: string, selectedText: string, mode: string) => {
                 this.handleContinueWriting(prompt, images, modelId, context, selectedText, mode);
@@ -454,20 +456,21 @@ export default class MarkdownNextAIPlugin extends Plugin {
             view,
             selectedText,
             mode
-        ).open();
+        );
+        this.lastAtTriggerPopup = popup;
+        popup.open();
     }
 
     showAtTriggerModalGlobal(selectedText: string = "", mode: string = "chat"): void {
         console.log("[markdown-next-ai] 进入 showAtTriggerModalGlobal");
 
         // 无需依赖 Markdown 编辑器，直接使用当前屏幕中心作为定位
-        const fallbackPos = this.getFallbackPosition(null);
-        console.log("[markdown-next-ai] fallbackPos:", fallbackPos);
+        console.log("[markdown-next-ai] 正在创建 AtTriggerPopup (全局模式，无需编辑器)");
 
+        const fallbackPos = this.getFallbackPosition(null);
         const mergedSelection = selectedText || window.getSelection()?.toString().trim() || "";
 
-        console.log("[markdown-next-ai] 正在创建 AtTriggerPopup (全局模式，无需编辑器)");
-        new AtTriggerPopup(
+        const popup = new AtTriggerPopup(
             this.app,
             (prompt: string, images: ImageData[], modelId: string, context: string, sel: string, mode: string) => {
                 const finalSel = sel || mergedSelection;
@@ -478,7 +481,10 @@ export default class MarkdownNextAIPlugin extends Plugin {
             null,
             mergedSelection,
             mode
-        ).open();
+        );
+
+        this.lastAtTriggerPopup = popup;
+        popup.open();
         console.log("[markdown-next-ai] AtTriggerPopup 已打开");
     }
 
@@ -683,6 +689,9 @@ export default class MarkdownNextAIPlugin extends Plugin {
             });
 
         } catch (error: any) {
+            if (this.lastAtTriggerPopup) {
+                this.lastAtTriggerPopup.updateAssistantStreaming(streamData.content || "", !!streamData.isComplete);
+            }
             resultWindow.showError(`生成失败: ${error.message}`);
             console.error("全局对话生成失败", error);
         }
@@ -837,6 +846,9 @@ export default class MarkdownNextAIPlugin extends Plugin {
                 } else {
                     const offset = editor.posToOffset(insertPos);
                     return originalDoc.slice(0, offset) + (finalContent || "") + originalDoc.slice(offset);
+                }
+                if (this.lastAtTriggerPopup) {
+                    this.lastAtTriggerPopup.updateAssistantStreaming(streamData.content || "", !!streamData.isComplete);
                 }
             })();
             previewPopup.close();

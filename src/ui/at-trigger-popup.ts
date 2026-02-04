@@ -65,6 +65,7 @@ export class AtTriggerPopup {
     private modelDropdownWheelHandler: ((e: WheelEvent) => void) | null = null;
     private modelDropdownTouchHandler: ((e: TouchEvent) => void) | null = null;
     private modelDropdownKeydownHandler: ((e: KeyboardEvent) => void) | null = null;
+    private resizeObserver: ResizeObserver | null = null;
 
     constructor(
         app: App,
@@ -360,10 +361,37 @@ export class AtTriggerPopup {
         this.inputEl!.addEventListener("paste", pasteHandler as EventListener);
         this.eventListeners.push({ element: this.inputEl!, event: "paste", handler: pasteHandler as EventListener });
 
+        // 监听弹窗大小变化，处理高度同步
+        if (this.popupEl && this.inputEl) {
+            this.resizeObserver = new ResizeObserver(() => {
+                if (this.popupEl && this.inputEl && this.popupEl.style.height) {
+                    // 当检测到外部容器有显式高度（被拖拽调整过），清除输入框的内联高度
+                    // 让 flex: 1 生效，使其填满剩余空间
+                    if (this.inputEl.style.height) {
+                        this.inputEl.style.height = '';
+                    }
+                }
+            });
+            this.resizeObserver.observe(this.popupEl);
+        }
+
         // 输入处理
         const inputHandler = (e: Event) => {
             e.stopPropagation(); // 防止事件冒泡
-            this.adjustPopupWidth();
+
+            // 自动调整高度
+            if (this.inputEl instanceof HTMLTextAreaElement && this.popupEl) {
+                // 如果弹窗被手动调整了高度，则不再自动调整输入框高度，交给 Flex 布局
+                if (!this.popupEl.style.height) {
+                    this.inputEl.style.height = 'auto';
+                    const newHeight = this.inputEl.scrollHeight;
+                    // 保持最小高度（约3行），且随内容扩展
+                    this.inputEl.style.height = newHeight + 'px';
+                } else {
+                    // 如果有手动高度，清除内联高度，让 flex: 1 生效
+                    this.inputEl.style.height = '';
+                }
+            }
 
             const cursorPos = this.contextSelector!.getCursorPosition();
             const textBefore = this.contextSelector!.getTextContent().substring(0, cursorPos);
@@ -543,38 +571,11 @@ export class AtTriggerPopup {
 
     /**
      * 根据文本内容动态调整弹窗宽度
+     * (已禁用动态宽度，使用固定宽度)
      */
     adjustPopupWidth(): void {
-        if (!this.popupEl || !this.inputEl) return;
-
-        const measureEl = document.createElement("span");
-        measureEl.style.cssText = `
-            position: absolute;
-            visibility: hidden;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            font-family: inherit;
-            font-size: inherit;
-            padding: 0;
-            max-width: 80vw;
-        `;
-
-        const text = this.contextSelector ? this.contextSelector.getTextContent() : "";
-        measureEl.textContent = text || "";
-
-        document.body.appendChild(measureEl);
-        const textWidth = measureEl.offsetWidth;
-        document.body.removeChild(measureEl);
-
-        const minWidth = 520;
-        const maxWidth = Math.min(window.innerWidth * 0.8, 900);
-        const padding = 120;
-        const calculatedWidth = Math.min(
-            Math.max(textWidth + padding, minWidth),
-            maxWidth
-        );
-
-        this.popupEl.style.width = calculatedWidth + "px";
+        // 保持固定宽度，不再动态调整
+        return;
     }
 
     private toggleHistoryPanel(): void {
@@ -779,6 +780,11 @@ export class AtTriggerPopup {
      */
     close(): void {
         if (!this.isOpen) return;
+
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
+            this.resizeObserver = null;
+        }
 
         this.isOpen = false;
 
