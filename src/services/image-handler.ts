@@ -114,10 +114,6 @@ export class ImageHandler {
                 <img src="${imageData.url}" alt="${imageData.name}" class="markdown-next-ai-preview-img">
                 <button class="markdown-next-ai-remove-image" title="删除图片">✕</button>
             </div>
-            <div class="markdown-next-ai-image-info">
-                <span class="markdown-next-ai-image-name">${imageData.name}</span>
-                <span class="markdown-next-ai-image-size">${this.formatFileSize(imageData.size)}</span>
-            </div>
         `;
 
         const removeBtn = previewEl.querySelector(".markdown-next-ai-remove-image") as HTMLButtonElement;

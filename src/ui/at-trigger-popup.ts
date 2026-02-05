@@ -185,6 +185,7 @@ export class AtTriggerPopup {
                     <div class="markdown-next-ai-selected-text-preview">${selectedTextPreview}</div>
                 </div>
                 ` : ''}
+                <div class="markdown-next-ai-image-previews"></div>
                 <textarea class="markdown-next-ai-continue-input" placeholder="${placeholderText}" rows="3"></textarea>
                 <div class="markdown-next-ai-upload-section">
                     <div class="markdown-next-ai-left-section">
@@ -200,7 +201,6 @@ export class AtTriggerPopup {
                         <button class="markdown-next-ai-submit-btn" title="提交"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-send" style="display: inline-block; vertical-align: middle;"><path d="m22 2-7 19-4-9-9-4 20-6z"/></svg></button>
                     </div>
                 </div>
-                <div class="markdown-next-ai-image-previews"></div>
             </div>
         `;
 
