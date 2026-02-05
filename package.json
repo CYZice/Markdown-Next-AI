@@ -1,6 +1,6 @@
 {
     "name": "markdown-next-ai",
-    "version": "1.0.0",
+    "version": "1.6.0",
     "description": "MarkdownNext AI - Obsidian Plugin",
     "main": "main.js",
     "scripts": {

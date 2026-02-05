@@ -1,7 +1,7 @@
 {
 	"id": "markdown-next-ai",
 	"name": "Markdown-Next-AI",
-	"version": "1.5.0",
+	"version": "1.6.0",
 	"minAppVersion": "0.15.0",
 	"description": "基于AI的Obsidian文本增强插件，提供智能续写和文本处理功能",
 	"author": "CYZice",
