@@ -10,6 +10,11 @@ export const DEFAULT_SETTINGS: PluginSettings = {
             apiKey: "",
             baseUrl: "https://api.openai.com/v1",
             enabled: true
+        },
+        deepseek: {
+            apiKey: "",
+            baseUrl: "https://api.deepseek.com/v1",
+            enabled: true
         }
     },
     models: {
@@ -36,6 +41,14 @@ export const DEFAULT_SETTINGS: PluginSettings = {
             model: "gpt-5",
             enabled: true,
             category: MODEL_CATEGORIES.MULTIMODAL
+        },
+        "deepseek-chat": {
+            id: "deepseek-chat",
+            name: "DeepSeek Chat",
+            provider: "deepseek",
+            model: "deepseek-chat",
+            enabled: true,
+            category: MODEL_CATEGORIES.TEXT
         }
     },
     currentModel: "gemini-3-flash-preview",
@@ -61,7 +74,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     baseModelSpecialPrompt: "",
     tabCompletion: {
         enabled: false,
-        modelId: "gemini-3-flash-preview",
+        modelId: "deepseek-chat",
         systemPrompt:
             'Your job is to predict the most logical text that should be written at the location of the <mask/>. Your answer can be either code, a single word, or multiple sentences. Your answer must be in the same language as the text that is already there.' +
             '\n\nAdditional constraints:\n{{tab_completion_constraints}}' +
