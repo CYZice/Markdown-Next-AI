@@ -11,6 +11,7 @@ interface PluginInterface {
     ruleManager: GlobalRuleManager;
     saveSettings(): Promise<void>;
     updateEventListeners(): void;
+    migrateKeysToKeychain(): Promise<void>;
 }
 
 /**
@@ -869,7 +870,10 @@ export class MarkdownNextAISettingTab extends PluginSettingTab {
                 }
             } else {
                 if (tempApiKey) {
-                    if (useKeychain && hasSecretStorage) {
+                    // Use global setting for new/modified plain text keys
+                    const shouldSaveToKeychain = (this.plugin.settings.useKeychain ?? true) && hasSecretStorage;
+
+                    if (shouldSaveToKeychain) {
                         const secretId = `markdown-next-ai-api-key-${providerId}`;
                         const keyToSave = tempApiKey.trim();
                         try {

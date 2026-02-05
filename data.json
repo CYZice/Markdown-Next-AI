@@ -129,6 +129,7 @@
     ],
     "lengthPreset": "medium"
   },
+  "useKeychain": false,
   "conversationHistory": [],
   "conversationHistoryLimit": 50
 }
