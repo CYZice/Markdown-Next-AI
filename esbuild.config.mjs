@@ -8,6 +8,8 @@ const context = await esbuild.context({
     bundle: true,
     external: [
         "obsidian",
+        "@codemirror/state",
+        "@codemirror/view",
         // @xenova/transformers is bundled, not external
         // This allows dynamic import to work correctly
     ],

@@ -171,6 +171,13 @@
 
 /* MarkdownNext AI Plugin Styles */
 
+/* 幽灵文字（Tab 补全建议） */
+.smtcmp-ghost-text {
+  color: var(--text-muted);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
 /* 图片显示样式 */
 .image-mask-default {
   display: inline-block;
@@ -3077,731 +3084,796 @@
   .markdown-next-ai-message-assistant {
     background: var(--background-modifier-active-hover);
     margin-right: 50px;
+    box-shadow: 0 0 0 4px rgba(var(--interactive-accent-rgb), 0.1);
     border-color: var(--interactive-accent);
-  }
 
-  .markdown-next-ai-message-error {
-    background: var(--background-secondary);
-    border-color: var(--text-error);
-    margin-right: 20px;
-  }
-
-  .markdown-next-ai-message-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .markdown-next-ai-message-role {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-muted);
-    text-transform: uppercase;
-  }
-
-  .markdown-next-ai-message-user .markdown-next-ai-message-role {
-    color: var(--text-accent);
-  }
-
-  .markdown-next-ai-message-assistant .markdown-next-ai-message-role {
-    color: var(--interactive-accent);
-  }
-
-  .markdown-next-ai-message-error .markdown-next-ai-message-role {
-    color: var(--text-error);
-  }
-
-  .markdown-next-ai-message-content {
-    font-family: var(--font-text);
-    font-size: 14px;
-    line-height: 1.5;
-    color: var(--text-normal);
-    white-space: pre-wrap;
-    word-wrap: break-word;
-    padding: 12px;
-  }
-
-  /* 用户消息头部样式 */
-  .markdown-next-ai-message-header-user {
-    justify-content: flex-end;
-    text-align: right;
-  }
-
-  /* 助手消息头部样式 */
-  .markdown-next-ai-message-header-assistant {
-    justify-content: flex-start;
-    text-align: left;
-  }
-
-  /* 用户消息内容右对�?*/
-  .markdown-next-ai-message[data-role="user"] .markdown-next-ai-message-content {
-    text-align: right;
-  }
-
-  /* AI消息内容左对�?*/
-  .markdown-next-ai-message[data-role="assistant"] .markdown-next-ai-message-content {
-    text-align: left;
-  }
-
-  /* 错误消息左对�?*/
-  .markdown-next-ai-message[data-role="error"] .markdown-next-ai-message-header {
-    justify-content: flex-start;
-    text-align: left;
-  }
-
-  .markdown-next-ai-message[data-role="error"] .markdown-next-ai-message-content {
-    text-align: left;
-  }
-
-  .markdown-next-ai-error-content {
-    color: var(--text-error);
-    font-style: italic;
-  }
-
-  .markdown-next-ai-message-images {
-    margin-top: 8px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .markdown-next-ai-message-image {
-    max-width: 150px;
-    max-height: 150px;
-    border-radius: 4px;
-    border: 1px solid var(--background-modifier-border);
-    object-fit: cover;
-  }
-
-  .markdown-next-ai-apply-btn {
-    background: transparent !important;
-    border: none;
-    padding: 4px 4px;
-    border-radius: 4px;
-    font-size: 11px;
-    cursor: pointer;
-    box-shadow: none !important;
-  }
-
-  .markdown-next-ai-apply-btn:hover {
-    background: var(--interactive-accent-hover);
-    transform: translateY(-1px);
-  }
-
-  .markdown-next-ai-clear-btn {
-    background: transparent !important;
-    border: 1px solid var(--background-modifier-border);
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 11px;
-    cursor: pointer;
-    box-shadow: none !important;
-  }
-
-  /* 滚动条样�?*/
-  .markdown-next-ai-chat-history::-webkit-scrollbar {
-    width: 6px;
-  }
-
-  .markdown-next-ai-chat-history::-webkit-scrollbar-track {
-    background: var(--background-secondary);
-    border-radius: 3px;
-  }
-
-  .markdown-next-ai-chat-history::-webkit-scrollbar-thumb {
-    background: var(--background-modifier-border);
-    border-radius: 3px;
-  }
-
-  .markdown-next-ai-chat-history::-webkit-scrollbar-thumb:hover {
-    background: var(--text-muted);
-  }
-
-  /* 响应式设�?- 多轮对话 */
-  @media (max-width: 768px) {
-    .markdown-next-ai-message-user {
-      margin-left: 10px;
-    }
-
-    .markdown-next-ai-message-assistant,
     .markdown-next-ai-message-error {
-      margin-right: 10px;
+      background: var(--background-secondary);
+      border-color: var(--text-error);
+      margin-right: 20px;
     }
 
-    .markdown-next-ai-chat-history {
-      max-height: 300px;
+    .markdown-next-ai-message-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .markdown-next-ai-message-role {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .markdown-next-ai-message-user .markdown-next-ai-message-role {
+      color: var(--text-accent);
+    }
+
+    .markdown-next-ai-message-assistant .markdown-next-ai-message-role {
+      color: var(--interactive-accent);
+    }
+
+    .markdown-next-ai-message-error .markdown-next-ai-message-role {
+      color: var(--text-error);
+    }
+
+    .markdown-next-ai-message-content {
+      font-family: var(--font-text);
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--text-normal);
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      padding: 12px;
+    }
+
+    /* 用户消息头部样式 */
+    .markdown-next-ai-message-header-user {
+      justify-content: flex-end;
+      text-align: right;
+    }
+
+    /* 助手消息头部样式 */
+    .markdown-next-ai-message-header-assistant {
+      justify-content: flex-start;
+      text-align: left;
+    }
+
+    /* 用户消息内容右对�?*/
+    .markdown-next-ai-message[data-role="user"] .markdown-next-ai-message-content {
+      text-align: right;
+    }
+
+    /* AI消息内容左对�?*/
+    .markdown-next-ai-message[data-role="assistant"] .markdown-next-ai-message-content {
+      text-align: left;
+    }
+
+    /* 错误消息左对�?*/
+    .markdown-next-ai-message[data-role="error"] .markdown-next-ai-message-header {
+      justify-content: flex-start;
+      text-align: left;
+    }
+
+    .markdown-next-ai-message[data-role="error"] .markdown-next-ai-message-content {
+      text-align: left;
+    }
+
+    .markdown-next-ai-error-content {
+      color: var(--text-error);
+      font-style: italic;
+    }
+
+    .markdown-next-ai-message-images {
+      margin-top: 8px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
     }
 
     .markdown-next-ai-message-image {
-      max-width: 100px;
-      max-height: 100px;
-    }
-  }
-
-  /* 等待动画样式 */
-  .markdown-next-ai-loading-animation {
-    display: flex;
-    align-items: center;
-    justify-content: flex-start;
-    padding: 8px 0;
-    color: var(--text-muted);
-  }
-
-  .markdown-next-ai-loading-spinner {
-    width: 16px;
-    height: 16px;
-    border: 2px solid var(--background-modifier-border);
-    border-top: 2px solid var(--interactive-accent);
-    border-radius: 50%;
-    animation: markdown-next-ai-spin 1s linear infinite;
-    margin-right: 8px;
-  }
-
-  .markdown-next-ai-loading-dots {
-    display: flex;
-    align-items: center;
-  }
-
-  .markdown-next-ai-loading-dots::after {
-    content: '';
-    display: inline-block;
-    width: 4px;
-    height: 4px;
-    border-radius: 50%;
-    background: var(--text-muted);
-    animation: markdown-next-ai-dots 1.4s ease-in-out infinite both;
-    margin-left: 4px;
-  }
-
-  .markdown-next-ai-loading-dots::before {
-    content: '';
-    display: inline-block;
-    width: 4px;
-    height: 4px;
-    border-radius: 50%;
-    background: var(--text-muted);
-    animation: markdown-next-ai-dots 1.4s ease-in-out -0.32s infinite both;
-    margin-right: 4px;
-  }
-
-  .markdown-next-ai-loading-text {
-    font-size: 13px;
-    font-style: italic;
-  }
-
-  /* 动画关键�?*/
-  @keyframes markdown-next-ai-spin {
-    0% {
-      transform: rotate(0deg);
+      max-width: 150px;
+      max-height: 150px;
+      border-radius: 4px;
+      border: 1px solid var(--background-modifier-border);
+      object-fit: cover;
     }
 
-    100% {
-      transform: rotate(360deg);
-    }
-  }
-
-  @keyframes markdown-next-ai-dots {
-
-    0%,
-    80%,
-    100% {
-      opacity: 0.3;
-      transform: scale(0.8);
+    .markdown-next-ai-apply-btn {
+      background: transparent !important;
+      border: none;
+      padding: 4px 4px;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+      box-shadow: none !important;
     }
 
-    40% {
-      opacity: 1;
-      transform: scale(1);
+    .markdown-next-ai-apply-btn:hover {
+      background: var(--interactive-accent-hover);
+      transform: translateY(-1px);
     }
+
+    .markdown-next-ai-clear-btn {
+      background: transparent !important;
+      border: 1px solid var(--background-modifier-border);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+      box-shadow: none !important;
+    }
+
+    /* 滚动条样�?*/
+    .markdown-next-ai-chat-history::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .markdown-next-ai-chat-history::-webkit-scrollbar-track {
+      background: var(--background-secondary);
+      border-radius: 3px;
+    }
+
+    .markdown-next-ai-chat-history::-webkit-scrollbar-thumb {
+      background: var(--background-modifier-border);
+      border-radius: 3px;
+    }
+
+    .markdown-next-ai-chat-history::-webkit-scrollbar-thumb:hover {
+      background: var(--text-muted);
+    }
+
+    /* 响应式设�?- 多轮对话 */
+    @media (max-width: 768px) {
+      .markdown-next-ai-message-user {
+        margin-left: 10px;
+      }
+
+      .markdown-next-ai-message-assistant,
+      .markdown-next-ai-message-error {
+        margin-right: 10px;
+      }
+
+      .markdown-next-ai-chat-history {
+        max-height: 300px;
+      }
+
+      .markdown-next-ai-message-image {
+        max-width: 100px;
+        max-height: 100px;
+      }
+    }
+
+    /* 等待动画样式 */
+    .markdown-next-ai-loading-animation {
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      padding: 8px 0;
+      color: var(--text-muted);
+    }
+
+    .markdown-next-ai-loading-spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--background-modifier-border);
+      border-top: 2px solid var(--interactive-accent);
+      border-radius: 50%;
+      animation: markdown-next-ai-spin 1s linear infinite;
+      margin-right: 8px;
+    }
+
+    .markdown-next-ai-loading-dots {
+      display: flex;
+      align-items: center;
+    }
+
+    .markdown-next-ai-loading-dots::after {
+      content: '';
+      display: inline-block;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      animation: markdown-next-ai-dots 1.4s ease-in-out infinite both;
+      margin-left: 4px;
+    }
+
+    .markdown-next-ai-loading-dots::before {
+      content: '';
+      display: inline-block;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      animation: markdown-next-ai-dots 1.4s ease-in-out -0.32s infinite both;
+      margin-right: 4px;
+    }
+
+    .markdown-next-ai-loading-text {
+      font-size: 13px;
+      font-style: italic;
+    }
+
+    /* 动画关键�?*/
+    @keyframes markdown-next-ai-spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    @keyframes markdown-next-ai-dots {
+
+      0%,
+      80%,
+      100% {
+        opacity: 0.3;
+        transform: scale(0.8);
+      }
+
+      40% {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    /* 加载状态下的消息样�?*/
+    .markdown-next-ai-message-loading {
+      opacity: 0.8;
+      border-style: dashed;
+    }
+
+    .markdown-next-ai-message-loading .markdown-next-ai-message-content {
+      display: flex;
+      align-items: center;
+      min-height: 40px;
+    }
+
   }
 
-  /* 加载状态下的消息样�?*/
-  .markdown-next-ai-message-loading {
-    opacity: 0.8;
-    border-style: dashed;
-  }
-
-  .markdown-next-ai-message-loading .markdown-next-ai-message-content {
-    display: flex;
-    align-items: center;
-    min-height: 40px;
-  }
-
-}
-
-/* ============================================
+  /* ============================================
    Selection Toolbar - Copied and adapted from obsidian-yolo
    ============================================ */
 
-/* Selection Indicator - small floating capsule */
-.markdown-next-ai-selection-indicator {
-  position: absolute;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 14px;
-  background: var(--background-primary);
-  border: 1px solid var(--h1-color, var(--interactive-accent));
-  box-shadow: var(--shadow-s);
-  cursor: pointer;
-  pointer-events: auto;
-  z-index: 2;
-  opacity: 0;
-  transform: scale(0.85);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
+  /* Selection Indicator - small floating capsule */
+  .markdown-next-ai-selection-indicator {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border-radius: 14px;
+    background: var(--background-primary);
+    border: 1px solid var(--h1-color, var(--interactive-accent));
+    box-shadow: var(--shadow-s);
+    cursor: pointer;
+    pointer-events: auto;
+    z-index: 2;
+    opacity: 0;
+    transform: scale(0.85);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
 
-.markdown-next-ai-selection-indicator.visible {
-  opacity: 1;
-  transform: scale(1);
-}
+  .markdown-next-ai-selection-indicator.visible {
+    opacity: 1;
+    transform: scale(1);
+  }
 
-.markdown-next-ai-selection-indicator:hover {
-  background: var(--background-primary);
-  border-color: var(--interactive-accent-hover);
-  box-shadow: var(--shadow-s);
-  transform: scale(1.05);
-}
+  .markdown-next-ai-selection-indicator:hover {
+    background: var(--background-primary);
+    border-color: var(--interactive-accent-hover);
+    box-shadow: var(--shadow-s);
+    transform: scale(1.05);
+  }
 
-.markdown-next-ai-selection-indicator svg {
-  width: 14px;
-  height: 14px;
-  color: var(--h1-color, var(--interactive-accent));
-}
+  .markdown-next-ai-selection-indicator svg {
+    width: 14px;
+    height: 14px;
+    color: var(--h1-color, var(--interactive-accent));
+  }
 
-/* Selection Actions Menu */
-.markdown-next-ai-selection-menu {
-  position: absolute;
-  min-width: 200px;
-  max-width: 280px;
-  pointer-events: none;
-  z-index: 1501;
-  opacity: 0;
-  transform: translateY(-4px) scale(0.96);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
+  /* Selection Actions Menu */
+  .markdown-next-ai-selection-menu {
+    position: absolute;
+    min-width: 200px;
+    max-width: 280px;
+    pointer-events: none;
+    z-index: 1501;
+    opacity: 0;
+    transform: translateY(-4px) scale(0.96);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
 
-.markdown-next-ai-selection-menu.visible {
-  pointer-events: auto;
-  opacity: 1;
-  transform: translateY(0) scale(1);
-}
+  .markdown-next-ai-selection-menu.visible {
+    pointer-events: auto;
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 
-.markdown-next-ai-selection-menu-content {
-  background: color-mix(in srgb, var(--background-primary) 95%, transparent);
-  border: 1px solid color-mix(in srgb, var(--interactive-accent) 30%, transparent);
-  border-radius: var(--radius-m);
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--interactive-accent) 8%, transparent),
-    0 8px 24px rgba(0, 0, 0, 0.15);
-  padding: 6px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  backdrop-filter: blur(8px);
-}
+  .markdown-next-ai-selection-menu-content {
+    background: color-mix(in srgb, var(--background-primary) 95%, transparent);
+    border: 1px solid color-mix(in srgb, var(--interactive-accent) 30%, transparent);
+    border-radius: var(--radius-m);
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--interactive-accent) 8%, transparent),
+      0 8px 24px rgba(0, 0, 0, 0.15);
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    backdrop-filter: blur(8px);
+  }
 
-.markdown-next-ai-selection-menu-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 6px 8px;
-  border: 1px solid transparent !important;
-  background: transparent !important;
-  box-shadow: none !important;
-  border-radius: var(--radius-s);
-  cursor: pointer;
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease,
-    transform 0.1s ease;
-  width: 100%;
-  text-align: left;
-  color: var(--text-normal);
-  font-size: var(--font-ui-small);
-}
+  .markdown-next-ai-selection-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px;
+    border: 1px solid transparent !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border-radius: var(--radius-s);
+    cursor: pointer;
+    transition:
+      background 0.15s ease,
+      border-color 0.15s ease,
+      transform 0.1s ease;
+    width: 100%;
+    text-align: left;
+    color: var(--text-normal);
+    font-size: var(--font-ui-small);
+  }
 
-.markdown-next-ai-selection-menu-item:hover,
-.markdown-next-ai-selection-menu-item:focus,
-.markdown-next-ai-selection-menu-item:focus-visible {
-  background: color-mix(in srgb,
-      var(--background-modifier-hover) 40%,
-      transparent) !important;
-  border-color: color-mix(in srgb,
-      var(--interactive-accent) 55%,
-      transparent) !important;
-  outline: none;
-}
+  .markdown-next-ai-selection-menu-item:hover,
+  .markdown-next-ai-selection-menu-item:focus,
+  .markdown-next-ai-selection-menu-item:focus-visible {
+    background: color-mix(in srgb,
+        var(--background-modifier-hover) 40%,
+        transparent) !important;
+    border-color: color-mix(in srgb,
+        var(--interactive-accent) 55%,
+        transparent) !important;
+    outline: none;
+  }
 
-.markdown-next-ai-selection-menu-item:active {
-  transform: scale(0.97);
-}
+  .markdown-next-ai-selection-menu-item:active {
+    transform: scale(0.97);
+  }
 
-.markdown-next-ai-selection-menu-item-icon {
-  width: 24px;
-  height: 24px;
-  border-radius: 999px;
-  background: color-mix(in srgb,
-      var(--h1-color, var(--interactive-accent)) 12%,
-      transparent);
-  color: var(--h1-color, var(--interactive-accent));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
+  .markdown-next-ai-selection-menu-item-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 999px;
+    background: color-mix(in srgb,
+        var(--h1-color, var(--interactive-accent)) 12%,
+        transparent);
+    color: var(--h1-color, var(--interactive-accent));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
 
-.markdown-next-ai-selection-menu-item-icon svg {
-  width: 14px;
-  height: 14px;
-}
+  .markdown-next-ai-selection-menu-item-icon svg {
+    width: 14px;
+    height: 14px;
+  }
 
-.markdown-next-ai-selection-menu-item-label {
-  flex: 1;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+  .markdown-next-ai-selection-menu-item-label {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
 
 
-/* ============================================
+  /* ============================================
    diff
    ============================================ */
 
-#markdown-next-ai-apply-view {
-  flex: 1 1 auto;
-  display: flex;
-  flex-direction: column;
-  font-family: var(--font-interface);
+  #markdown-next-ai-apply-view {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    font-family: var(--font-interface);
 
-  --markdown-next-ai-current-color-rgb: 185, 28, 28;
-  /* red-700 */
-  --markdown-next-ai-incoming-color-rgb: 4, 120, 87;
-  /* emerald-700 */
-}
+    --markdown-next-ai-current-color-rgb: 185, 28, 28;
+    /* red-700 */
+    --markdown-next-ai-incoming-color-rgb: 4, 120, 87;
+    /* emerald-700 */
+  }
 
-#markdown-next-ai-apply-view .view-content {
-  padding: 0;
-}
+  #markdown-next-ai-apply-view .view-content {
+    padding: 0;
+  }
 
-#markdown-next-ai-apply-view .markdown-source-view.mod-cm6 {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
+  #markdown-next-ai-apply-view .markdown-source-view.mod-cm6 {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
 
-#markdown-next-ai-apply-view .cm-editor {
-  flex: 1 1 0;
-  min-height: 0;
-  position: relative !important;
-  box-sizing: border-box;
-  display: flex !important;
-  flex-direction: column;
-}
+  #markdown-next-ai-apply-view .cm-editor {
+    flex: 1 1 0;
+    min-height: 0;
+    position: relative !important;
+    box-sizing: border-box;
+    display: flex !important;
+    flex-direction: column;
+  }
 
-#markdown-next-ai-apply-view .cm-scroller {
-  padding: var(--file-margins);
-  display: flex !important;
-  align-items: flex-start !important;
-  line-height: 1.4;
-  height: 100%;
-  overflow-x: auto;
-  position: relative;
-  z-index: 0;
-}
+  #markdown-next-ai-apply-view .cm-scroller {
+    padding: var(--file-margins);
+    display: flex !important;
+    align-items: flex-start !important;
+    line-height: 1.4;
+    height: 100%;
+    overflow-x: auto;
+    position: relative;
+    z-index: 0;
+  }
 
-#markdown-next-ai-apply-view .cm-sizer {
-  max-width: var(--file-line-width);
-  width: 100%;
-  margin-left: auto;
-  margin-right: auto;
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  padding-bottom: 488px;
-}
+  #markdown-next-ai-apply-view .cm-sizer {
+    max-width: var(--file-line-width);
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    padding-bottom: 488px;
+  }
 
-#markdown-next-ai-apply-view .view-header {
-  height: var(--header-height);
-  display: flex;
-  border-bottom: var(--file-header-border);
-  background-color: var(--background-primary);
-  z-index: 1;
-  position: relative;
-  gap: var(--size-4-2);
-  padding: 0 var(--size-4-3);
-}
+  #markdown-next-ai-apply-view .view-header {
+    height: var(--header-height);
+    display: flex;
+    border-bottom: var(--file-header-border);
+    background-color: var(--background-primary);
+    z-index: 1;
+    position: relative;
+    gap: var(--size-4-2);
+    padding: 0 var(--size-4-3);
+  }
 
-#markdown-next-ai-apply-view .view-header-title-container {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex: 1;
-}
+  #markdown-next-ai-apply-view .view-header-title-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex: 1;
+  }
 
-#markdown-next-ai-apply-view .view-actions button {
-  color: var(--text-normal);
-  font-weight: var(--font-medium);
-  gap: 2px;
-}
+  #markdown-next-ai-apply-view .view-actions button {
+    color: var(--text-normal);
+    font-weight: var(--font-medium);
+    gap: 2px;
+  }
 
-#markdown-next-ai-apply-view .markdown-next-ai-diff-block {
-  white-space: pre-wrap;
-  word-break: break-word;
-  display: flex;
-  align-items: start;
-  gap: var(--size-4-1);
-  color: var(--text-normal);
-  line-height: var(--line-height-normal);
-  border-radius: var(--radius-s);
-}
+  #markdown-next-ai-apply-view .markdown-next-ai-diff-block {
+    white-space: pre-wrap;
+    word-break: break-word;
+    display: flex;
+    align-items: start;
+    gap: var(--size-4-1);
+    color: var(--text-normal);
+    line-height: var(--line-height-normal);
+    border-radius: var(--radius-s);
+  }
 
-#markdown-next-ai-apply-view .markdown-next-ai-diff-block.added {
-  background-color: rgba(var(--markdown-next-ai-incoming-color-rgb), 0.15);
-  border-left: 3px solid rgb(var(--markdown-next-ai-incoming-color-rgb));
-}
+  #markdown-next-ai-apply-view .markdown-next-ai-diff-block.added {
+    background-color: rgba(var(--markdown-next-ai-incoming-color-rgb), 0.15);
+    border-left: 3px solid rgb(var(--markdown-next-ai-incoming-color-rgb));
+  }
 
-#markdown-next-ai-apply-view .markdown-next-ai-diff-block.removed {
-  background-color: rgba(var(--markdown-next-ai-current-color-rgb), 0.15);
-  border-left: 3px solid rgb(var(--markdown-next-ai-current-color-rgb));
-  text-decoration: line-through;
-  color: var(--text-muted);
-}
+  #markdown-next-ai-apply-view .markdown-next-ai-diff-block.removed {
+    background-color: rgba(var(--markdown-next-ai-current-color-rgb), 0.15);
+    border-left: 3px solid rgb(var(--markdown-next-ai-current-color-rgb));
+    text-decoration: line-through;
+    color: var(--text-muted);
+  }
 
-#markdown-next-ai-apply-view .markdown-next-ai-diff-block-content {
-  padding: var(--size-4-2) var(--size-4-3);
-}
+  #markdown-next-ai-apply-view .markdown-next-ai-diff-block-content {
+    padding: var(--size-4-2) var(--size-4-3);
+  }
 
-#markdown-next-ai-apply-view .markdown-next-ai-diff-block-container {
-  position: relative;
-  scroll-margin-top: var(--size-4-8);
-}
+  #markdown-next-ai-apply-view .markdown-next-ai-diff-block-container {
+    position: relative;
+    scroll-margin-top: var(--size-4-8);
+  }
 
-#markdown-next-ai-apply-view .markdown-next-ai-diff-block-actions {
-  position: absolute;
-  right: 0;
-  top: 0;
-  transform: translateY(-100%);
-  display: flex;
-  gap: 0;
-  border-radius: var(--radius-s) var(--radius-s) 0 0;
-  overflow: hidden;
-}
+  #markdown-next-ai-apply-view .markdown-next-ai-diff-block-actions {
+    position: absolute;
+    right: 0;
+    top: 0;
+    transform: translateY(-100%);
+    display: flex;
+    gap: 0;
+    border-radius: var(--radius-s) var(--radius-s) 0 0;
+    overflow: hidden;
+  }
 
-#markdown-next-ai-apply-view .markdown-next-ai-diff-block-actions button {
-  padding: var(--size-4-1) var(--size-4-2);
-  font-size: var(--font-ui-smaller);
-  border-radius: 0;
-  height: fit-content;
-}
+  #markdown-next-ai-apply-view .markdown-next-ai-diff-block-actions button {
+    padding: var(--size-4-1) var(--size-4-2);
+    font-size: var(--font-ui-smaller);
+    border-radius: 0;
+    height: fit-content;
+  }
 
-#markdown-next-ai-apply-view .markdown-next-ai-accept {
-  color: white;
-  background: rgba(var(--markdown-next-ai-incoming-color-rgb), 0.8);
-}
+  #markdown-next-ai-apply-view .markdown-next-ai-accept {
+    color: white;
+    background: rgba(var(--markdown-next-ai-incoming-color-rgb), 0.8);
+  }
 
-#markdown-next-ai-apply-view .markdown-next-ai-accept:hover {
-  background: rgba(var(--markdown-next-ai-incoming-color-rgb), 1);
-}
+  #markdown-next-ai-apply-view .markdown-next-ai-accept:hover {
+    background: rgba(var(--markdown-next-ai-incoming-color-rgb), 1);
+  }
 
-#markdown-next-ai-apply-view .markdown-next-ai-exclude {
-  color: white;
-  background: rgba(var(--markdown-next-ai-current-color-rgb), 0.8);
-}
+  #markdown-next-ai-apply-view .markdown-next-ai-exclude {
+    color: white;
+    background: rgba(var(--markdown-next-ai-current-color-rgb), 0.8);
+  }
 
-#markdown-next-ai-apply-view .markdown-next-ai-exclude:hover {
-  background: rgba(var(--markdown-next-ai-current-color-rgb), 1);
-}
+  #markdown-next-ai-apply-view .markdown-next-ai-exclude:hover {
+    background: rgba(var(--markdown-next-ai-current-color-rgb), 1);
+  }
 
-#markdown-next-ai-apply-view .markdown-next-ai-diff-navigation {
-  display: flex;
-  align-items: center;
-}
+  #markdown-next-ai-apply-view .markdown-next-ai-diff-navigation {
+    display: flex;
+    align-items: center;
+  }
 
-/* Toolbar styles */
-#markdown-next-ai-apply-view .markdown-next-ai-apply-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--size-4-2) var(--size-4-3);
-  background-color: var(--background-secondary);
-  border-bottom: 1px solid var(--background-modifier-border);
-  gap: var(--size-4-2);
-  flex-wrap: wrap;
-  position: sticky;
-  top: var(--header-height);
-  z-index: 2;
-}
+  /* Toolbar styles */
+  #markdown-next-ai-apply-view .markdown-next-ai-apply-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--size-4-2) var(--size-4-3);
+    background-color: var(--background-secondary);
+    border-bottom: 1px solid var(--background-modifier-border);
+    gap: var(--size-4-2);
+    flex-wrap: wrap;
+    position: sticky;
+    top: var(--header-height);
+    z-index: 2;
+  }
 
-#markdown-next-ai-apply-view .markdown-next-ai-apply-toolbar-left {
-  display: flex;
-  align-items: center;
-  gap: var(--size-4-2);
-}
+  #markdown-next-ai-apply-view .markdown-next-ai-apply-toolbar-left {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-2);
+  }
 
-#markdown-next-ai-apply-view .markdown-next-ai-apply-toolbar-right {
-  display: flex;
-  align-items: center;
-  gap: var(--size-4-2);
-  flex-wrap: wrap;
-}
+  #markdown-next-ai-apply-view .markdown-next-ai-apply-toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: var(--size-4-2);
+    flex-wrap: wrap;
+  }
 
-#markdown-next-ai-apply-view .markdown-next-ai-apply-progress {
-  font-size: var(--font-ui-small);
-  color: var(--text-muted);
-}
+  #markdown-next-ai-apply-view .markdown-next-ai-apply-progress {
+    font-size: var(--font-ui-small);
+    color: var(--text-muted);
+  }
 
-#markdown-next-ai-apply-view .markdown-next-ai-toolbar-btn {
-  padding: var(--size-4-1) var(--size-4-2);
-  font-size: var(--font-ui-smaller);
-  border-radius: var(--radius-s);
-  cursor: pointer;
-  border: 1px solid var(--background-modifier-border);
-  background: var(--background-primary);
-  color: var(--text-normal);
-}
+  #markdown-next-ai-apply-view .markdown-next-ai-toolbar-btn {
+    padding: var(--size-4-1) var(--size-4-2);
+    font-size: var(--font-ui-smaller);
+    border-radius: var(--radius-s);
+    cursor: pointer;
+    border: 1px solid var(--background-modifier-border);
+    background: var(--background-primary);
+    color: var(--text-normal);
+  }
 
-#markdown-next-ai-apply-view .markdown-next-ai-toolbar-btn:hover {
-  background: var(--background-modifier-hover);
-}
+  #markdown-next-ai-apply-view .markdown-next-ai-toolbar-btn:hover {
+    background: var(--background-modifier-hover);
+  }
 
-#markdown-next-ai-apply-view .markdown-next-ai-apply-btn {
-  background: var(--interactive-accent);
-  color: var(--text-on-accent);
-  border: none;
-  font-weight: var(--font-medium);
-}
+  #markdown-next-ai-apply-view .markdown-next-ai-apply-btn {
+    background: var(--interactive-accent);
+    color: var(--text-on-accent);
+    border: none;
+    font-weight: var(--font-medium);
+  }
 
-#markdown-next-ai-apply-view .markdown-next-ai-apply-btn:hover {
-  background: var(--interactive-accent-hover);
-}
+  #markdown-next-ai-apply-view .markdown-next-ai-apply-btn:hover {
+    background: var(--interactive-accent-hover);
+  }
 
-/* Decided block styles */
-#markdown-next-ai-apply-view .markdown-next-ai-diff-block-container.decided {
-  opacity: 0.8;
-}
+  /* Decided block styles */
+  #markdown-next-ai-apply-view .markdown-next-ai-diff-block-container.decided {
+    opacity: 0.8;
+  }
 
-#markdown-next-ai-apply-view .markdown-next-ai-diff-block.decided-preview {
-  background-color: var(--background-secondary);
-  border-left: 3px solid var(--interactive-accent);
-  padding-left: var(--size-4-2);
-}
+  #markdown-next-ai-apply-view .markdown-next-ai-diff-block.decided-preview {
+    background-color: var(--background-secondary);
+    border-left: 3px solid var(--interactive-accent);
+    padding-left: var(--size-4-2);
+  }
 
-#markdown-next-ai-apply-view .markdown-next-ai-decided-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--size-4-1) 0;
-  margin-bottom: var(--size-4-1);
-}
+  #markdown-next-ai-apply-view .markdown-next-ai-decided-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--size-4-1) 0;
+    margin-bottom: var(--size-4-1);
+  }
 
-#markdown-next-ai-apply-view .markdown-next-ai-decided-label {
-  font-size: var(--font-ui-smaller);
-  color: var(--text-accent);
-  font-weight: var(--font-medium);
-}
+  #markdown-next-ai-apply-view .markdown-next-ai-decided-label {
+    font-size: var(--font-ui-smaller);
+    color: var(--text-accent);
+    font-weight: var(--font-medium);
+  }
 
-#markdown-next-ai-apply-view .markdown-next-ai-undo-btn {
-  padding: var(--size-2-1) var(--size-4-1);
-  font-size: var(--font-ui-smaller);
-  border-radius: var(--radius-s);
-  cursor: pointer;
-  border: 1px solid var(--background-modifier-border);
-  background: var(--background-primary);
-  color: var(--text-muted);
-}
+  #markdown-next-ai-apply-view .markdown-next-ai-undo-btn {
+    padding: var(--size-2-1) var(--size-4-1);
+    font-size: var(--font-ui-smaller);
+    border-radius: var(--radius-s);
+    cursor: pointer;
+    border: 1px solid var(--background-modifier-border);
+    background: var(--background-primary);
+    color: var(--text-muted);
+  }
 
-#markdown-next-ai-apply-view .markdown-next-ai-undo-btn:hover {
-  background: var(--background-modifier-hover);
-  color: var(--text-normal);
-}
+  #markdown-next-ai-apply-view .markdown-next-ai-undo-btn:hover {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+  }
 
-:root {
-  --mn-accent-600: #7C6BF5;
-  --mn-accent-500: #8A7BFF;
-  --mn-accent-100: #F5F2FF;
-  --mn-fg-900: #1F2233;
-  --mn-fg-700: #3E4157;
-  --mn-fg-600: #5D6075;
-  --mn-bg: #FFFFFF;
-  --mn-bg-soft: #FAFAFF;
-  --mn-border: #E8E6F6;
-  --mn-radius-lg: 14px;
-  --mn-radius-sm: 10px;
-  --mn-shadow: 0 12px 28px rgba(24, 20, 60, 0.08), 0 2px 8px rgba(24, 20, 60, 0.06);
-  --mn-focus-ring: 0 0 0 2px rgba(138, 123, 255, 0.45);
-  --mn-space-1: 4px;
-  --mn-space-2: 8px;
-  --mn-space-3: 12px;
-  --mn-space-4: 16px;
-  --mn-space-5: 24px;
-}
+  :root {
+    --mn-accent-600: #7C6BF5;
+    --mn-accent-500: #8A7BFF;
+    --mn-accent-100: #F5F2FF;
+    --mn-fg-900: #1F2233;
+    --mn-fg-700: #3E4157;
+    --mn-fg-600: #5D6075;
+    --mn-bg: #FFFFFF;
+    --mn-bg-soft: #FAFAFF;
+    --mn-border: #E8E6F6;
+    --mn-radius-lg: 14px;
+    --mn-radius-sm: 10px;
+    --mn-shadow: 0 12px 28px rgba(24, 20, 60, 0.08), 0 2px 8px rgba(24, 20, 60, 0.06);
+    --mn-focus-ring: 0 0 0 2px rgba(138, 123, 255, 0.45);
+    --mn-space-1: 4px;
+    --mn-space-2: 8px;
+    --mn-space-3: 12px;
+    --mn-space-4: 16px;
+    --mn-space-5: 24px;
+  }
 
-.markdown-next-ai-context-suggestions {
-  background: var(--mn-bg);
-  border: 1px solid var(--mn-border);
-  border-radius: var(--mn-radius-lg);
-  box-shadow: var(--mn-shadow);
-}
+  .markdown-next-ai-context-suggestions {
+    background: var(--mn-bg);
+    border: 1px solid var(--mn-border);
+    border-radius: var(--mn-radius-lg);
+    box-shadow: var(--mn-shadow);
+  }
 
-.markdown-next-ai-model-dropdown {
-  background: var(--mn-bg);
-  border: 1px solid var(--mn-border);
-  border-radius: var(--mn-radius-lg);
-  box-shadow: var(--mn-shadow);
-}
+  .markdown-next-ai-model-dropdown {
+    background: var(--mn-bg);
+    border: 1px solid var(--mn-border);
+    border-radius: var(--mn-radius-lg);
+    box-shadow: var(--mn-shadow);
+  }
 
-.markdown-next-ai-suggestion-item {
-  border-radius: var(--mn-radius-sm);
-  color: var(--mn-fg-700);
-}
+  .markdown-next-ai-suggestion-item {
+    border-radius: var(--mn-radius-sm);
+    color: var(--mn-fg-700);
+  }
 
-.markdown-next-ai-suggestion-item:hover {
-  background: var(--mn-accent-100);
-  color: var(--mn-accent-600);
-}
+  .markdown-next-ai-suggestion-item:hover {
+    background: var(--mn-accent-100);
+    color: var(--mn-accent-600);
+  }
 
-.markdown-next-ai-suggestion-item.selected {
-  background: var(--mn-accent-100);
-  color: var(--mn-accent-600);
-}
+  .markdown-next-ai-suggestion-item.selected {
+    background: var(--mn-accent-100);
+    color: var(--mn-accent-600);
+  }
 
-.markdown-next-ai-suggestion-item:focus-visible {
-  outline: none;
-  box-shadow: var(--mn-focus-ring);
-}
+  .markdown-next-ai-suggestion-item:focus-visible {
+    outline: none;
+    box-shadow: var(--mn-focus-ring);
+  }
 
-.markdown-next-ai-model-option {
-  padding: var(--mn-space-3) var(--mn-space-4);
-  border-radius: var(--mn-radius-sm);
-  color: var(--mn-fg-700);
-}
+  .markdown-next-ai-model-option {
+    padding: var(--mn-space-3) var(--mn-space-4);
+    border-radius: var(--mn-radius-sm);
+    color: var(--mn-fg-700);
+  }
 
-.markdown-next-ai-model-option:hover {
-  background: var(--mn-accent-100);
-  color: var(--mn-accent-600);
-}
+  .markdown-next-ai-model-option:hover {
+    background: var(--mn-accent-100);
+    color: var(--mn-accent-600);
+  }
 
-.markdown-next-ai-model-option.is-active {
-  background: var(--mn-accent-100);
-  color: var(--mn-accent-600);
-}
+  .markdown-next-ai-model-option.is-active {
+    background: var(--mn-accent-100);
+    color: var(--mn-accent-600);
+  }
 
-.markdown-next-ai-icon-btn {
-  appearance: none;
-  border: none;
-  background: transparent;
-  color: var(--mn-fg-600);
-  padding: 0;
-}
+  .markdown-next-ai-icon-btn {
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: var(--mn-fg-600);
+    padding: 0;
+  }
 
-.markdown-next-ai-icon-btn:hover {
-  color: var(--mn-accent-600);
-}
+  .markdown-next-ai-icon-btn:hover {
+    color: var(--mn-accent-600);
+  }
 
-.markdown-next-ai-icon-btn:focus-visible {
-  outline: none;
-  box-shadow: var(--mn-focus-ring);
+  .markdown-next-ai-icon-btn:focus-visible {
+    outline: none;
+    box-shadow: var(--mn-focus-ring);
+  }
+
+  /* --- Inline Suggestion (Ghost Text & Thinking Indicator) --- */
+  .smtcmp-ghost-text {
+    color: var(--text-muted);
+    opacity: 0.65;
+    font-style: italic;
+    pointer-events: none;
+  }
+
+  .smtcmp-thinking-indicator-inline {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 6px;
+    color: var(--text-muted);
+  }
+
+  .smtcmp-thinking-loader {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 2px;
+    border-radius: 6px;
+    background: transparent;
+  }
+
+  .smtcmp-thinking-icon {
+    display: inline-flex;
+    width: 12px;
+    height: 12px;
+    color: var(--text-accent);
+  }
+
+  .smtcmp-thinking-icon-svg {
+    width: 12px;
+    height: 12px;
+    animation: smtcmp-pulse 1.8s ease-in-out infinite;
+  }
+
+  @keyframes smtcmp-pulse {
+
+    0%,
+    100% {
+      opacity: 0.6;
+      transform: scale(0.9);
+    }
+
+    50% {
+      opacity: 1;
+      transform: scale(1.06);
+    }
+  }
+
+  .smtcmp-thinking-text {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+
+  .smtcmp-thinking-snippet {
+    margin-left: 4px;
+    font-family: var(--font-monospace);
+    font-size: 12px;
+    color: var(--text-faint);
+    opacity: 0.85;
+  }
 }

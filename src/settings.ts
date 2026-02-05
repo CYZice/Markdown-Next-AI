@@ -272,6 +272,290 @@ export class MarkdownNextAISettingTab extends PluginSettingTab {
                     this.plugin.updateEventListeners();
                 }));
 
+        // Tab 补全设置
+        containerEl.createEl("h3", { text: "Tab 补全设置" });
+
+        // Ensure tabCompletion settings exist (backward compatibility)
+        if (!this.plugin.settings.tabCompletion) {
+            // Default initialization should have happened, but just in case
+            this.plugin.settings.tabCompletion = {
+                enabled: true,
+                modelId: "",
+                systemPrompt: "You are a text completion engine. Your task is to complete the text at the cursor position marked by <mask/>. Output ONLY the completion text, no explanation, no markdown code blocks unless the completion itself is code.",
+                maxSuggestionLength: 100,
+                contextRange: 2000,
+                idleTriggerEnabled: true,
+                autoTriggerDelayMs: 500,
+                triggerDelayMs: 2000,
+                autoTriggerCooldownMs: 0,
+                triggers: []
+            };
+        }
+
+        const tabConfig = this.plugin.settings.tabCompletion;
+
+        new Setting(containerEl)
+            .setName("启用 Tab 补全")
+            .setDesc("启用编辑器中的 Tab 自动补全功能")
+            .addToggle(toggle => toggle
+                .setValue(tabConfig.enabled)
+                .onChange(async (value) => {
+                    tabConfig.enabled = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName("补全模型")
+            .setDesc("用于生成补全建议的模型")
+            .addDropdown(dropdown => {
+                const enabledModels = Object.keys(this.plugin.settings.models)
+                    .filter(id => this.plugin.settings.models[id].enabled);
+
+                enabledModels.forEach(id => {
+                    const model = this.plugin.settings.models[id];
+                    dropdown.addOption(id, `${model.name} (${model.provider})`);
+                });
+
+                // If no model selected or selected model disabled, select first available
+                if ((!tabConfig.modelId || !this.plugin.settings.models[tabConfig.modelId]?.enabled) && enabledModels.length > 0) {
+                    tabConfig.modelId = enabledModels[0];
+                    // We don't save immediately here to avoid side effects on render, 
+                    // but user should select one.
+                }
+
+                dropdown.setValue(tabConfig.modelId || "")
+                    .onChange(async (value) => {
+                        tabConfig.modelId = value;
+                        await this.plugin.saveSettings();
+                    });
+            });
+
+        new Setting(containerEl)
+            .setName("系统提示词")
+            .setDesc("用于补全任务的系统提示词")
+            .addTextArea(text => text
+                .setPlaceholder("System prompt...")
+                .setValue(tabConfig.systemPrompt)
+                .onChange(async (value) => {
+                    tabConfig.systemPrompt = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName("基础模型特殊提示词")
+            .setDesc("当模型不支持 system role 时，将系统提示词并入用户内容前使用此段作为前导")
+            .addTextArea(text => text
+                .setPlaceholder("Base model special prompt...")
+                .setValue(this.plugin.settings.baseModelSpecialPrompt ?? "")
+                .onChange(async (value) => {
+                    this.plugin.settings.baseModelSpecialPrompt = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName("启用空闲触发")
+            .setDesc("当光标停止移动一段时间后自动触发补全")
+            .addToggle(toggle => toggle
+                .setValue(tabConfig.idleTriggerEnabled)
+                .onChange(async (value) => {
+                    tabConfig.idleTriggerEnabled = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName("自动触发延迟 (ms)")
+            .setDesc("光标停止多久后触发自动补全")
+            .addText(text => text
+                .setValue(String(tabConfig.autoTriggerDelayMs))
+                .onChange(async (value) => {
+                    const val = parseInt(value);
+                    if (!isNaN(val) && val >= 0) {
+                        tabConfig.autoTriggerDelayMs = val;
+                        await this.plugin.saveSettings();
+                    }
+                }));
+
+        new Setting(containerEl)
+            .setName("最大建议长度")
+            .setDesc("生成的补全建议的最大字符数")
+            .addText(text => text
+                .setValue(String(tabConfig.maxSuggestionLength))
+                .onChange(async (value) => {
+                    const val = parseInt(value);
+                    if (!isNaN(val) && val > 0) {
+                        tabConfig.maxSuggestionLength = val;
+                        await this.plugin.saveSettings();
+                    }
+                }));
+
+        new Setting(containerEl)
+            .setName("温度 (Temperature)")
+            .setDesc("采样温度，范围 0~2；数值越大越发散")
+            .addText(text => text
+                .setValue(String(tabConfig.temperature ?? 0.5))
+                .onChange(async (value) => {
+                    const val = parseFloat(value);
+                    if (!isNaN(val) && val >= 0 && val <= 2) {
+                        tabConfig.temperature = val;
+                        await this.plugin.saveSettings();
+                    }
+                }));
+        
+        new Setting(containerEl)
+            .setName("Top P")
+            .setDesc("核采样阈值，范围 0~1；1 表示禁用核采样")
+            .addText(text => text
+                .setValue(String(tabConfig.topP ?? 1))
+                .onChange(async (value) => {
+                    const val = parseFloat(value);
+                    if (!isNaN(val) && val >= 0 && val <= 1) {
+                        tabConfig.topP = val;
+                        await this.plugin.saveSettings();
+                    }
+                }));
+
+        new Setting(containerEl)
+            .setName("上下文范围")
+            .setDesc("发送给模型的上下文长度（字符数）")
+            .addText(text => text
+                .setValue(String(tabConfig.contextRange))
+                .onChange(async (value) => {
+                    const val = parseInt(value);
+                    if (!isNaN(val) && val > 0) {
+                        tabConfig.contextRange = val;
+                        await this.plugin.saveSettings();
+                    }
+                }));
+
+        new Setting(containerEl)
+            .setName("最小上下文长度")
+            .setDesc("触发补全所需的最小前文长度（字符数）")
+            .addText(text => text
+                .setValue(String(tabConfig.minContextLength ?? 20))
+                .onChange(async (value) => {
+                    const val = parseInt(value);
+                    if (!isNaN(val) && val >= 0) {
+                        tabConfig.minContextLength = val;
+                        await this.plugin.saveSettings();
+                    }
+                }));
+
+        new Setting(containerEl)
+            .setName("补全长度偏好")
+            .setDesc("指导模型生成的补全长度（短/中/长）")
+            .addDropdown(drop => {
+                const preset = tabConfig.lengthPreset ?? "short";
+                drop.addOption("short", "短");
+                drop.addOption("medium", "中");
+                drop.addOption("long", "长");
+                drop.setValue(preset)
+                    .onChange(async (value) => {
+                        tabConfig.lengthPreset = value as any;
+                        await this.plugin.saveSettings();
+                    });
+            });
+
+        new Setting(containerEl)
+            .setName("补全额外约束")
+            .setDesc("为补全添加额外的行为约束（按需填写）")
+            .addTextArea(text => text
+                .setPlaceholder("例如：避免换段、保持当前语气等")
+                .setValue(tabConfig.constraints ?? "")
+                .onChange(async (value) => {
+                    tabConfig.constraints = value;
+                    await this.plugin.saveSettings();
+                }));
+
+        new Setting(containerEl)
+            .setName("请求超时 (ms)")
+            .setDesc("Tab 补全的单次请求超时时间")
+            .addText(text => text
+                .setValue(String(tabConfig.requestTimeoutMs ?? 10000))
+                .onChange(async (value) => {
+                    const val = parseInt(value);
+                    if (!isNaN(val) && val >= 0) {
+                        tabConfig.requestTimeoutMs = val;
+                        await this.plugin.saveSettings();
+                    }
+                }));
+
+        new Setting(containerEl)
+            .setName("最大重试次数")
+            .setDesc("补全请求遇到可恢复错误时的重试次数")
+            .addText(text => text
+                .setValue(String(tabConfig.maxRetries ?? 1))
+                .onChange(async (value) => {
+                    const val = parseInt(value);
+                    if (!isNaN(val) && val >= 0) {
+                        tabConfig.maxRetries = val;
+                        await this.plugin.saveSettings();
+                    }
+                }));
+
+        // 触发器配置
+        containerEl.createEl("h4", { text: "触发器配置", attr: { style: "margin-top: 20px; margin-bottom: 10px;" } });
+
+        containerEl.createEl("p", {
+            text: "配置触发补全的正则表达式规则。当光标前的文本匹配这些规则时，将触发补全。",
+            attr: { style: "color: var(--text-muted); margin-bottom: 10px;" }
+        });
+
+        const triggerTable = containerEl.createEl("table", { cls: "markdown-next-ai-config-table" });
+        const tThead = triggerTable.createEl("thead").createEl("tr");
+        tThead.createEl("th", { text: "类型" });
+        tThead.createEl("th", { text: "模式 (Regex/String)" });
+        tThead.createEl("th", { text: "启用" });
+        tThead.createEl("th", { text: "操作" });
+
+        const tTbody = triggerTable.createEl("tbody");
+
+        // Ensure triggers exist
+        if (!tabConfig.triggers) tabConfig.triggers = [];
+
+        if (tabConfig.triggers.length > 0) {
+            tabConfig.triggers.forEach((trigger, index) => {
+                const row = tTbody.createEl("tr");
+                row.createEl("td", { text: trigger.type === 'string' ? '字符串' : '正则' });
+                row.createEl("td", {
+                    text: trigger.pattern,
+                    attr: { style: "font-family: var(--font-monospace); font-size: 0.9em;" }
+                });
+
+                const enableCell = row.createEl("td", { cls: "markdown-next-ai-enable-cell" });
+                const checkbox = enableCell.createEl("input", { type: "checkbox" }) as HTMLInputElement;
+                checkbox.checked = trigger.enabled;
+                checkbox.onchange = async () => {
+                    tabConfig.triggers[index].enabled = checkbox.checked;
+                    await this.plugin.saveSettings();
+                };
+
+                const actionsCell = row.createEl("td", { cls: "markdown-next-ai-actions-cell" });
+                const editBtn = actionsCell.createEl("button", { text: "编辑" });
+                editBtn.onclick = () => this.showEditTriggerModal(index);
+
+                const deleteBtn = actionsCell.createEl("button", { text: "删除" });
+                deleteBtn.onclick = async () => {
+                    if (confirm(`确定要删除此触发器 "${trigger.pattern}" ？`)) {
+                        tabConfig.triggers.splice(index, 1);
+                        await this.plugin.saveSettings();
+                        this.display();
+                    }
+                };
+            });
+        } else {
+            const emptyRow = tTbody.createEl("tr");
+            emptyRow.createEl("td", {
+                text: "暂无触发器，点击下方按钮添加",
+                attr: { colspan: "4", style: "text-align: center; color: var(--text-muted); font-style: italic; padding: 20px;" }
+            });
+        }
+
+        containerEl.createEl("div", { attr: { style: "margin-top: 10px; margin-bottom: 20px;" } })
+            .createEl("button", {
+                text: "+ 添加触发器",
+                attr: { style: "background: var(--interactive-accent); color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 13px;" }
+            }).onclick = () => this.showAddTriggerModal();
+
         // 全局规则设置
         containerEl.createEl("h3", { text: "全局规则设置" });
         containerEl.createEl("p", {
@@ -1302,6 +1586,109 @@ export class MarkdownNextAISettingTab extends PluginSettingTab {
             }
         };
         input.click();
+    }
+
+    showAddTriggerModal(): void {
+        const modal = new Modal(this.app);
+        modal.titleEl.setText("添加触发器");
+
+        const { contentEl } = modal;
+
+        contentEl.createEl("label", { text: "类型:", attr: { style: "display: block; margin-bottom: 5px; font-weight: bold;" } });
+        const typeSelect = contentEl.createEl("select", { attr: { style: "width: 100%; margin-bottom: 15px;" } }) as HTMLSelectElement;
+        typeSelect.createEl("option", { value: "regex", text: "正则表达式 (Regex)" }).selected = true;
+        typeSelect.createEl("option", { value: "string", text: "精确字符串 (String)" });
+
+        contentEl.createEl("label", { text: "模式 (Pattern):", attr: { style: "display: block; margin-bottom: 5px; font-weight: bold;" } });
+        contentEl.createEl("p", { text: "例如: \\.$ 匹配行尾的点，\\n$ 匹配换行符", attr: { style: "color: var(--text-muted); font-size: 0.8em; margin-top: -5px; margin-bottom: 5px;" } });
+
+        const patternInput = contentEl.createEl("input", {
+            type: "text",
+            placeholder: "输入匹配模式...",
+            attr: { style: "width: 100%; margin-bottom: 15px; font-family: var(--font-monospace);" }
+        }) as HTMLInputElement;
+
+        const buttonContainer = contentEl.createEl("div", { attr: { style: "display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px;" } });
+        const cancelBtn = buttonContainer.createEl("button", { text: "取消" });
+        cancelBtn.onclick = () => modal.close();
+        const saveBtn = buttonContainer.createEl("button", { text: "添加", cls: "mod-cta" });
+
+        saveBtn.onclick = async () => {
+            const pattern = patternInput.value;
+
+            if (!pattern) {
+                new Notice("请输入模式内容");
+                return;
+            }
+
+            if (!this.plugin.settings.tabCompletion.triggers) {
+                this.plugin.settings.tabCompletion.triggers = [];
+            }
+
+            this.plugin.settings.tabCompletion.triggers.push({
+                type: typeSelect.value as 'regex' | 'string',
+                pattern: pattern,
+                enabled: true
+            });
+
+            await this.plugin.saveSettings();
+            new Notice("触发器已添加");
+            modal.close();
+            this.display();
+        };
+
+        modal.open();
+        patternInput.focus();
+    }
+
+    showEditTriggerModal(index: number): void {
+        const modal = new Modal(this.app);
+        modal.titleEl.setText("编辑触发器");
+
+        const { contentEl } = modal;
+        const trigger = this.plugin.settings.tabCompletion.triggers[index];
+
+        contentEl.createEl("label", { text: "类型:", attr: { style: "display: block; margin-bottom: 5px; font-weight: bold;" } });
+        const typeSelect = contentEl.createEl("select", { attr: { style: "width: 100%; margin-bottom: 15px;" } }) as HTMLSelectElement;
+        const optRegex = typeSelect.createEl("option", { value: "regex", text: "正则表达式 (Regex)" });
+        const optString = typeSelect.createEl("option", { value: "string", text: "精确字符串 (String)" });
+        if (trigger.type === 'regex') optRegex.selected = true;
+        else optString.selected = true;
+
+        contentEl.createEl("label", { text: "模式 (Pattern):", attr: { style: "display: block; margin-bottom: 5px; font-weight: bold;" } });
+        const patternInput = contentEl.createEl("input", {
+            type: "text",
+            value: trigger.pattern,
+            attr: { style: "width: 100%; margin-bottom: 15px; font-family: var(--font-monospace);" }
+        }) as HTMLInputElement;
+
+        const buttonContainer = contentEl.createEl("div", { attr: { style: "display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px;" } });
+        const cancelBtn = buttonContainer.createEl("button", { text: "取消" });
+        cancelBtn.onclick = () => modal.close();
+        const saveBtn = buttonContainer.createEl("button", { text: "保存", cls: "mod-cta" });
+
+        saveBtn.onclick = async () => {
+            const pattern = patternInput.value;
+
+            if (!pattern) {
+                new Notice("请输入模式内容");
+                return;
+            }
+
+            this.plugin.settings.tabCompletion.triggers[index] = {
+                ...trigger,
+                type: typeSelect.value as 'regex' | 'string',
+                pattern: pattern
+            };
+
+            await this.plugin.saveSettings();
+            new Notice("触发器已更新");
+            modal.close();
+            this.display();
+        };
+
+        modal.open();
+        patternInput.focus();
     }
 }
 

@@ -1,11 +1,13 @@
 import { MarkdownView, Notice, Plugin, TFile, setIcon } from "obsidian";
 import { DEFAULT_SETTINGS } from "./defaults";
+import { TabCompletionController } from "./features/tab-completion/tab-completion-controller";
 import { AIService } from "./services";
 import { GlobalRuleManager } from "./services/rule-manager";
 import { MarkdownNextAISettingTab } from "./settings";
 import type { CursorPosition, ImageData, PluginSettings } from "./types";
 import { AIPreviewPopup, AIResultFloatingWindow, AtTriggerPopup, PromptSelectorPopup, SelectionManager, SelectionToolbar } from "./ui";
 import { APPLY_VIEW_TYPE, ApplyView } from "./ui/apply-view/ApplyView";
+import { InlineSuggestionController } from "./ui/inline-suggestion/inline-suggestion-controller";
 
 interface EventListenerEntry {
     element: Document | HTMLElement | any;
@@ -20,6 +22,8 @@ export default class MarkdownNextAIPlugin extends Plugin {
     settings!: PluginSettings;
     aiService!: AIService;
     ruleManager!: GlobalRuleManager;
+    tabCompletionController!: TabCompletionController;
+    inlineSuggestionController!: InlineSuggestionController;
     selectionManager!: SelectionManager;
     selectionToolbar!: SelectionToolbar;
     private eventListeners: EventListenerEntry[] = [];
@@ -60,6 +64,71 @@ export default class MarkdownNextAIPlugin extends Plugin {
 
         console.log("MarkdownNext AI 插件已加载");
         this.registerView(APPLY_VIEW_TYPE, (leaf) => new ApplyView(leaf));
+
+        this.inlineSuggestionController = new InlineSuggestionController({
+            getEditorView: (editor) => {
+                // @ts-ignore
+                return editor.cm as any;
+            },
+            getTabCompletionController: () => this.tabCompletionController
+        });
+
+        const abortControllers = new Set<AbortController>();
+        const getActiveMarkdownView = () => this.getAnyMarkdownView();
+        const getActiveFileTitle = () => {
+            const v = getActiveMarkdownView();
+            return v?.file?.basename ?? "";
+        };
+        const resolveContinuationParams = () => {
+            const tc = this.settings.tabCompletion ?? {};
+            return {
+                temperature: typeof tc.temperature === "number" ? tc.temperature : undefined,
+                topP: typeof (tc as any).topP === "number" ? (tc as any).topP : undefined,
+                stream: true,
+                useVaultSearch: false
+            };
+        };
+
+        this.tabCompletionController = new TabCompletionController({
+            getSettings: () => this.settings,
+            getEditorView: (editor) => {
+                // @ts-ignore
+                return editor.cm as any;
+            },
+            getActiveMarkdownView,
+            getActiveConversationOverrides: () => undefined,
+            resolveContinuationParams,
+            getActiveFileTitle,
+            setInlineSuggestionGhost: (view, payload) => this.inlineSuggestionController.setInlineSuggestionGhost(view, payload),
+            clearInlineSuggestion: () => this.inlineSuggestionController.clearInlineSuggestion(),
+            setActiveInlineSuggestion: (s) => this.inlineSuggestionController.setActiveInlineSuggestion(s),
+            addAbortController: (c) => abortControllers.add(c),
+            removeAbortController: (c) => abortControllers.delete(c),
+            isContinuationInProgress: () => false,
+            ai: {
+                streamCompletion: async (messages, modelId, options, onChunk) => {
+                    await this.aiService.streamCompletion(messages, modelId, options, onChunk);
+                },
+                generateCompletion: async (messages, modelId, options) => {
+                    const text = await this.aiService.generateCompletion(messages, modelId, options);
+                    return text;
+                }
+            }
+        });
+        this.registerEditorExtension(this.tabCompletionController.createExtension());
+
+        this.registerEvent(
+            this.app.workspace.on("active-leaf-change", () => {
+                try {
+                    const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+                    const editor = view?.editor;
+                    if (!editor) return;
+                    this.tabCompletionController.handleEditorChange(editor);
+                } catch (err) {
+                    console.error("Editor change handler error:", err);
+                }
+            })
+        );
     }
 
     onunload(): void {

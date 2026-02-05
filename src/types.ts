@@ -77,6 +77,8 @@ export interface PluginSettings {
     model?: string;
     apiKeyLinks?: Record<string, string>;
     lastInsertAction?: string;
+    tabCompletion?: TabCompletionOptions;
+    baseModelSpecialPrompt?: string;
 }
 
 // ConversationEntry removed
@@ -169,4 +171,40 @@ export interface AvailableModel {
     id: string;
     name: string;
     provider: string;
+}
+
+/**
+ * Tab 补全触发规则
+ */
+export interface TabCompletionTrigger {
+    id?: string;
+    type: 'string' | 'regex';
+    pattern: string;
+    enabled: boolean;
+    description?: string;
+}
+
+export type TabCompletionLengthPreset = 'short' | 'medium' | 'long';
+
+/**
+ * Tab 补全配置
+ */
+export interface TabCompletionOptions {
+    enabled: boolean;
+    modelId: string;
+    systemPrompt: string;
+    maxSuggestionLength: number;
+    contextRange: number;
+    idleTriggerEnabled: boolean;
+    autoTriggerDelayMs: number;
+    triggerDelayMs: number;
+    autoTriggerCooldownMs: number;
+    minContextLength?: number;
+    requestTimeoutMs?: number;
+    maxRetries?: number;
+    lengthPreset?: TabCompletionLengthPreset;
+    constraints?: string;
+    temperature?: number;
+    topP?: number;
+    triggers: TabCompletionTrigger[];
 }

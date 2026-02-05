@@ -219,7 +219,7 @@ export class AIService {
                 userPrompt = hasPrompt
                     ? `用户问题或指令：${prompt}`
                     : "请根据下述信息进行回答。";
-                
+
                 // 只有在确实有上下文时才添加
                 if (hasSelection || beforeText.trim() || afterText.trim()) {
                     userPrompt += `\n\n可参考的上下文：`;
@@ -365,19 +365,170 @@ export class AIService {
     }
 
     /**
+     * 发送流式补全请求 (Tab Completion)
+     */
+    async streamCompletion(
+        messages: ChatMessage[],
+        modelId: string | undefined,
+        options: {
+            temperature?: number;
+            max_tokens?: number;
+            top_p?: number;
+            signal?: AbortSignal;
+        } = {},
+        onUpdate: (content: string) => void
+    ): Promise<void> {
+        let config: APIModelConfig;
+
+        if (modelId) {
+            const modelConfig = this.settings.models[modelId];
+            if (!modelConfig || !modelConfig.enabled) {
+                // 如果找不到指定模型，尝试使用当前模型作为回退，或者抛出错误
+                // 这里为了稳健性，如果找不到则尝试使用默认逻辑，或者直接报错
+                // 考虑到Tab补全通常需要快速响应，配置错误应该直接报错
+                throw new Error(`Tab补全模型 ${modelId} 未启用或不存在`);
+            }
+
+            const providerConfig = this.settings.providers[modelConfig.provider];
+            if (!providerConfig || !providerConfig.enabled) {
+                throw new Error(`供应商 ${modelConfig.provider} 未启用或不存在`);
+            }
+
+            config = {
+                apiKey: providerConfig.apiKey,
+                baseUrl: providerConfig.baseUrl,
+                model: modelConfig.actualModel || modelConfig.model || modelConfig.id
+            };
+        } else {
+            config = this.getCurrentModelConfig();
+        }
+
+        // 构建API请求URL (假设都是 chat/completions 兼容接口)
+        // 注意：这里简单处理，如果后续需要支持非OpenAI格式的补全接口，需要扩展
+        const baseUrl = this.normalizeBaseUrl(config.baseUrl);
+        let apiUrl = "";
+        if (baseUrl.endsWith("/v1")) {
+            apiUrl = `${baseUrl}/chat/completions`;
+        } else {
+            apiUrl = `${baseUrl}/v1/chat/completions`;
+        }
+        // 使用 buildApiUrl 逻辑可能更稳健，但 buildApiUrl 依赖 getCurrentModelConfig
+        // 我们可以暂时复用 buildApiUrl 的逻辑片段，或者如果 config 是当前模型，直接用 buildApiUrl
+
+        const requestBody: Record<string, unknown> = {
+            model: config.model,
+            messages: messages,
+            stream: true,
+            max_tokens: options.max_tokens || 50,
+            temperature: options.temperature ?? 0.2
+        };
+        if (typeof options.top_p === 'number') {
+            (requestBody as any).top_p = options.top_p;
+        }
+
+        const headers = {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${config.apiKey}`
+        };
+
+        await this.handleStreamRequest(
+            apiUrl,
+            headers,
+            requestBody,
+            (() => {
+                let prevLen = 0;
+                return (data) => {
+                    const current = data.content || "";
+                    const delta = current.slice(prevLen);
+                    prevLen = current.length;
+                    if (delta.length > 0) {
+                        onUpdate(delta);
+                    }
+                };
+            })(),
+            options.signal
+        );
+    }
+
+    async generateCompletion(
+        messages: ChatMessage[],
+        modelId: string | undefined,
+        options: {
+            temperature?: number;
+            max_tokens?: number;
+            top_p?: number;
+            signal?: AbortSignal;
+        } = {}
+    ): Promise<string> {
+        let config: APIModelConfig;
+        if (modelId) {
+            const modelConfig = this.settings.models[modelId];
+            if (!modelConfig || !modelConfig.enabled) {
+                throw new Error(`Tab补全模型 ${modelId} 未启用或不存在`);
+            }
+            const providerConfig = this.settings.providers[modelConfig.provider];
+            if (!providerConfig || !providerConfig.enabled) {
+                throw new Error(`供应商 ${modelConfig.provider} 未启用或不存在`);
+            }
+            config = {
+                apiKey: providerConfig.apiKey,
+                baseUrl: providerConfig.baseUrl,
+                model: modelConfig.actualModel || modelConfig.model || modelConfig.id
+            };
+        } else {
+            config = this.getCurrentModelConfig();
+        }
+        const baseUrl = this.normalizeBaseUrl(config.baseUrl);
+        const apiUrl = baseUrl.endsWith("/v1") ? `${baseUrl}/chat/completions` : `${baseUrl}/v1/chat/completions`;
+        const requestBody: Record<string, unknown> = {
+            model: config.model,
+            messages: messages,
+            stream: false,
+            max_tokens: options.max_tokens || 50,
+            temperature: options.temperature ?? 0.2
+        };
+        if (typeof options.top_p === 'number') {
+            (requestBody as any).top_p = options.top_p;
+        }
+        const headers = {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${config.apiKey}`
+        };
+        const response = await fetch(apiUrl, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(requestBody),
+            signal: options.signal
+        });
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`API请求失败: ${response.status} ${errorText}`);
+        }
+        const data = await response.json();
+        const suggestion =
+            data?.choices?.[0]?.message?.content ??
+            data?.choices?.[0]?.text ??
+            data?.choices?.[0]?.message?.text ??
+            "";
+        return String(suggestion || "");
+    }
+
+    /**
      * 处理流式请求
      */
     async handleStreamRequest(
         apiUrl: string,
         headers: Record<string, string>,
         requestBody: Record<string, unknown>,
-        onStream: (data: { content: string; thinking: string; fullContent: string; isComplete: boolean }) => void
+        onStream: (data: { content: string; thinking: string; fullContent: string; isComplete: boolean }) => void,
+        signal?: AbortSignal
     ): Promise<{ content: string; thinking: string; usage: Record<string, unknown> }> {
         try {
             const response = await fetch(apiUrl, {
                 method: "POST",
                 headers: headers,
-                body: JSON.stringify(requestBody)
+                body: JSON.stringify(requestBody),
+                signal: signal
             });
 
             if (!response.ok) {

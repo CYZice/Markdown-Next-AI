@@ -35,9 +35,18 @@
       "category": "multimodal",
       "actualModel": "gpt-5",
       "type": "chat"
+    },
+    "deepseek-chat": {
+      "id": "deepseek-chat",
+      "name": "deepseek-chat",
+      "provider": "openai",
+      "model": "deepseek-chat",
+      "actualModel": "deepseek-chat",
+      "enabled": true,
+      "category": "multimodal"
     }
   },
-  "currentModel": "gemini-3-flash-preview",
+  "currentModel": "deepseek-chat",
   "timeout": 30000,
   "enableRightClick": true,
   "enableAtTrigger": true,
@@ -75,6 +84,51 @@
     }
   ],
   "lastInsertAction": "insert",
+  "baseModelSpecialPrompt": "",
+  "tabCompletion": {
+    "enabled": true,
+    "modelId": "deepseek-chat",
+    "systemPrompt": "You are a text completion engine. Your task is to complete the text at the cursor position marked by <mask/>. Output ONLY the completion text, no explanation, no markdown code blocks unless the completion itself is code.",
+    "maxSuggestionLength": 100,
+    "contextRange": 2000,
+    "idleTriggerEnabled": true,
+    "autoTriggerDelayMs": 500,
+    "triggerDelayMs": 2000,
+    "autoTriggerCooldownMs": 0,
+    "triggers": [
+      {
+        "type": "regex",
+        "pattern": "\\.$",
+        "enabled": true
+      },
+      {
+        "type": "regex",
+        "pattern": "\\n$",
+        "enabled": true
+      },
+      {
+        "type": "regex",
+        "pattern": "\\($",
+        "enabled": true
+      },
+      {
+        "type": "regex",
+        "pattern": "\\[$",
+        "enabled": true
+      },
+      {
+        "type": "regex",
+        "pattern": ":$",
+        "enabled": true
+      },
+      {
+        "type": "regex",
+        "pattern": "=$",
+        "enabled": true
+      }
+    ],
+    "lengthPreset": "medium"
+  },
   "conversationHistory": [],
   "conversationHistoryLimit": 50
 }
