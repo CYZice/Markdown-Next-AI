@@ -19,13 +19,6 @@ export type ApplyViewState = {
 // Decision type for each diff block
 type BlockDecision = 'pending' | 'incoming' | 'current' | 'both'
 
-type DecisionSource = 'manual' | 'batch'
-
-interface DecisionState {
-  decision: BlockDecision
-  source: DecisionSource
-}
-
 export default function ApplyViewRoot({
   state,
   app,
@@ -33,7 +26,7 @@ export default function ApplyViewRoot({
 }: {
   state: ApplyViewState
   app: App
-  close: () => void
+  close: (shouldDetach?: boolean) => void
 }) {
   const [, setCurrentDiffIndex] = useState(0)
   const diffBlockRefs = useRef<(HTMLDivElement | null)[]>([])
@@ -69,7 +62,7 @@ export default function ApplyViewRoot({
   }, [state.newContent, state.originalContent])
 
   // Track decisions for each modified block
-  const [decisions, setDecisions] = useState<Map<number, DecisionState>>(
+  const [decisions, setDecisions] = useState<Map<number, BlockDecision>>(
     () => new Map(),
   )
 
@@ -84,14 +77,11 @@ export default function ApplyViewRoot({
     [diff],
   )
 
-  // Count of decided blocks (manual or batch)
+  // Count of decided and pending blocks
   const decidedCount = useMemo(
     () =>
       modifiedBlockIndices.filter(
-        (idx) => {
-          const d = decisions.get(idx);
-          return d && d.decision !== 'pending';
-        }
+        (idx) => decisions.get(idx) && decisions.get(idx) !== 'pending',
       ).length,
     [decisions, modifiedBlockIndices],
   )
@@ -102,7 +92,7 @@ export default function ApplyViewRoot({
       if (index >= 0 && index < modifiedBlockIndices.length) {
         const element = diffBlockRefs.current[modifiedBlockIndices[index]]
         if (element) {
-          element.scrollIntoView({ block: 'start', behavior: 'smooth' })
+          element.scrollIntoView({ block: 'start' })
           setCurrentDiffIndex(index)
         }
       }
@@ -114,8 +104,8 @@ export default function ApplyViewRoot({
   const scrollToNextUndecided = useCallback(() => {
     for (let i = 0; i < modifiedBlockIndices.length; i++) {
       const idx = modifiedBlockIndices[i]
-      const decisionState = decisions.get(idx)
-      if (!decisionState || decisionState.decision === 'pending') {
+      const decision = decisions.get(idx)
+      if (!decision || decision === 'pending') {
         scrollToDiffBlock(i)
         return
       }
@@ -130,20 +120,16 @@ export default function ApplyViewRoot({
           if (block.type === 'unchanged') return block.value
           const original = block.originalValue ?? ''
           const incoming = block.modifiedValue ?? ''
-          const decisionState = decisions.get(index)
-
-          // If a decision exists and is not pending, use it.
-          // Otherwise use the default strategy.
-          let decision: BlockDecision = decisionState?.decision ?? 'pending';
-          if (decision === 'pending') {
-            decision = defaultDecision;
-          }
+          const decision = decisions.get(index) ?? defaultDecision
 
           switch (decision) {
             case 'incoming':
               return incoming || original
             case 'current':
-              return original
+            case 'pending':
+              return decision === 'pending' && defaultDecision === 'incoming'
+                ? incoming || original
+                : original
             case 'both':
               return [original, incoming].filter(Boolean).join('\n')
             default:
@@ -155,8 +141,8 @@ export default function ApplyViewRoot({
     [diff, decisions],
   )
 
-  const applyWithStrategy = async (strategy: 'incoming' | 'current') => {
-    const newContent = generateFinalContent(strategy)
+  const applyAndClose = async () => {
+    const newContent = generateFinalContent('current')
     await app.vault.modify(state.file, newContent)
 
     const targetLeaf = app.workspace
@@ -168,54 +154,52 @@ export default function ApplyViewRoot({
         )
       })
 
-    close()
-
     if (targetLeaf) {
       app.workspace.setActiveLeaf(targetLeaf, { focus: true })
-      return
+      close(true)
+    } else {
+      close(false)
     }
-
-    const leaf = app.workspace.getLeaf(true)
-    await leaf.openFile(state.file)
-    app.workspace.setActiveLeaf(leaf, { focus: true })
   }
 
-  // Individual block decisions
+  // Individual block decisions (don't close, just mark decision)
   const makeDecision = useCallback(
-    (index: number, decision: BlockDecision, source: DecisionSource = 'manual') => {
+    (index: number, decision: BlockDecision) => {
       setDecisions((prev) => {
         const next = new Map(prev)
-        next.set(index, { decision, source })
+        next.set(index, decision)
         return next
       })
-
-      // Auto-scroll to next undecided block only if it was a manual decision
-      if (source === 'manual') {
-        // Small delay to allow UI to update and user to see the change briefly if needed,
-        // though user requested "instant disappear".
-        // We will scroll immediately or with very slight delay.
-        setTimeout(() => {
-          scrollToNextUndecided()
-        }, 50)
-      }
+      // Auto-scroll to next undecided block after a short delay
+      setTimeout(() => {
+        scrollToNextUndecided()
+      }, 100)
     },
     [scrollToNextUndecided],
   )
 
   const acceptIncomingBlock = useCallback(
     (index: number) => {
-      makeDecision(index, 'incoming', 'manual')
+      makeDecision(index, 'incoming')
     },
     [makeDecision],
   )
 
   const acceptCurrentBlock = useCallback(
     (index: number) => {
-      makeDecision(index, 'current', 'manual') // Abandon/Skip both map to current
+      makeDecision(index, 'current')
     },
     [makeDecision],
   )
 
+  const acceptBothBlocks = useCallback(
+    (index: number) => {
+      makeDecision(index, 'both')
+    },
+    [makeDecision],
+  )
+
+  // Undo a decision
   const undoDecision = useCallback((index: number) => {
     setDecisions((prev) => {
       const next = new Map(prev)
@@ -224,19 +208,22 @@ export default function ApplyViewRoot({
     })
   }, [])
 
-  // Batch action: Accept all REMAINING (undecided) blocks as incoming
-  const acceptRemaining = useCallback(() => {
-    setDecisions((prev) => {
-      const next = new Map(prev);
-      modifiedBlockIndices.forEach((idx) => {
-        // If not decided yet, mark as incoming (batch)
-        if (!next.has(idx) || next.get(idx)?.decision === 'pending') {
-          next.set(idx, { decision: 'incoming', source: 'batch' });
-        }
-      });
-      return next;
-    });
-  }, [modifiedBlockIndices]);
+  // Global actions
+  const acceptAllIncoming = useCallback(() => {
+    const newDecisions = new Map<number, BlockDecision>()
+    modifiedBlockIndices.forEach((idx) => {
+      newDecisions.set(idx, 'incoming')
+    })
+    setDecisions(newDecisions)
+  }, [modifiedBlockIndices])
+
+  const acceptAllCurrent = useCallback(() => {
+    const newDecisions = new Map<number, BlockDecision>()
+    modifiedBlockIndices.forEach((idx) => {
+      newDecisions.set(idx, 'current')
+    })
+    setDecisions(newDecisions)
+  }, [modifiedBlockIndices])
 
   const resetAllDecisions = useCallback(() => {
     setDecisions(new Map())
@@ -248,7 +235,7 @@ export default function ApplyViewRoot({
 
     const scrollerRect = scroller.getBoundingClientRect()
     const scrollerTop = scrollerRect.top
-    const visibleThreshold = 50 // pixels
+    const visibleThreshold = 10 // pixels from top to consider element "visible"
 
     // Find the first visible diff block
     for (let i = 0; i < modifiedBlockIndices.length; i++) {
@@ -258,6 +245,7 @@ export default function ApplyViewRoot({
       const rect = element.getBoundingClientRect()
       const relativeTop = rect.top - scrollerTop
 
+      // If element is visible (slightly below the top of the viewport)
       if (relativeTop >= -visibleThreshold) {
         setCurrentDiffIndex(i)
         break
@@ -283,8 +271,6 @@ export default function ApplyViewRoot({
     }
   }, [modifiedBlockIndices, scrollToDiffBlock])
 
-  const remainingCount = totalModifiedBlocks - decidedCount;
-
   return (
     <div id="markdown-next-ai-apply-view">
       <div className="view-header">
@@ -305,22 +291,25 @@ export default function ApplyViewRoot({
         </div>
         <div className="markdown-next-ai-apply-toolbar-right">
           <button
-            onClick={() => void applyWithStrategy('incoming')}
-            className="markdown-next-ai-toolbar-btn markdown-next-ai-action-btn insert"
-            title={t('applyView.insertAll', 'Insert all remaining changes and apply')}
+            onClick={acceptAllIncoming}
+            className="markdown-next-ai-toolbar-btn markdown-next-ai-accept"
+            title={t(
+              'applyView.acceptAllIncoming',
+              'Accept all incoming changes',
+            )}
           >
-            {t('applyView.insert', 'Insert')}
+            {t('applyView.acceptAllIncoming', 'Accept All Incoming')}
           </button>
           <button
-            onClick={() => void applyWithStrategy('current')}
-            className="markdown-next-ai-toolbar-btn markdown-next-ai-action-btn abandon"
-            title={t('applyView.abandonAll', 'Abandon all remaining changes and apply')}
+            onClick={acceptAllCurrent}
+            className="markdown-next-ai-toolbar-btn markdown-next-ai-exclude"
+            title={t(
+              'applyView.rejectAll',
+              'Reject all changes (keep original)',
+            )}
           >
-            {t('applyView.abandon', 'Abandon')}
+            {t('applyView.rejectAll', 'Reject All')}
           </button>
-
-          <div className="markdown-next-ai-toolbar-divider"></div>
-
           {decidedCount > 0 && (
             <button
               onClick={resetAllDecisions}
@@ -330,6 +319,13 @@ export default function ApplyViewRoot({
               {t('applyView.reset', 'Reset')}
             </button>
           )}
+          <button
+            onClick={() => void applyAndClose()}
+            className="markdown-next-ai-toolbar-btn markdown-next-ai-apply-btn"
+            title={t('applyView.applyAndClose', 'Apply changes and close')}
+          >
+            {t('applyView.applyAndClose', 'Apply & Close')}
+          </button>
         </div>
       </div>
 
@@ -348,9 +344,10 @@ export default function ApplyViewRoot({
                   <DiffBlockView
                     key={index}
                     block={block}
-                    decisionState={decisions.get(index)}
+                    decision={decisions.get(index)}
                     onAcceptIncoming={() => acceptIncomingBlock(index)}
                     onAcceptCurrent={() => acceptCurrentBlock(index)}
+                    onAcceptBoth={() => acceptBothBlocks(index)}
                     onUndo={() => undoDecision(index)}
                     t={t}
                     ref={(el) => {
@@ -371,9 +368,10 @@ const DiffBlockView = forwardRef<
   HTMLDivElement,
   {
     block: DiffBlock
-    decisionState?: DecisionState
+    decision?: BlockDecision
     onAcceptIncoming: () => void
     onAcceptCurrent: () => void
+    onAcceptBoth: () => void
     onUndo: () => void
     t: (keyPath: string, fallback: string) => string
   }
@@ -381,9 +379,10 @@ const DiffBlockView = forwardRef<
   (
     {
       block: part,
-      decisionState,
+      decision,
       onAcceptIncoming,
       onAcceptCurrent,
+      onAcceptBoth,
       onUndo,
       t,
     },
@@ -396,8 +395,7 @@ const DiffBlockView = forwardRef<
         </div>
       )
     } else if (part.type === 'modified') {
-      const isDecided = decisionState && decisionState.decision !== 'pending'
-      const decision = decisionState?.decision
+      const isDecided = decision && decision !== 'pending'
 
       // Show preview of the decision result
       const getDecisionPreview = () => {
@@ -417,67 +415,71 @@ const DiffBlockView = forwardRef<
         }
       }
 
-      if (isDecided) {
-        // Render CLEAN decided state (no indicators, just content + hover undo)
-        return (
-          <div
-            className="markdown-next-ai-diff-block-container decided"
-            ref={ref}
-          >
-            <div className="markdown-next-ai-diff-block decided-content-wrapper">
-              {/* Hover Undo Button */}
-              <div className="markdown-next-ai-hover-undo-container">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onUndo();
-                  }}
-                  className="markdown-next-ai-hover-undo-btn"
-                  title={t('applyView.undo', 'Undo decision')}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7v6h6" /><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" /></svg>
-                </button>
-              </div>
-              <div className="markdown-next-ai-diff-block-content">
-                {getDecisionPreview()}
-              </div>
-            </div>
-          </div>
-        )
+      const decisionLabel: Record<string, string> = {
+        incoming: t('applyView.acceptedIncoming', 'Accepted incoming'),
+        current: t('applyView.keptCurrent', 'Kept current'),
+        both: t('applyView.mergedBoth', 'Merged both'),
       }
 
-      // Render Undecided State with 3 actions: Insert, Abandon, Skip
       return (
         <div
-          className="markdown-next-ai-diff-block-container undecided"
+          className={`markdown-next-ai-diff-block-container ${isDecided ? 'decided' : ''}`}
           ref={ref}
         >
-          {part.originalValue && part.originalValue.length > 0 && (
-            <div className="markdown-next-ai-diff-block removed">
-              <div className="markdown-next-ai-diff-block-content">
-                {part.originalValue}
+          {isDecided ? (
+            // Show decided state with preview
+            <>
+              <div className="markdown-next-ai-diff-block decided-preview">
+                <div className="markdown-next-ai-decided-header">
+                  <span className="markdown-next-ai-decided-label">
+                    ✓ {decisionLabel[decision]}
+                  </span>
+                  <button
+                    onClick={onUndo}
+                    className="markdown-next-ai-undo-btn"
+                    title={t('applyView.undo', 'Undo this decision')}
+                  >
+                    {t('applyView.undo', 'Undo')}
+                  </button>
+                </div>
+                <div className="markdown-next-ai-diff-block-content">
+                  {getDecisionPreview()}
+                </div>
               </div>
-            </div>
-          )}
-          {part.modifiedValue && part.modifiedValue.length > 0 && (
-            <div className="markdown-next-ai-diff-block added">
-              <div className="markdown-next-ai-diff-block-content">
-                {part.modifiedValue}
+            </>
+          ) : (
+            // Show original diff view with actions
+            <>
+              {part.originalValue && part.originalValue.length > 0 && (
+                <div className="markdown-next-ai-diff-block removed">
+                  <div className="markdown-next-ai-diff-block-content">
+                    {part.originalValue}
+                  </div>
+                </div>
+              )}
+              {part.modifiedValue && part.modifiedValue.length > 0 && (
+                <div className="markdown-next-ai-diff-block added">
+                  <div className="markdown-next-ai-diff-block-content">
+                    {part.modifiedValue}
+                  </div>
+                </div>
+              )}
+              <div className="markdown-next-ai-diff-block-actions">
+                <button onClick={onAcceptIncoming} className="markdown-next-ai-accept">
+                  {t('applyView.acceptIncoming', 'Accept incoming')}
+                </button>
+                <button onClick={onAcceptCurrent} className="markdown-next-ai-exclude">
+                  {t('applyView.acceptCurrent', 'Accept current')}
+                </button>
+                <button onClick={onAcceptBoth}>
+                  {t('applyView.acceptBoth', 'Accept both')}
+                </button>
               </div>
-            </div>
+            </>
           )}
-          <div className="markdown-next-ai-diff-block-actions">
-            <button onClick={onAcceptIncoming} className="markdown-next-ai-action-btn insert">
-              {t('applyView.insert', 'Insert')}
-            </button>
-            <button onClick={onAcceptCurrent} className="markdown-next-ai-action-btn abandon">
-              {t('applyView.abandon', 'Abandon')}
-            </button>
-          </div>
         </div>
       )
     }
-    return null;
   },
 )
 

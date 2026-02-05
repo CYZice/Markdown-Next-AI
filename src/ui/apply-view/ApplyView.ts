@@ -1,6 +1,6 @@
-import { ItemView, WorkspaceLeaf, ViewStateResult } from 'obsidian'
-import { Root, createRoot } from 'react-dom/client'
+import { ItemView, ViewStateResult, WorkspaceLeaf } from 'obsidian'
 import { createElement } from 'react'
+import { Root, createRoot } from 'react-dom/client'
 
 import ApplyViewRoot, { ApplyViewState } from './ApplyViewRoot'
 
@@ -52,8 +52,17 @@ export class ApplyView extends ItemView {
       createElement(ApplyViewRoot, {
         state: this.state,
         app: this.app,
-        close: () => {
-          this.leaf.detach()
+        close: (shouldDetach: boolean = false) => {
+          if (shouldDetach) {
+            this.leaf.detach()
+            return
+          }
+          const file = this.state?.file
+          if (file) {
+            void this.leaf.openFile(file)
+          } else {
+            this.leaf.detach()
+          }
         },
       })
     )
