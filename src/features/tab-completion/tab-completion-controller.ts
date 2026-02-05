@@ -248,14 +248,7 @@ export class TabCompletionController {
             isAutoTrigger ? options.autoTriggerDelayMs : options.triggerDelayMs
         );
 
-        try {
-            console.log("[MN-AI TabCompletion]", {
-                event: "handleEditorChange",
-                shouldTrigger,
-                isAutoTrigger,
-                delay
-            });
-        } catch { }
+        // Log removed
 
         if (isAutoTrigger) {
             const cooldownMs = Math.max(0, options.autoTriggerCooldownMs);
@@ -363,17 +356,7 @@ export class TabCompletionController {
                 { role: 'user', content: userContent }
             ];
 
-            try {
-                console.log("[MN-AI TabCompletion]", {
-                    event: "prepareRequest",
-                    modelId,
-                    lengthPreset: preset,
-                    systemPromptLength: (isBaseModel ? 0 : systemPrompt.length),
-                    constraintsLength: combinedConstraints.length,
-                    beforeLength: before?.length ?? 0,
-                    afterLength: after?.length ?? 0
-                });
-            } catch { }
+            // Log removed
 
             this.cancelRequest();
             this.deps.clearInlineSuggestion();
@@ -566,12 +549,7 @@ export class TabCompletionController {
         this.deps.clearInlineSuggestion();
         editor.replaceRange(suggestionText, cursor, cursor);
 
-        try {
-            console.log("[MN-AI TabCompletion]", {
-                event: "acceptSuggestion",
-                insertLength: suggestionText.length
-            });
-        } catch { }
+        // Log removed
 
         const parts = suggestionText.split('\n');
         const endCursor =
