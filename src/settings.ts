@@ -18,6 +18,8 @@ interface PluginInterface {
  */
 export class MarkdownNextAISettingTab extends PluginSettingTab {
     private plugin: PluginInterface;
+    private activeTab: 'models' | 'editor' | 'completion' | 'chat' | 'others' = 'models';
+    private showAdvancedCompletion = false;
 
     constructor(app: App, plugin: PluginInterface) {
         super(app, plugin as any);
@@ -27,20 +29,43 @@ export class MarkdownNextAISettingTab extends PluginSettingTab {
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
-        containerEl.createEl("h2", { text: "MarkdownNext AI 设置" });
+        const title = containerEl.createEl("h2", { text: "MarkdownNext AI 设置" });
+        const tabsContainer = containerEl.createEl("div", { attr: { style: "margin-top: 8px;" } });
+        const nav = tabsContainer.createEl("div", { attr: { style: "display: flex; gap: 8px; align-items: center; border-bottom: 1px solid var(--background-modifier-border); padding-bottom: 8px; position: sticky; top: 0; background: var(--background-primary);" } });
+        const mkBtn = (id: 'models' | 'editor' | 'completion' | 'chat' | 'others', label: string) => {
+            const btn = nav.createEl("button", {
+                text: label,
+                attr: { style: `padding: 6px 12px; border: none; background: ${this.activeTab === id ? 'var(--background-secondary)' : 'var(--background-primary)'}; color: var(--text-normal); border-radius: 6px; cursor: pointer;` }
+            });
+            btn.onclick = () => {
+                this.activeTab = id;
+                this.display();
+            };
+            return btn;
+        };
+        mkBtn('models', '模型');
+        mkBtn('editor', '编辑器');
+        mkBtn('completion', '补全');
+        mkBtn('chat', '对话');
+        mkBtn('others', '其他');
+        const content = tabsContainer.createEl("div", { attr: { style: "margin-top: 12px;" } });
+        if (this.activeTab === 'models') {
+            this.renderModelsTab(content);
+        } else if (this.activeTab === 'editor') {
+            this.renderEditorTab(content);
+        } else if (this.activeTab === 'completion') {
+            this.renderCompletionTab(content);
+        } else if (this.activeTab === 'chat') {
+            this.renderChatTab(content);
+        } else {
+            this.renderOthersTab(content);
+        }
+    }
 
-        // 供应商和API设置
+    private renderModelsTab(containerEl: HTMLElement) {
         containerEl.createEl("h3", { text: "供应商、API设置" });
-        containerEl.createEl("p", {
-            text: "APIKey：需在供应商API密钥中设置APIKey",
-            attr: { style: "color: var(--text-muted); margin-bottom: 5px;" }
-        });
-        containerEl.createEl("p", {
-            text: "Base URL：选填第三方URL，使用openai兼容格式",
-            attr: { style: "color: var(--text-muted); margin-bottom: 15px;" }
-        });
-
-        // 供应商表格
+        containerEl.createEl("p", { text: "APIKey：需在供应商API密钥中设置APIKey", attr: { style: "color: var(--text-muted); margin-bottom: 5px;" } });
+        containerEl.createEl("p", { text: "Base URL：选填第三方URL，使用openai兼容格式", attr: { style: "color: var(--text-muted); margin-bottom: 15px;" } });
         const providerTable = containerEl.createEl("table", { cls: "markdown-next-ai-config-table" });
         const thead = providerTable.createEl("thead").createEl("tr");
         thead.createEl("th", { text: "ID" });
@@ -48,50 +73,27 @@ export class MarkdownNextAISettingTab extends PluginSettingTab {
         thead.createEl("th", { text: "API Key" });
         thead.createEl("th", { text: "Get API keys" });
         thead.createEl("th", { text: "Actions" });
-
         const tbody = providerTable.createEl("tbody");
         Object.keys(this.plugin.settings.providers).forEach(providerId => {
             const provider = this.plugin.settings.providers[providerId];
             const row = tbody.createEl("tr");
-
             row.createEl("td", { text: providerId });
             row.createEl("td", { text: provider.type || "openai" });
-
             const apiKeyCell = row.createEl("td", { cls: "markdown-next-ai-api-key-cell" });
             if (provider.apiKey && provider.apiKey.trim()) {
-                apiKeyCell.createEl("span", {
-                    text: "••••••••",
-                    attr: { style: "color: var(--text-muted); margin-right: 8px;" }
-                });
+                apiKeyCell.createEl("span", { text: "••••••••", attr: { style: "color: var(--text-muted); margin-right: 8px;" } });
             }
-            const settingsBtn = apiKeyCell.createEl("button", {
-                cls: "markdown-next-ai-settings-btn",
-                attr: { title: "设置API Key" }
-            });
+            const settingsBtn = apiKeyCell.createEl("button", { cls: "markdown-next-ai-settings-btn", attr: { title: "设置API Key" } });
             settingsBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg>';
             settingsBtn.onclick = () => this.showApiKeyModal(providerId);
-
             const linkCell = row.createEl("td", { attr: { style: "text-align: left;" } });
-            const links: Record<string, string> = {
-                openai: "https://platform.openai.com/api-keys",
-                anthropic: "https://console.anthropic.com/",
-                gemini: "https://aistudio.google.com/app/apikey",
-                ollama: "https://ollama.com/"
-            };
+            const links: Record<string, string> = { openai: "https://platform.openai.com/api-keys", anthropic: "https://console.anthropic.com/", gemini: "https://aistudio.google.com/app/apikey", ollama: "https://ollama.com/" };
             const link = links[providerId] || (this.plugin.settings.apiKeyLinks && this.plugin.settings.apiKeyLinks[providerId]);
             if (link) {
-                linkCell.createEl("a", {
-                    text: "获取API Key",
-                    attr: {
-                        href: link,
-                        target: "_blank",
-                        style: "color: var(--text-accent); text-decoration: underline; font-size: 0.9em;"
-                    }
-                });
+                linkCell.createEl("a", { text: "获取API Key", attr: { href: link, target: "_blank", style: "color: var(--text-accent); text-decoration: underline; font-size: 0.9em;" } });
             } else {
                 linkCell.createEl("span", { text: "-", attr: { style: "color: var(--text-muted);" } });
             }
-
             const actionsCell = row.createEl("td", { cls: "markdown-next-ai-actions-cell" });
             if (["openai", "anthropic", "gemini", "deepseek", "ollama"].includes(providerId)) {
                 actionsCell.createEl("span", { text: "-", attr: { style: "color: var(--text-muted);" } });
@@ -113,23 +115,11 @@ export class MarkdownNextAISettingTab extends PluginSettingTab {
                 };
             }
         });
-
         containerEl.createEl("div", { attr: { style: "margin-top: 15px; margin-bottom: 20px;" } })
-            .createEl("button", {
-                text: "+ 添加供应商",
-                attr: { style: "background: var(--interactive-accent); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px;" }
-            }).onclick = () => this.showAddProviderModal();
-
-        // 模型设置
-        const modelHeader = containerEl.createEl("div", {
-            attr: { style: "display: flex; justify-content: space-between; align-items: center; margin-top: 30px; margin-bottom: 15px;" }
-        });
+            .createEl("button", { text: "+ 添加供应商", attr: { style: "background: var(--interactive-accent); color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 14px;" } }).onclick = () => this.showAddProviderModal();
+        const modelHeader = containerEl.createEl("div", { attr: { style: "display: flex; justify-content: space-between; align-items: center; margin-top: 30px; margin-bottom: 15px;" } });
         modelHeader.createEl("h3", { text: "模型设置", attr: { style: "margin: 0;" } });
-        modelHeader.createEl("button", {
-            text: "+ 添加模型",
-            attr: { style: "background: var(--interactive-accent); color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 13px;" }
-        }).onclick = () => this.showAddModelModal();
-
+        modelHeader.createEl("button", { text: "+ 添加模型", attr: { style: "background: var(--interactive-accent); color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 13px;" } }).onclick = () => this.showAddModelModal();
         const modelTable = containerEl.createEl("table", { cls: "markdown-next-ai-config-table" });
         const mThead = modelTable.createEl("thead").createEl("tr");
         mThead.createEl("th", { text: "ID" });
@@ -137,17 +127,14 @@ export class MarkdownNextAISettingTab extends PluginSettingTab {
         mThead.createEl("th", { text: "Model" });
         mThead.createEl("th", { text: "Enable" });
         mThead.createEl("th", { text: "Actions" });
-
         const mTbody = modelTable.createEl("tbody");
         const allModels = Object.values(this.plugin.settings.models);
-
         if (allModels.length > 0) {
             allModels.forEach(model => {
                 const row = mTbody.createEl("tr");
                 row.createEl("td", { text: model.id });
                 row.createEl("td", { text: model.provider });
                 row.createEl("td", { text: model.name });
-
                 const enableCell = row.createEl("td", { cls: "markdown-next-ai-enable-cell" });
                 const checkbox = enableCell.createEl("input", { type: "checkbox" }) as HTMLInputElement;
                 checkbox.checked = model.enabled;
@@ -163,7 +150,6 @@ export class MarkdownNextAISettingTab extends PluginSettingTab {
                         }
                     }
                 };
-
                 const mActionsCell = row.createEl("td", { cls: "markdown-next-ai-actions-cell" });
                 const editBtn = mActionsCell.createEl("button", { text: "编辑" });
                 editBtn.onclick = () => this.showEditModelModal(model.id);
@@ -182,37 +168,360 @@ export class MarkdownNextAISettingTab extends PluginSettingTab {
             });
         } else {
             const emptyRow = mTbody.createEl("tr");
-            emptyRow.createEl("td", {
-                text: "暂无模型，点击上方按钮添加",
-                attr: { colspan: "5", style: "text-align: center; color: var(--text-muted); font-style: italic; padding: 20px;" }
-            });
+            emptyRow.createEl("td", { text: "暂无模型，点击上方按钮添加", attr: { colspan: "5", style: "text-align: center; color: var(--text-muted); font-style: italic; padding: 20px;" } });
         }
-
         new Setting(containerEl)
             .setName("当前模型")
             .setDesc("选择当前使用的AI模型")
             .addDropdown(dropdown => {
-                const enabledModels = Object.keys(this.plugin.settings.models)
-                    .filter(id => this.plugin.settings.models[id].enabled);
-
+                const enabledModels = Object.keys(this.plugin.settings.models).filter(id => this.plugin.settings.models[id].enabled);
                 enabledModels.forEach(id => {
                     const model = this.plugin.settings.models[id];
                     dropdown.addOption(id, `${model.name} (${model.provider})`);
                 });
-
                 if (!enabledModels.includes(this.plugin.settings.currentModel) && enabledModels.length > 0) {
                     this.plugin.settings.currentModel = enabledModels[0];
                     this.plugin.saveSettings();
                 }
-
                 dropdown.setValue(this.plugin.settings.currentModel || "")
                     .onChange(async (value) => {
                         this.plugin.settings.currentModel = value;
                         await this.plugin.saveSettings();
                     });
             });
+    }
 
-        // 测试连接
+    private renderEditorTab(containerEl: HTMLElement) {
+        containerEl.createEl("h3", { text: "功能设置" });
+        new Setting(containerEl)
+            .setName("启用右键菜单")
+            .setDesc("在选中文本时显示AI处理选项")
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableRightClick)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableRightClick = value;
+                    await this.plugin.saveSettings();
+                    this.plugin.updateEventListeners();
+                }));
+        new Setting(containerEl)
+            .setName("启用@或&符号触发")
+            .setDesc("输入@或&符号时呼出续写对话框")
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableAtTrigger)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableAtTrigger = value;
+                    await this.plugin.saveSettings();
+                    this.plugin.updateEventListeners();
+                }));
+    }
+
+    private renderCompletionTab(containerEl: HTMLElement) {
+        if (!this.plugin.settings.tabCompletion) {
+            this.plugin.settings.tabCompletion = { enabled: true, modelId: "", systemPrompt: "You are a text completion engine. Your task is to complete the text at the cursor position marked by <mask/>. Output ONLY the completion text, no explanation, no markdown code blocks unless the completion itself is code.", maxSuggestionLength: 100, contextRange: 2000, idleTriggerEnabled: true, autoTriggerDelayMs: 500, triggerDelayMs: 2000, autoTriggerCooldownMs: 0, triggers: [] };
+        }
+        const tabConfig = this.plugin.settings.tabCompletion;
+        containerEl.createEl("h3", { text: "Tab 补全设置" });
+        new Setting(containerEl)
+            .setName("启用 Tab 补全")
+            .setDesc("启用编辑器中的 Tab 自动补全功能")
+            .addToggle(toggle => toggle
+                .setValue(tabConfig.enabled)
+                .onChange(async (value) => {
+                    tabConfig.enabled = value;
+                    await this.plugin.saveSettings();
+                    this.display();
+                }));
+        if (!tabConfig.enabled) return;
+        new Setting(containerEl)
+            .setName("补全模型")
+            .setDesc("用于生成补全建议的模型")
+            .addDropdown(dropdown => {
+                const enabledModels = Object.keys(this.plugin.settings.models).filter(id => this.plugin.settings.models[id].enabled);
+                enabledModels.forEach(id => {
+                    const model = this.plugin.settings.models[id];
+                    dropdown.addOption(id, `${model.name} (${model.provider})`);
+                });
+                if ((!tabConfig.modelId || !this.plugin.settings.models[tabConfig.modelId]?.enabled) && enabledModels.length > 0) {
+                    tabConfig.modelId = enabledModels[0];
+                }
+                dropdown.setValue(tabConfig.modelId || "")
+                    .onChange(async (value) => {
+                        tabConfig.modelId = value;
+                        await this.plugin.saveSettings();
+                    });
+            });
+        new Setting(containerEl)
+            .setName("最大建议长度")
+            .setDesc("生成的补全建议的最大字符数")
+            .addText(text => text
+                .setValue(String(tabConfig.maxSuggestionLength))
+                .onChange(async (value) => {
+                    const val = parseInt(value);
+                    if (!isNaN(val) && val > 0) {
+                        tabConfig.maxSuggestionLength = val;
+                        await this.plugin.saveSettings();
+                    }
+                }));
+        const triggerHeader = containerEl.createEl("div", { attr: { style: "display: flex; justify-content: space-between; align-items: center; margin-top: 12px; margin-bottom: 8px;" } });
+        triggerHeader.createEl("div", { text: "触发器配置", attr: { style: "font-weight: 600;" } });
+        triggerHeader.createEl("div", { attr: { style: "display: flex; gap: 8px; align-items: center;" } })
+            .createEl("button", { text: "+ 添加触发器", attr: { style: "background: var(--interactive-accent); color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 13px;" } })
+            .onclick = () => this.showAddTriggerModal();
+        const triggerDesc = containerEl.createEl("div", { attr: { style: "color: var(--text-muted); margin-bottom: 8px;" } });
+        triggerDesc.setText("配置触发补全的规则，匹配光标前文本时触发补全");
+        const triggerTable = containerEl.createEl("table", { cls: "markdown-next-ai-config-table" });
+        const tHeadRow = triggerTable.createEl("thead").createEl("tr");
+        tHeadRow.createEl("th", { text: "启用" });
+        tHeadRow.createEl("th", { text: "类型" });
+        tHeadRow.createEl("th", { text: "模式" });
+        tHeadRow.createEl("th", { text: "描述" });
+        tHeadRow.createEl("th", { text: "删除" });
+        const tBody = triggerTable.createEl("tbody");
+        if (!tabConfig.triggers) tabConfig.triggers = [];
+        tabConfig.triggers.forEach((trigger, index) => {
+            const row = tBody.createEl("tr");
+            const enableCell = row.createEl("td");
+            const enableToggle = enableCell.createEl("input", { type: "checkbox" }) as HTMLInputElement;
+            enableToggle.checked = trigger.enabled;
+            enableToggle.onchange = async () => {
+                tabConfig.triggers[index].enabled = enableToggle.checked;
+                await this.plugin.saveSettings();
+            };
+            const typeCell = row.createEl("td");
+            const typeSelect = typeCell.createEl("select") as HTMLSelectElement;
+            [{ v: 'string', l: '字符串' }, { v: 'regex', l: '正则' }].forEach(opt => {
+                const o = typeSelect.createEl("option", { text: opt.l }) as HTMLOptionElement;
+                o.value = opt.v;
+            });
+            typeSelect.value = trigger.type;
+            typeSelect.onchange = async () => {
+                tabConfig.triggers[index].type = typeSelect.value as any;
+                await this.plugin.saveSettings();
+            };
+            const patternCell = row.createEl("td");
+            const patternInput = patternCell.createEl("input", { type: "text", attr: { style: "width: 100%;" } }) as HTMLInputElement;
+            patternInput.value = trigger.pattern;
+            patternInput.onchange = async () => {
+                tabConfig.triggers[index].pattern = patternInput.value;
+                await this.plugin.saveSettings();
+            };
+            const descCell = row.createEl("td");
+            const descInput = descCell.createEl("input", { type: "text", attr: { style: "width: 100%;" } }) as HTMLInputElement;
+            descInput.value = trigger.description ?? "";
+            descInput.onchange = async () => {
+                tabConfig.triggers[index].description = descInput.value;
+                await this.plugin.saveSettings();
+            };
+            const delCell = row.createEl("td");
+            delCell.createEl("button", { text: "删除" }).onclick = async () => {
+                if (confirm(`确定要删除此触发器 "${trigger.pattern}" ？`)) {
+                    tabConfig.triggers.splice(index, 1);
+                    await this.plugin.saveSettings();
+                    this.display();
+                }
+            };
+        });
+        new Setting(containerEl)
+            .setName("触发延迟 (ms)")
+            .setDesc("输入结束后等待多久再尝试触发")
+            .addText(text => text
+                .setValue(String(tabConfig.triggerDelayMs))
+                .onChange(async (value) => {
+                    const val = parseInt(value);
+                    if (!isNaN(val) && val >= 0) {
+                        tabConfig.triggerDelayMs = val;
+                        await this.plugin.saveSettings();
+                    }
+                }));
+        new Setting(containerEl)
+            .setName("启用空闲触发")
+            .setDesc("光标停留一段时间后自动触发")
+            .addToggle(toggle => toggle
+                .setValue(tabConfig.idleTriggerEnabled)
+                .onChange(async (value) => {
+                    tabConfig.idleTriggerEnabled = value;
+                    await this.plugin.saveSettings();
+                    this.display();
+                }));
+        if (tabConfig.idleTriggerEnabled) {
+            new Setting(containerEl)
+                .setName("自动触发延迟 (ms)")
+                .setDesc("光标停止多久后触发自动补全")
+                .addText(text => text
+                    .setValue(String(tabConfig.autoTriggerDelayMs))
+                    .onChange(async (value) => {
+                        const val = parseInt(value);
+                        if (!isNaN(val) && val >= 0) {
+                            tabConfig.autoTriggerDelayMs = val;
+                            await this.plugin.saveSettings();
+                        }
+                    }));
+            new Setting(containerEl)
+                .setName("自动触发冷却 (ms)")
+                .setDesc("自动触发后冷却多久不再触发")
+                .addText(text => text
+                    .setValue(String(tabConfig.autoTriggerCooldownMs))
+                    .onChange(async (value) => {
+                        const val = parseInt(value);
+                        if (!isNaN(val) && val >= 0) {
+                            tabConfig.autoTriggerCooldownMs = val;
+                            await this.plugin.saveSettings();
+                        }
+                    }));
+        }
+        const advToggle = containerEl.createEl("div", { attr: { style: "margin-top: 12px; cursor: pointer; user-select: none; display: inline-flex; align-items: center; gap: 6px; font-weight: 600;" } });
+        const icon = advToggle.createEl("span", { text: "▶" });
+        advToggle.createEl("span", { text: "高级设置" });
+        const updateIcon = () => { icon.textContent = this.showAdvancedCompletion ? "▼" : "▶"; };
+        updateIcon();
+        advToggle.onclick = () => { this.showAdvancedCompletion = !this.showAdvancedCompletion; updateIcon(); this.display(); };
+        if (!this.showAdvancedCompletion) return;
+        new Setting(containerEl)
+            .setName("系统提示词")
+            .setDesc("用于补全任务的系统提示词")
+            .addTextArea(text => text
+                .setPlaceholder("System prompt...")
+                .setValue(tabConfig.systemPrompt)
+                .onChange(async (value) => {
+                    tabConfig.systemPrompt = value;
+                    await this.plugin.saveSettings();
+                }));
+        new Setting(containerEl)
+            .setName("基础模型特殊提示词")
+            .setDesc("当模型不支持 system role 时，作为前导提示")
+            .addTextArea(text => text
+                .setPlaceholder("Base model special prompt...")
+                .setValue(this.plugin.settings.baseModelSpecialPrompt ?? "")
+                .onChange(async (value) => {
+                    this.plugin.settings.baseModelSpecialPrompt = value;
+                    await this.plugin.saveSettings();
+                }));
+        new Setting(containerEl)
+            .setName("上下文范围")
+            .setDesc("发送给模型的上下文长度（字符数）")
+            .addText(text => text
+                .setValue(String(tabConfig.contextRange))
+                .onChange(async (value) => {
+                    const val = parseInt(value);
+                    if (!isNaN(val) && val > 0) {
+                        tabConfig.contextRange = val;
+                        await this.plugin.saveSettings();
+                    }
+                }));
+        new Setting(containerEl)
+            .setName("最小上下文长度")
+            .setDesc("触发补全所需的最小前文长度（字符数）")
+            .addText(text => text
+                .setValue(String(tabConfig.minContextLength ?? 20))
+                .onChange(async (value) => {
+                    const val = parseInt(value);
+                    if (!isNaN(val) && val >= 0) {
+                        tabConfig.minContextLength = val;
+                        await this.plugin.saveSettings();
+                    }
+                }));
+        new Setting(containerEl)
+            .setName("温度 (Temperature)")
+            .setDesc("采样温度，范围 0~2")
+            .addText(text => text
+                .setValue(String(tabConfig.temperature ?? 0.5))
+                .onChange(async (value) => {
+                    const val = parseFloat(value);
+                    if (!isNaN(val) && val >= 0 && val <= 2) {
+                        tabConfig.temperature = val;
+                        await this.plugin.saveSettings();
+                    }
+                }));
+        new Setting(containerEl)
+            .setName("Top P")
+            .setDesc("核采样阈值，范围 0~1")
+            .addText(text => text
+                .setValue(String(tabConfig.topP ?? 1))
+                .onChange(async (value) => {
+                    const val = parseFloat(value);
+                    if (!isNaN(val) && val >= 0 && val <= 1) {
+                        tabConfig.topP = val;
+                        await this.plugin.saveSettings();
+                    }
+                }));
+        new Setting(containerEl)
+            .setName("请求超时 (ms)")
+            .setDesc("Tab 补全的单次请求超时时间")
+            .addText(text => text
+                .setValue(String(tabConfig.requestTimeoutMs ?? 10000))
+                .onChange(async (value) => {
+                    const val = parseInt(value);
+                    if (!isNaN(val) && val >= 0) {
+                        tabConfig.requestTimeoutMs = val;
+                        await this.plugin.saveSettings();
+                    }
+                }));
+        new Setting(containerEl)
+            .setName("补全额外约束")
+            .setDesc("为补全添加额外的行为约束")
+            .addTextArea(text => text
+                .setPlaceholder("例如：避免换段、保持当前语气等")
+                .setValue(tabConfig.constraints ?? "")
+                .onChange(async (value) => {
+                    tabConfig.constraints = value;
+                    await this.plugin.saveSettings();
+                }));
+        new Setting(containerEl)
+            .setName("最大重试次数")
+            .setDesc("遇到可恢复错误时的重试次数")
+            .addText(text => text
+                .setValue(String(tabConfig.maxRetries ?? 1))
+                .onChange(async (value) => {
+                    const val = parseInt(value);
+                    if (!isNaN(val) && val >= 0) {
+                        tabConfig.maxRetries = val;
+                        await this.plugin.saveSettings();
+                    }
+                }));
+    }
+    private renderChatTab(containerEl: HTMLElement) {
+        containerEl.createEl("h3", { text: "全局规则设置" });
+        containerEl.createEl("p", { text: "全局规则会自动应用到所有AI请求中，每次对话都需要遵循全局规则", attr: { style: "color: var(--text-muted); margin-bottom: 15px;" } });
+        new Setting(containerEl)
+            .setName("启用全局规则")
+            .setDesc("开启后，全局规则将自动应用到所有AI请求中")
+            .addToggle(toggle => toggle
+                .setValue(this.plugin.settings.enableGlobalRules)
+                .onChange(async (value) => {
+                    this.plugin.settings.enableGlobalRules = value;
+                    await this.plugin.saveSettings();
+                }));
+        new Setting(containerEl)
+            .setName("管理全局规则")
+            .setDesc("添加、编辑和管理全局规则")
+            .addButton(button => button
+                .setButtonText("打开规则管理器")
+                .onClick(() => this.showRuleManager()));
+        containerEl.createEl("h3", { text: "常用提示词管理" });
+        containerEl.createEl("p", { text: "管理常用提示词，可在输入框中使用#符号快速调用", attr: { style: "color: var(--text-muted); margin-bottom: 15px;" } });
+        new Setting(containerEl)
+            .setName("添加新提示词")
+            .setDesc("创建一个新的常用提示词")
+            .addButton(button => button
+                .setButtonText("添加提示词")
+                .onClick(() => this.showPromptModal()));
+        if (this.plugin.settings.commonPrompts && this.plugin.settings.commonPrompts.length > 0) {
+            const promptsContainer = containerEl.createEl("div", { attr: { style: "margin-top: 15px;" } });
+            this.plugin.settings.commonPrompts.forEach((prompt, index) => {
+                const promptEl = promptsContainer.createEl("div", { attr: { style: "display: flex; align-items: center; justify-content: space-between; padding: 10px; margin-bottom: 8px; border: 1px solid var(--background-modifier-border); border-radius: 6px; background: var(--background-secondary);" } });
+                const infoEl = promptEl.createEl("div", { attr: { style: "flex: 1;" } });
+                infoEl.createEl("div", { text: prompt.name || "未命名提示词", attr: { style: "font-weight: bold; margin-bottom: 4px;" } });
+                infoEl.createEl("div", { text: prompt.content && prompt.content.length > 100 ? prompt.content.substring(0, 100) + "..." : (prompt.content || ""), attr: { style: "color: var(--text-muted); font-size: 0.7em;" } });
+                const actionsEl = promptEl.createEl("div", { attr: { style: "display: flex; gap: 8px;" } });
+                actionsEl.createEl("button", { text: "编辑", attr: { style: "padding: 4px 8px; font-size: 0.8em; border: 1px solid var(--background-modifier-border); background: var(--background-primary); color: var(--text-normal); border-radius: 4px; cursor: pointer;" } }).onclick = () => this.showPromptModal(index);
+                actionsEl.createEl("button", { text: "删除", attr: { style: "padding: 4px 8px; font-size: 0.8em; border: 1px solid var(--text-error); background: var(--background-primary); color: var(--text-error); border-radius: 4px; cursor: pointer;" } }).onclick = () => this.deletePrompt(index);
+            });
+        } else {
+            containerEl.createEl("p", { text: "暂无常用提示词，点击上方按钮添加", attr: { style: "color: var(--text-muted); font-style: italic; margin-top: 15px;" } });
+        }
+    }
+
+    private renderOthersTab(containerEl: HTMLElement) {
         new Setting(containerEl)
             .setName("测试API连接")
             .setDesc("测试当前API配置是否正常")
@@ -233,8 +542,6 @@ export class MarkdownNextAISettingTab extends PluginSettingTab {
                         button.setButtonText("测试连接");
                     }
                 }));
-
-        // 请求超时设置
         new Setting(containerEl)
             .setName("请求超时时间")
             .setDesc("API请求超时时间（毫秒）")
@@ -246,341 +553,6 @@ export class MarkdownNextAISettingTab extends PluginSettingTab {
                     this.plugin.settings.timeout = timeout;
                     await this.plugin.saveSettings();
                 }));
-
-        // 功能设置
-        containerEl.createEl("h3", { text: "功能设置" });
-
-        new Setting(containerEl)
-            .setName("启用右键菜单")
-            .setDesc("在选中文本时显示AI处理选项")
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.enableRightClick)
-                .onChange(async (value) => {
-                    this.plugin.settings.enableRightClick = value;
-                    await this.plugin.saveSettings();
-                    this.plugin.updateEventListeners();
-                }));
-
-        new Setting(containerEl)
-            .setName("启用@或&符号触发")
-            .setDesc("输入@或&符号时呼出续写对话框")
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.enableAtTrigger)
-                .onChange(async (value) => {
-                    this.plugin.settings.enableAtTrigger = value;
-                    await this.plugin.saveSettings();
-                    this.plugin.updateEventListeners();
-                }));
-
-        // Tab 补全设置
-        containerEl.createEl("h3", { text: "Tab 补全设置" });
-
-        // Ensure tabCompletion settings exist (backward compatibility)
-        if (!this.plugin.settings.tabCompletion) {
-            // Default initialization should have happened, but just in case
-            this.plugin.settings.tabCompletion = {
-                enabled: true,
-                modelId: "",
-                systemPrompt: "You are a text completion engine. Your task is to complete the text at the cursor position marked by <mask/>. Output ONLY the completion text, no explanation, no markdown code blocks unless the completion itself is code.",
-                maxSuggestionLength: 100,
-                contextRange: 2000,
-                idleTriggerEnabled: true,
-                autoTriggerDelayMs: 500,
-                triggerDelayMs: 2000,
-                autoTriggerCooldownMs: 0,
-                triggers: []
-            };
-        }
-
-        const tabConfig = this.plugin.settings.tabCompletion;
-
-        new Setting(containerEl)
-            .setName("启用 Tab 补全")
-            .setDesc("启用编辑器中的 Tab 自动补全功能")
-            .addToggle(toggle => toggle
-                .setValue(tabConfig.enabled)
-                .onChange(async (value) => {
-                    tabConfig.enabled = value;
-                    await this.plugin.saveSettings();
-                }));
-
-        new Setting(containerEl)
-            .setName("补全模型")
-            .setDesc("用于生成补全建议的模型")
-            .addDropdown(dropdown => {
-                const enabledModels = Object.keys(this.plugin.settings.models)
-                    .filter(id => this.plugin.settings.models[id].enabled);
-
-                enabledModels.forEach(id => {
-                    const model = this.plugin.settings.models[id];
-                    dropdown.addOption(id, `${model.name} (${model.provider})`);
-                });
-
-                // If no model selected or selected model disabled, select first available
-                if ((!tabConfig.modelId || !this.plugin.settings.models[tabConfig.modelId]?.enabled) && enabledModels.length > 0) {
-                    tabConfig.modelId = enabledModels[0];
-                    // We don't save immediately here to avoid side effects on render, 
-                    // but user should select one.
-                }
-
-                dropdown.setValue(tabConfig.modelId || "")
-                    .onChange(async (value) => {
-                        tabConfig.modelId = value;
-                        await this.plugin.saveSettings();
-                    });
-            });
-
-        new Setting(containerEl)
-            .setName("系统提示词")
-            .setDesc("用于补全任务的系统提示词")
-            .addTextArea(text => text
-                .setPlaceholder("System prompt...")
-                .setValue(tabConfig.systemPrompt)
-                .onChange(async (value) => {
-                    tabConfig.systemPrompt = value;
-                    await this.plugin.saveSettings();
-                }));
-
-        new Setting(containerEl)
-            .setName("基础模型特殊提示词")
-            .setDesc("当模型不支持 system role 时，将系统提示词并入用户内容前使用此段作为前导")
-            .addTextArea(text => text
-                .setPlaceholder("Base model special prompt...")
-                .setValue(this.plugin.settings.baseModelSpecialPrompt ?? "")
-                .onChange(async (value) => {
-                    this.plugin.settings.baseModelSpecialPrompt = value;
-                    await this.plugin.saveSettings();
-                }));
-
-        new Setting(containerEl)
-            .setName("启用空闲触发")
-            .setDesc("当光标停止移动一段时间后自动触发补全")
-            .addToggle(toggle => toggle
-                .setValue(tabConfig.idleTriggerEnabled)
-                .onChange(async (value) => {
-                    tabConfig.idleTriggerEnabled = value;
-                    await this.plugin.saveSettings();
-                }));
-
-        new Setting(containerEl)
-            .setName("自动触发延迟 (ms)")
-            .setDesc("光标停止多久后触发自动补全")
-            .addText(text => text
-                .setValue(String(tabConfig.autoTriggerDelayMs))
-                .onChange(async (value) => {
-                    const val = parseInt(value);
-                    if (!isNaN(val) && val >= 0) {
-                        tabConfig.autoTriggerDelayMs = val;
-                        await this.plugin.saveSettings();
-                    }
-                }));
-
-        new Setting(containerEl)
-            .setName("最大建议长度")
-            .setDesc("生成的补全建议的最大字符数")
-            .addText(text => text
-                .setValue(String(tabConfig.maxSuggestionLength))
-                .onChange(async (value) => {
-                    const val = parseInt(value);
-                    if (!isNaN(val) && val > 0) {
-                        tabConfig.maxSuggestionLength = val;
-                        await this.plugin.saveSettings();
-                    }
-                }));
-
-        new Setting(containerEl)
-            .setName("温度 (Temperature)")
-            .setDesc("采样温度，范围 0~2；数值越大越发散")
-            .addText(text => text
-                .setValue(String(tabConfig.temperature ?? 0.5))
-                .onChange(async (value) => {
-                    const val = parseFloat(value);
-                    if (!isNaN(val) && val >= 0 && val <= 2) {
-                        tabConfig.temperature = val;
-                        await this.plugin.saveSettings();
-                    }
-                }));
-        
-        new Setting(containerEl)
-            .setName("Top P")
-            .setDesc("核采样阈值，范围 0~1；1 表示禁用核采样")
-            .addText(text => text
-                .setValue(String(tabConfig.topP ?? 1))
-                .onChange(async (value) => {
-                    const val = parseFloat(value);
-                    if (!isNaN(val) && val >= 0 && val <= 1) {
-                        tabConfig.topP = val;
-                        await this.plugin.saveSettings();
-                    }
-                }));
-
-        new Setting(containerEl)
-            .setName("上下文范围")
-            .setDesc("发送给模型的上下文长度（字符数）")
-            .addText(text => text
-                .setValue(String(tabConfig.contextRange))
-                .onChange(async (value) => {
-                    const val = parseInt(value);
-                    if (!isNaN(val) && val > 0) {
-                        tabConfig.contextRange = val;
-                        await this.plugin.saveSettings();
-                    }
-                }));
-
-        new Setting(containerEl)
-            .setName("最小上下文长度")
-            .setDesc("触发补全所需的最小前文长度（字符数）")
-            .addText(text => text
-                .setValue(String(tabConfig.minContextLength ?? 20))
-                .onChange(async (value) => {
-                    const val = parseInt(value);
-                    if (!isNaN(val) && val >= 0) {
-                        tabConfig.minContextLength = val;
-                        await this.plugin.saveSettings();
-                    }
-                }));
-
-        new Setting(containerEl)
-            .setName("补全长度偏好")
-            .setDesc("指导模型生成的补全长度（短/中/长）")
-            .addDropdown(drop => {
-                const preset = tabConfig.lengthPreset ?? "short";
-                drop.addOption("short", "短");
-                drop.addOption("medium", "中");
-                drop.addOption("long", "长");
-                drop.setValue(preset)
-                    .onChange(async (value) => {
-                        tabConfig.lengthPreset = value as any;
-                        await this.plugin.saveSettings();
-                    });
-            });
-
-        new Setting(containerEl)
-            .setName("补全额外约束")
-            .setDesc("为补全添加额外的行为约束（按需填写）")
-            .addTextArea(text => text
-                .setPlaceholder("例如：避免换段、保持当前语气等")
-                .setValue(tabConfig.constraints ?? "")
-                .onChange(async (value) => {
-                    tabConfig.constraints = value;
-                    await this.plugin.saveSettings();
-                }));
-
-        new Setting(containerEl)
-            .setName("请求超时 (ms)")
-            .setDesc("Tab 补全的单次请求超时时间")
-            .addText(text => text
-                .setValue(String(tabConfig.requestTimeoutMs ?? 10000))
-                .onChange(async (value) => {
-                    const val = parseInt(value);
-                    if (!isNaN(val) && val >= 0) {
-                        tabConfig.requestTimeoutMs = val;
-                        await this.plugin.saveSettings();
-                    }
-                }));
-
-        new Setting(containerEl)
-            .setName("最大重试次数")
-            .setDesc("补全请求遇到可恢复错误时的重试次数")
-            .addText(text => text
-                .setValue(String(tabConfig.maxRetries ?? 1))
-                .onChange(async (value) => {
-                    const val = parseInt(value);
-                    if (!isNaN(val) && val >= 0) {
-                        tabConfig.maxRetries = val;
-                        await this.plugin.saveSettings();
-                    }
-                }));
-
-        // 触发器配置
-        containerEl.createEl("h4", { text: "触发器配置", attr: { style: "margin-top: 20px; margin-bottom: 10px;" } });
-
-        containerEl.createEl("p", {
-            text: "配置触发补全的正则表达式规则。当光标前的文本匹配这些规则时，将触发补全。",
-            attr: { style: "color: var(--text-muted); margin-bottom: 10px;" }
-        });
-
-        const triggerTable = containerEl.createEl("table", { cls: "markdown-next-ai-config-table" });
-        const tThead = triggerTable.createEl("thead").createEl("tr");
-        tThead.createEl("th", { text: "类型" });
-        tThead.createEl("th", { text: "模式 (Regex/String)" });
-        tThead.createEl("th", { text: "启用" });
-        tThead.createEl("th", { text: "操作" });
-
-        const tTbody = triggerTable.createEl("tbody");
-
-        // Ensure triggers exist
-        if (!tabConfig.triggers) tabConfig.triggers = [];
-
-        if (tabConfig.triggers.length > 0) {
-            tabConfig.triggers.forEach((trigger, index) => {
-                const row = tTbody.createEl("tr");
-                row.createEl("td", { text: trigger.type === 'string' ? '字符串' : '正则' });
-                row.createEl("td", {
-                    text: trigger.pattern,
-                    attr: { style: "font-family: var(--font-monospace); font-size: 0.9em;" }
-                });
-
-                const enableCell = row.createEl("td", { cls: "markdown-next-ai-enable-cell" });
-                const checkbox = enableCell.createEl("input", { type: "checkbox" }) as HTMLInputElement;
-                checkbox.checked = trigger.enabled;
-                checkbox.onchange = async () => {
-                    tabConfig.triggers[index].enabled = checkbox.checked;
-                    await this.plugin.saveSettings();
-                };
-
-                const actionsCell = row.createEl("td", { cls: "markdown-next-ai-actions-cell" });
-                const editBtn = actionsCell.createEl("button", { text: "编辑" });
-                editBtn.onclick = () => this.showEditTriggerModal(index);
-
-                const deleteBtn = actionsCell.createEl("button", { text: "删除" });
-                deleteBtn.onclick = async () => {
-                    if (confirm(`确定要删除此触发器 "${trigger.pattern}" ？`)) {
-                        tabConfig.triggers.splice(index, 1);
-                        await this.plugin.saveSettings();
-                        this.display();
-                    }
-                };
-            });
-        } else {
-            const emptyRow = tTbody.createEl("tr");
-            emptyRow.createEl("td", {
-                text: "暂无触发器，点击下方按钮添加",
-                attr: { colspan: "4", style: "text-align: center; color: var(--text-muted); font-style: italic; padding: 20px;" }
-            });
-        }
-
-        containerEl.createEl("div", { attr: { style: "margin-top: 10px; margin-bottom: 20px;" } })
-            .createEl("button", {
-                text: "+ 添加触发器",
-                attr: { style: "background: var(--interactive-accent); color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 13px;" }
-            }).onclick = () => this.showAddTriggerModal();
-
-        // 全局规则设置
-        containerEl.createEl("h3", { text: "全局规则设置" });
-        containerEl.createEl("p", {
-            text: "全局规则会自动应用到所有AI请求中，每次对话都需要遵循全局规则",
-            attr: { style: "color: var(--text-muted); margin-bottom: 15px;" }
-        });
-
-        new Setting(containerEl)
-            .setName("启用全局规则")
-            .setDesc("开启后，全局规则将自动应用到所有AI请求中")
-            .addToggle(toggle => toggle
-                .setValue(this.plugin.settings.enableGlobalRules)
-                .onChange(async (value) => {
-                    this.plugin.settings.enableGlobalRules = value;
-                    await this.plugin.saveSettings();
-                }));
-
-        new Setting(containerEl)
-            .setName("管理全局规则")
-            .setDesc("添加、编辑和管理全局规则")
-            .addButton(button => button
-                .setButtonText("打开规则管理器")
-                .onClick(() => this.showRuleManager()));
-
-        // 最大Token数
         new Setting(containerEl)
             .setName("最大Token数")
             .setDesc("AI生成文本的最大长度限制")
@@ -596,63 +568,6 @@ export class MarkdownNextAISettingTab extends PluginSettingTab {
                         new Notice("Token数必须为正整数");
                     }
                 }));
-
-        // 全局对话固定使用浮窗确认，编辑器模式不使用；不再提供设置项
-
-        // 已移除：自动路由与模式回退设置
-
-        // 常用提示词管理
-        containerEl.createEl("h3", { text: "常用提示词管理" });
-        containerEl.createEl("p", {
-            text: "管理常用提示词，可在输入框中使用#符号快速调用",
-            attr: { style: "color: var(--text-muted); margin-bottom: 15px;" }
-        });
-
-        new Setting(containerEl)
-            .setName("添加新提示词")
-            .setDesc("创建一个新的常用提示词")
-            .addButton(button => button
-                .setButtonText("添加提示词")
-                .onClick(() => this.showPromptModal()));
-
-        if (this.plugin.settings.commonPrompts && this.plugin.settings.commonPrompts.length > 0) {
-            const promptsContainer = containerEl.createEl("div", { attr: { style: "margin-top: 15px;" } });
-
-            this.plugin.settings.commonPrompts.forEach((prompt, index) => {
-                const promptEl = promptsContainer.createEl("div", {
-                    attr: {
-                        style: "display: flex; align-items: center; justify-content: space-between; padding: 10px; margin-bottom: 8px; border: 1px solid var(--background-modifier-border); border-radius: 6px; background: var(--background-secondary);"
-                    }
-                });
-
-                const infoEl = promptEl.createEl("div", { attr: { style: "flex: 1;" } });
-                infoEl.createEl("div", {
-                    text: prompt.name || "未命名提示词",
-                    attr: { style: "font-weight: bold; margin-bottom: 4px;" }
-                });
-                infoEl.createEl("div", {
-                    text: prompt.content && prompt.content.length > 100 ? prompt.content.substring(0, 100) + "..." : (prompt.content || ""),
-                    attr: { style: "color: var(--text-muted); font-size: 0.7em;" }
-                });
-
-                const actionsEl = promptEl.createEl("div", { attr: { style: "display: flex; gap: 8px;" } });
-
-                actionsEl.createEl("button", {
-                    text: "编辑",
-                    attr: { style: "padding: 4px 8px; font-size: 0.8em; border: 1px solid var(--background-modifier-border); background: var(--background-primary); color: var(--text-normal); border-radius: 4px; cursor: pointer;" }
-                }).onclick = () => this.showPromptModal(index);
-
-                actionsEl.createEl("button", {
-                    text: "删除",
-                    attr: { style: "padding: 4px 8px; font-size: 0.8em; border: 1px solid var(--text-error); background: var(--background-primary); color: var(--text-error); border-radius: 4px; cursor: pointer;" }
-                }).onclick = () => this.deletePrompt(index);
-            });
-        } else {
-            containerEl.createEl("p", {
-                text: "暂无常用提示词，点击上方按钮添加",
-                attr: { style: "color: var(--text-muted); font-style: italic; margin-top: 15px;" }
-            });
-        }
     }
 
     showPromptModal(index: number | null = null): void {
