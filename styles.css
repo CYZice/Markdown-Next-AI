@@ -1377,21 +1377,25 @@
 /* 新增上下文按钮样式 */
 .markdown-next-ai-at-btn,
 .markdown-next-ai-hash-btn {
-  background: none;
+  background: transparent;
   border: none;
-  padding: 4px;
+  padding: 5px;
   cursor: pointer;
-  color: var(--text-muted);
+  color: var(--text-normal);
   border-radius: 4px;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 4px;
+  margin-right: 0;
+  box-shadow: none !important;
+  transition: all 0.2s ease;
+  font-size: 12px;
+  gap: 0;
 }
 
 .markdown-next-ai-at-btn:hover,
 .markdown-next-ai-hash-btn:hover {
-  background-color: var(--background-modifier-hover);
+  background: var(--background-modifier-hover);
   color: var(--text-normal);
 }
 
@@ -1544,7 +1548,7 @@
   width: 100%;
   /* min-width: 420px; 移除固定最小宽度，避免撑开 */
   padding: 12px 14px;
-  border: 1px solid var(--background-modifier-border);
+  border: none;
   border-radius: 6px;
   background: transparent !important;
   color: var(--text-normal);
@@ -1743,7 +1747,7 @@
 }
 
 .markdown-next-ai-popup-content {
-  padding: 2px 8px 0 6px;
+  padding: 0;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -1782,7 +1786,7 @@
 .markdown-next-ai-upload-section .markdown-next-ai-submit-btn {
   background: transparent;
   color: var(--text-normal);
-  padding: 6px 6px;
+  padding: 5px;
   border: none;
   border-radius: 4px;
   font-size: 12px;
@@ -1791,8 +1795,14 @@
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  gap: 0;
   box-shadow: none !important;
+}
+
+.markdown-next-ai-upload-section .markdown-next-ai-submit-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
 }
 
 
@@ -1877,6 +1887,7 @@
 /* 图片上传相关样式 */
 .markdown-next-ai-upload-section {
   margin: 2px 0 2px 0;
+  padding: 0 8px 0 6px;
   box-sizing: border-box;
   display: flex;
   align-items: center;
@@ -1894,16 +1905,36 @@
   gap: 2px;
 }
 
+.markdown-next-ai-right-section {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 4px;
+}
+
 .markdown-next-ai-popup-header .markdown-next-ai-upload-btn,
 .markdown-next-ai-popup-content .markdown-next-ai-upload-btn,
 .markdown-next-ai-modal-body .markdown-next-ai-upload-btn {
   background: transparent;
   cursor: pointer;
   font-size: 12px;
+  display: flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  gap: 0;
   padding: 5px;
   box-shadow: none !important;
+  color: var(--text-normal);
+  border: none;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.markdown-next-ai-popup-header .markdown-next-ai-upload-btn:hover,
+.markdown-next-ai-popup-content .markdown-next-ai-upload-btn:hover,
+.markdown-next-ai-modal-body .markdown-next-ai-upload-btn:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
 }
 
 
