@@ -241,7 +241,35 @@ export class MarkdownNextAISettingTab extends PluginSettingTab {
 
     private renderCompletionTab(containerEl: HTMLElement) {
         if (!this.plugin.settings.tabCompletion) {
-            this.plugin.settings.tabCompletion = { enabled: true, modelId: "", systemPrompt: "You are a text completion engine. Your task is to complete the text at the cursor position marked by <mask/>. Output ONLY the completion text, no explanation, no markdown code blocks unless the completion itself is code.", maxSuggestionLength: 100, contextRange: 2000, idleTriggerEnabled: true, autoTriggerDelayMs: 500, triggerDelayMs: 2000, autoTriggerCooldownMs: 0, triggers: [] };
+            this.plugin.settings.tabCompletion = {
+                enabled: false,
+                modelId: this.plugin.settings.currentModel ?? "",
+                systemPrompt:
+                    'Your job is to predict the most logical text that should be written at the location of the <mask/>. Your answer can be either code, a single word, or multiple sentences. Your answer must be in the same language as the text that is already there.' +
+                    '\n\nAdditional constraints:\n{{tab_completion_constraints}}' +
+                    '\n\nOutput only the text that should appear at the <mask/>. Do not include explanations, labels, or formatting.',
+                maxSuggestionLength: 2000,
+                contextRange: 4000,
+                minContextLength: 20,
+                idleTriggerEnabled: false,
+                autoTriggerDelayMs: 3000,
+                triggerDelayMs: 3000,
+                autoTriggerCooldownMs: 15000,
+                requestTimeoutMs: 12000,
+                maxRetries: 1,
+                lengthPreset: "medium",
+                constraints: "",
+                temperature: 0.5,
+                topP: 1,
+                triggers: [
+                    { id: 'sentence-end-comma', type: 'string', pattern: ', ', enabled: true },
+                    { id: 'sentence-end-chinese-comma', type: 'string', pattern: '，', enabled: true },
+                    { id: 'sentence-end-colon', type: 'string', pattern: ': ', enabled: true },
+                    { id: 'sentence-end-chinese-colon', type: 'string', pattern: '：', enabled: true },
+                    { id: 'newline', type: 'regex', pattern: '\\n$', enabled: true },
+                    { id: 'list-item', type: 'regex', pattern: '(?:^|\\n)[-*+]\\s$', enabled: true }
+                ]
+            };
         }
         const tabConfig = this.plugin.settings.tabCompletion;
         containerEl.createEl("h3", { text: "Tab 补全设置" });
@@ -286,6 +314,20 @@ export class MarkdownNextAISettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     }
                 }));
+        new Setting(containerEl)
+            .setName("补全长度偏好")
+            .setDesc("指导模型生成的补全长度（短/中/长）")
+            .addDropdown(drop => {
+                const preset = tabConfig.lengthPreset ?? "short";
+                drop.addOption("short", "短");
+                drop.addOption("medium", "中");
+                drop.addOption("long", "长");
+                drop.setValue(preset)
+                    .onChange(async (value) => {
+                        tabConfig.lengthPreset = value as any;
+                        await this.plugin.saveSettings();
+                    });
+            });
         const triggerHeader = containerEl.createEl("div", { attr: { style: "display: flex; justify-content: space-between; align-items: center; margin-top: 12px; margin-bottom: 8px;" } });
         triggerHeader.createEl("div", { text: "触发器配置", attr: { style: "font-weight: 600;" } });
         triggerHeader.createEl("div", { attr: { style: "display: flex; gap: 8px; align-items: center;" } })

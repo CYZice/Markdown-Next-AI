@@ -145,6 +145,8 @@ export default function ApplyViewRoot({
     const newContent = generateFinalContent('current')
     await app.vault.modify(state.file, newContent)
 
+    close(true)
+
     const targetLeaf = app.workspace
       .getLeavesOfType('markdown')
       .find((leaf) => {
@@ -156,9 +158,10 @@ export default function ApplyViewRoot({
 
     if (targetLeaf) {
       app.workspace.setActiveLeaf(targetLeaf, { focus: true })
-      close(true)
     } else {
-      close(false)
+      const leaf = app.workspace.getLeaf(true)
+      void leaf.openFile(state.file)
+      app.workspace.setActiveLeaf(leaf, { focus: true })
     }
   }
 

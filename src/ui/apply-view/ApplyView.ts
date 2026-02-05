@@ -52,17 +52,8 @@ export class ApplyView extends ItemView {
       createElement(ApplyViewRoot, {
         state: this.state,
         app: this.app,
-        close: (shouldDetach: boolean = false) => {
-          if (shouldDetach) {
-            this.leaf.detach()
-            return
-          }
-          const file = this.state?.file
-          if (file) {
-            void this.leaf.openFile(file)
-          } else {
-            this.leaf.detach()
-          }
+        close: () => {
+          this.leaf.detach()
         },
       })
     )

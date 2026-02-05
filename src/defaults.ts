@@ -60,22 +60,22 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     // 已移除：LLM 路由默认配置
     baseModelSpecialPrompt: "",
     tabCompletion: {
-        enabled: true,
-        modelId: "gemini-3-flash-preview", // 默认使用快速模型
+        enabled: false,
+        modelId: "gemini-3-flash-preview",
         systemPrompt:
             'Your job is to predict the most logical text that should be written at the location of the <mask/>. Your answer can be either code, a single word, or multiple sentences. Your answer must be in the same language as the text that is already there.' +
             '\n\nAdditional constraints:\n{{tab_completion_constraints}}' +
             '\n\nOutput only the text that should appear at the <mask/>. Do not include explanations, labels, or formatting.',
-        maxSuggestionLength: 100,
-        contextRange: 2000,
+        maxSuggestionLength: 2000,
+        contextRange: 4000,
         minContextLength: 20,
-        idleTriggerEnabled: true,
-        autoTriggerDelayMs: 500,
-        triggerDelayMs: 2000,
-        autoTriggerCooldownMs: 0,
-        requestTimeoutMs: 10000,
+        idleTriggerEnabled: false,
+        autoTriggerDelayMs: 3000,
+        triggerDelayMs: 3000,
+        autoTriggerCooldownMs: 15000,
+        requestTimeoutMs: 12000,
         maxRetries: 1,
-        lengthPreset: "short",
+        lengthPreset: "medium",
         constraints: "",
         temperature: 0.5,
         topP: 1,
