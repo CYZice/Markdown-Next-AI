@@ -188,6 +188,8 @@ export class AtTriggerPopup {
                 <textarea class="markdown-next-ai-continue-input" placeholder="${placeholderText}" rows="3"></textarea>
                 <div class="markdown-next-ai-upload-section">
                     <div class="markdown-next-ai-left-section">
+                        <button class="markdown-next-ai-at-btn" title="添加上下文 (@)"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-at-sign"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94"/></svg></button>
+                        <button class="markdown-next-ai-hash-btn" title="选择提示词 (#)"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-hash"><line x1="4" x2="20" y1="9" y2="9"/><line x1="4" x2="20" y1="15" y2="15"/><line x1="10" x2="8" y1="3" y2="21"/><line x1="16" x2="14" y1="3" y2="21"/></svg></button>
                         <select class="markdown-next-ai-model-select">
                             ${this.getModelOptions()}
                         </select>
@@ -294,6 +296,32 @@ export class AtTriggerPopup {
         closeBtn.onclick = () => this.close();
         submitBtn.onclick = () => this.submit();
         uploadBtn.onclick = () => fileInput.click();
+
+        // 绑定 @ 和 # 按钮事件
+        const atBtn = this.popupEl.querySelector(".markdown-next-ai-at-btn") as HTMLButtonElement;
+        const hashBtn = this.popupEl.querySelector(".markdown-next-ai-hash-btn") as HTMLButtonElement;
+
+        const insertTrigger = (char: string) => {
+            if (this.inputEl) {
+                this.inputEl.focus();
+                document.execCommand('insertText', false, char);
+            }
+        };
+
+        if (atBtn) {
+            atBtn.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                insertTrigger("@");
+            };
+        }
+        if (hashBtn) {
+            hashBtn.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                insertTrigger("#");
+            };
+        }
 
         // 模型下拉切换
         if (this.modelSelectEl) {
@@ -405,10 +433,11 @@ export class AtTriggerPopup {
             // 处理 # 触发
             const hashIndex = textBefore.lastIndexOf("#");
             if (hashIndex !== -1) {
-                // 确保 # 前面是空格或者行首，避免误触
-                const charBefore = hashIndex > 0 ? textBefore.charAt(hashIndex - 1) : " ";
-                if (charBefore === " " || charBefore === "\n") {
-                    // 简单的逻辑：只要检测到 # 就打开
+                // 取消严格限制，使其与 @ 逻辑一致：只要检测到 # 就打开
+                // 确保 # 后面没有被其他字符阻断（例如已经输入了空格）
+                const query = textBefore.substring(hashIndex + 1);
+                // 保持与 @ 一致的逻辑：不允许空格和换行
+                if (!query.includes(" ") && !query.includes("\n")) {
                     this.promptSelector!.open(this.inputEl!);
 
                     // 定位 PromptSelector
