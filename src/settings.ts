@@ -718,33 +718,129 @@ export class MarkdownNextAISettingTab extends PluginSettingTab {
         const { contentEl } = modal;
         const provider = this.plugin.settings.providers[providerId];
 
-        contentEl.createEl("label", {
-            text: "API Key:",
-            attr: { style: "display: block; margin-bottom: 5px; font-weight: bold;" }
-        });
+        let tempApiKey = provider?.apiKey || "";
+        let tempBaseUrl = provider?.baseUrl || "";
+        let useKeychain = tempApiKey.startsWith("secret:");
 
-        const apiKeyInput = contentEl.createEl("input", {
-            type: "password",
-            placeholder: "请输入API Key",
-            attr: {
-                style: "width: 100%; margin-bottom: 15px; border: 1px solid var(--background-modifier-border); border-radius: 4px;"
+        let secretStorage = (this.app as any).secretStorage;
+
+        if (!secretStorage) {
+            // Try to find it in other locations
+            if ((this.app as any).keychain) {
+                secretStorage = (this.app as any).keychain;
+            } else if ((window as any).secretStorage) {
+                secretStorage = (window as any).secretStorage;
+            } else if ((this.app as any).vault?.secretStorage) {
+                secretStorage = (this.app as any).vault.secretStorage;
             }
-        }) as HTMLInputElement;
-        apiKeyInput.value = provider?.apiKey || "";
+        }
 
-        contentEl.createEl("label", {
-            text: "Base URL (可选):",
-            attr: { style: "display: block; margin-bottom: 5px; font-weight: bold;" }
-        });
+        const hasSecretStorage = secretStorage && (typeof secretStorage.save === "function" || typeof secretStorage.setSecret === "function");
 
-        const baseUrlInput = contentEl.createEl("input", {
-            type: "text",
-            placeholder: "例如: https://api.example.com/v1",
-            value: provider?.baseUrl || "",
-            attr: {
-                style: "width: 100%; margin-bottom: 15px; border: 1px solid var(--background-modifier-border); border-radius: 4px;"
-            }
-        }) as HTMLInputElement;
+        let apiKeyTextComp: TextComponent;
+        let keychainToggle: ToggleComponent;
+
+        // Check for other providers with secret keys
+        const otherProvidersWithSecrets = Object.entries(this.plugin.settings.providers)
+            .filter(([id, p]: [string, any]) => id !== providerId && p.apiKey && p.apiKey.startsWith("secret:"))
+            .map(([id, p]: [string, any]) => ({ id, name: p.name || id, secretRef: p.apiKey }));
+
+        if (otherProvidersWithSecrets.length > 0) {
+            new Setting(contentEl)
+                .setName("复用已有 Key")
+                .setDesc("选择复用其他供应商已配置的 Keychain 密钥")
+                .addDropdown(dropdown => {
+                    dropdown.addOption("", "不复用 (默认)");
+                    otherProvidersWithSecrets.forEach(p => {
+                        dropdown.addOption(p.secretRef, `${p.name} (${p.id})`);
+                    });
+
+                    // Pre-select if current key matches
+                    if (tempApiKey && tempApiKey.startsWith("secret:") && otherProvidersWithSecrets.some(p => p.secretRef === tempApiKey)) {
+                        dropdown.setValue(tempApiKey);
+                    }
+
+                    dropdown.onChange(value => {
+                        if (value) {
+                            tempApiKey = value;
+                            useKeychain = true;
+                            if (apiKeyTextComp) {
+                                apiKeyTextComp.setValue("");
+                                apiKeyTextComp.setPlaceholder(`已复用 ${otherProvidersWithSecrets.find(p => p.secretRef === value)?.name} 的 Key`);
+                                apiKeyTextComp.setDisabled(true);
+                            }
+                            if (keychainToggle) {
+                                keychainToggle.setValue(true);
+                                keychainToggle.setDisabled(true);
+                            }
+                        } else {
+                            tempApiKey = "";
+                            useKeychain = false;
+                            if (apiKeyTextComp) {
+                                apiKeyTextComp.setDisabled(false);
+                                apiKeyTextComp.setPlaceholder("请输入 API Key");
+                            }
+                            if (keychainToggle) {
+                                keychainToggle.setValue(false);
+                                keychainToggle.setDisabled(!hasSecretStorage);
+                            }
+                        }
+                    });
+                });
+        }
+
+        new Setting(contentEl)
+            .setName("API Key")
+            .setDesc("请输入 API Key")
+            .addText(text => {
+                apiKeyTextComp = text;
+                text.inputEl.type = "password";
+
+                // Initial state check for reused key
+                const isReusing = tempApiKey.startsWith("secret:") && otherProvidersWithSecrets.some(p => p.secretRef === tempApiKey);
+                if (isReusing) {
+                    text.setPlaceholder(`已复用 ${otherProvidersWithSecrets.find(p => p.secretRef === tempApiKey)?.name} 的 Key`);
+                    text.setDisabled(true);
+                } else {
+                    text.setPlaceholder(useKeychain ? "已存储在 Keychain 中" : "请输入 API Key");
+                }
+
+                text.setValue(useKeychain ? "" : tempApiKey)
+                    .onChange(value => {
+                        tempApiKey = value;
+                    });
+            });
+
+        new Setting(contentEl)
+            .setName("使用 Obsidian Keychain 安全存储")
+            .setDesc(hasSecretStorage
+                ? `将 API Key 存储在系统钥匙串中 (推荐)`
+                : `当前 Obsidian 版本不支持 Keychain`)
+            .addToggle(toggle => {
+                keychainToggle = toggle;
+                const isReusing = tempApiKey.startsWith("secret:") && otherProvidersWithSecrets.some(p => p.secretRef === tempApiKey);
+
+                toggle.setValue(useKeychain)
+                    .setDisabled(!hasSecretStorage || isReusing)
+                    .onChange(value => {
+                        useKeychain = value;
+                        if (useKeychain) {
+                            apiKeyTextComp.setPlaceholder("已存储在 Keychain 中 (留空保持不变)");
+                        } else {
+                            apiKeyTextComp.setPlaceholder("请输入 API Key");
+                        }
+                    });
+            });
+
+        new Setting(contentEl)
+            .setName("Base URL")
+            .setDesc("可选：设置自定义 Base URL")
+            .addText(text => text
+                .setPlaceholder("https://api.example.com/v1")
+                .setValue(tempBaseUrl)
+                .onChange(value => {
+                    tempBaseUrl = value;
+                }));
 
         const buttonContainer = contentEl.createEl("div", {
             attr: {
@@ -752,49 +848,61 @@ export class MarkdownNextAISettingTab extends PluginSettingTab {
             }
         });
 
-        const cancelBtn = buttonContainer.createEl("button", {
-            text: "取消",
-            attr: { style: "padding: 6px 12px;" }
-        });
+        const cancelBtn = buttonContainer.createEl("button", { text: "取消" });
         cancelBtn.onclick = () => modal.close();
 
         const saveBtn = buttonContainer.createEl("button", {
             text: "保存",
-            cls: "mod-cta",
-            attr: { style: "padding: 6px 12px;" }
+            cls: "mod-cta"
         });
 
-        const saveHandler = async () => {
+        saveBtn.onclick = async () => {
             if (!this.plugin.settings.providers[providerId]) {
                 this.plugin.settings.providers[providerId] = { apiKey: "", baseUrl: "", enabled: true };
             }
-            this.plugin.settings.providers[providerId].apiKey = apiKeyInput.value.trim();
-            this.plugin.settings.providers[providerId].baseUrl = baseUrlInput.value.trim();
 
-            if (apiKeyInput.value.trim()) {
-                this.plugin.settings.providers[providerId].enabled = true;
+            if (tempApiKey.startsWith("secret:")) {
+                if (useKeychain) {
+                    this.plugin.settings.providers[providerId].apiKey = tempApiKey;
+                } else {
+                    new Notice("请重新输入 API Key 以切换回普通存储");
+                    return;
+                }
+            } else {
+                if (tempApiKey) {
+                    if (useKeychain && hasSecretStorage) {
+                        const secretId = `markdown-next-ai-api-key-${providerId}`;
+                        const keyToSave = tempApiKey.trim();
+                        try {
+                            if (typeof secretStorage.save === "function") {
+                                await secretStorage.save(secretId, keyToSave);
+                            } else {
+                                await secretStorage.setSecret(secretId, keyToSave);
+                            }
+                            this.plugin.settings.providers[providerId].apiKey = `secret:${secretId}`;
+                        } catch (e) {
+                            new Notice("Keychain 保存失败，已使用普通存储");
+                            console.error("Keychain save failed:", e);
+                            this.plugin.settings.providers[providerId].apiKey = tempApiKey;
+                        }
+                    } else {
+                        this.plugin.settings.providers[providerId].apiKey = tempApiKey;
+                    }
+                } else {
+                    this.plugin.settings.providers[providerId].apiKey = "";
+                }
             }
 
+            this.plugin.settings.providers[providerId].baseUrl = tempBaseUrl;
+            this.plugin.settings.providers[providerId].enabled = true;
+
             await this.plugin.saveSettings();
-            new Notice(providerId.toUpperCase() + " 配置已保存");
+            new Notice(`${providerId} 配置已保存`);
             modal.close();
             this.display();
         };
 
-        saveBtn.onclick = saveHandler;
-
-        const keydownHandler = (e: KeyboardEvent) => {
-            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-                e.preventDefault();
-                saveHandler();
-            }
-        };
-
-        apiKeyInput.addEventListener("keydown", keydownHandler);
-        baseUrlInput.addEventListener("keydown", keydownHandler);
-
         modal.open();
-        apiKeyInput.focus();
     }
 
     showAddProviderModal(): void {

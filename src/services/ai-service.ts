@@ -26,38 +26,76 @@ export class AIService {
     }
 
     /**
+     * 解析配置（处理 Keychain）
+     */
+    async resolveConfig(config: APIModelConfig): Promise<APIModelConfig> {
+        if (config.apiKey && config.apiKey.startsWith("secret:")) {
+            const secretId = config.apiKey.substring(7);
+
+            let secretStorage = (this.app as any).secretStorage;
+            if (!secretStorage) {
+                if ((this.app as any).keychain) {
+                    secretStorage = (this.app as any).keychain;
+                } else if ((window as any).secretStorage) {
+                    secretStorage = (window as any).secretStorage;
+                } else if ((this.app as any).vault?.secretStorage) {
+                    secretStorage = (this.app as any).vault.secretStorage;
+                }
+            }
+
+            if (secretStorage && (typeof secretStorage.get === "function" || typeof secretStorage.getSecret === "function")) {
+                try {
+                    const key = typeof secretStorage.get === "function"
+                        ? await secretStorage.get(secretId)
+                        : await secretStorage.getSecret(secretId);
+                    if (key) {
+                        config.apiKey = key;
+                    }
+                } catch (e) {
+                    console.error(`Failed to load key ${secretId} from secret storage`, e);
+                }
+            }
+        }
+        return config;
+    }
+
+    /**
      * 获取当前模型配置
      */
-    getCurrentModelConfig(): APIModelConfig {
+    async getCurrentModelConfig(): Promise<APIModelConfig> {
+        let config: APIModelConfig;
+
         // 如果有全局配置，优先使用
         if (this.settings.apiKey && this.settings.baseUrl && this.settings.model) {
-            return {
+            config = {
                 apiKey: this.settings.apiKey,
                 baseUrl: this.settings.baseUrl,
                 model: this.settings.model
             };
+        } else {
+            const currentModelId = this.settings.currentModel;
+            if (!currentModelId) {
+                throw new Error("未选择当前模型");
+            }
+
+            const modelConfig = this.settings.models[currentModelId];
+            if (!modelConfig || !modelConfig.enabled) {
+                throw new Error(`模型 ${currentModelId} 未启用或不存在`);
+            }
+
+            const providerConfig = this.settings.providers[modelConfig.provider];
+            if (!providerConfig || !providerConfig.enabled) {
+                throw new Error(`供应商 ${modelConfig.provider} 未启用或不存在`);
+            }
+
+            config = {
+                apiKey: providerConfig.apiKey,
+                baseUrl: providerConfig.baseUrl,
+                model: modelConfig.actualModel || modelConfig.model || modelConfig.id
+            };
         }
 
-        const currentModelId = this.settings.currentModel;
-        if (!currentModelId) {
-            throw new Error("未选择当前模型");
-        }
-
-        const modelConfig = this.settings.models[currentModelId];
-        if (!modelConfig || !modelConfig.enabled) {
-            throw new Error(`模型 ${currentModelId} 未启用或不存在`);
-        }
-
-        const providerConfig = this.settings.providers[modelConfig.provider];
-        if (!providerConfig || !providerConfig.enabled) {
-            throw new Error(`供应商 ${modelConfig.provider} 未启用或不存在`);
-        }
-
-        return {
-            apiKey: providerConfig.apiKey,
-            baseUrl: providerConfig.baseUrl,
-            model: modelConfig.actualModel || modelConfig.model || modelConfig.id
-        };
+        return this.resolveConfig(config);
     }
 
     /**
@@ -105,8 +143,10 @@ export class AIService {
     /**
      * 构建 API URL
      */
-    buildApiUrl(endpoint: string): string {
-        const config = this.getCurrentModelConfig();
+    async buildApiUrl(endpoint: string, config?: APIModelConfig): Promise<string> {
+        if (!config) {
+            config = await this.getCurrentModelConfig();
+        }
         const baseUrl = this.normalizeBaseUrl(config.baseUrl);
         const isOpenAI = baseUrl.includes("api.openai.com");
 
@@ -138,7 +178,7 @@ export class AIService {
         chatHistory: ChatMessage[] = [],
         onStream: ((data: { content: string; thinking: string; fullContent: string; isComplete: boolean }) => void) | null = null
     ): Promise<{ content: string; thinking?: string; usage: Record<string, unknown>; imageData?: unknown }> {
-        const config = this.getCurrentModelConfig();
+        const config = await this.getCurrentModelConfig();
 
         if (!config.apiKey) {
             throw new Error("请先配置API Key");
@@ -240,7 +280,7 @@ export class AIService {
         }
 
         // 构建API请求URL
-        const apiUrl = this.buildApiUrl("/chat/completions");
+        const apiUrl = await this.buildApiUrl("/chat/completions", config);
 
         // 构建消息数组
         const messages: ChatMessage[] = [
@@ -399,21 +439,15 @@ export class AIService {
                 baseUrl: providerConfig.baseUrl,
                 model: modelConfig.actualModel || modelConfig.model || modelConfig.id
             };
+            config = await this.resolveConfig(config);
         } else {
-            config = this.getCurrentModelConfig();
+            config = await this.getCurrentModelConfig();
         }
 
         // 构建API请求URL (假设都是 chat/completions 兼容接口)
         // 注意：这里简单处理，如果后续需要支持非OpenAI格式的补全接口，需要扩展
-        const baseUrl = this.normalizeBaseUrl(config.baseUrl);
-        let apiUrl = "";
-        if (baseUrl.endsWith("/v1")) {
-            apiUrl = `${baseUrl}/chat/completions`;
-        } else {
-            apiUrl = `${baseUrl}/v1/chat/completions`;
-        }
-        // 使用 buildApiUrl 逻辑可能更稳健，但 buildApiUrl 依赖 getCurrentModelConfig
-        // 我们可以暂时复用 buildApiUrl 的逻辑片段，或者如果 config 是当前模型，直接用 buildApiUrl
+        // 使用 buildApiUrl 逻辑可能更稳健
+        const apiUrl = await this.buildApiUrl("/chat/completions", config);
 
         const requestBody: Record<string, unknown> = {
             model: config.model,
@@ -475,8 +509,9 @@ export class AIService {
                 baseUrl: providerConfig.baseUrl,
                 model: modelConfig.actualModel || modelConfig.model || modelConfig.id
             };
+            config = await this.resolveConfig(config);
         } else {
-            config = this.getCurrentModelConfig();
+            config = await this.getCurrentModelConfig();
         }
         const baseUrl = this.normalizeBaseUrl(config.baseUrl);
         const apiUrl = baseUrl.endsWith("/v1") ? `${baseUrl}/chat/completions` : `${baseUrl}/v1/chat/completions`;
@@ -649,7 +684,7 @@ export class AIService {
             throw new Error("请输入图片描述");
         }
 
-        const apiUrl = this.buildApiUrl("/images/generations");
+        const apiUrl = await this.buildApiUrl("/images/generations", config);
         const model = config.model;
 
         const requestBody: Record<string, unknown> = {
@@ -785,8 +820,8 @@ export class AIService {
      */
     async testConnection(): Promise<{ success: boolean; message?: string }> {
         try {
-            const config = this.getCurrentModelConfig();
-            const url = this.buildApiUrl("/chat/completions");
+            const config = await this.getCurrentModelConfig();
+            const url = await this.buildApiUrl("/chat/completions", config);
 
             const response = await requestUrl({
                 url: url,

@@ -1,7 +1,7 @@
 {
   "providers": {
     "openai": {
-      "apiKey": "sk-6vDRIidRGzMd9e3652WEO6lgZqQQl6sSgklcguD8BvBGF4if",
+      "apiKey": "secret:markdown-next-ai-api-key-openai",
       "baseUrl": "https://yunwu.ai/v1",
       "enabled": true,
       "apiKeyLink": "https://platform.openai.com/api-keys"
@@ -46,7 +46,7 @@
       "category": "multimodal"
     }
   },
-  "currentModel": "deepseek-chat",
+  "currentModel": "gemini-3-flash-preview",
   "timeout": 30000,
   "enableRightClick": true,
   "enableAtTrigger": true,
