@@ -79,6 +79,7 @@ export interface PluginSettings {
     lastInsertAction?: string;
     tabCompletion?: TabCompletionOptions;
     baseModelSpecialPrompt?: string;
+    useKeychain?: boolean;
 }
 
 // ConversationEntry removed

@@ -177,6 +177,61 @@ export default class MarkdownNextAIPlugin extends Plugin {
         if (!Array.isArray(this.settings.commonPrompts)) {
             this.settings.commonPrompts = [...DEFAULT_SETTINGS.commonPrompts];
         }
+
+        // 尝试自动迁移明文 Key 到 Keychain
+        this.migrateKeysToKeychain();
+    }
+
+    async migrateKeysToKeychain(): Promise<void> {
+        // 等待 app.secretStorage 就绪 (虽然 loadSettings 在 onload 中调用，但有时 API 注入可能稍有延迟，或者我们在 onload 中直接调用)
+        // 注意：loadSettings 是异步的，我们在这里执行迁移
+
+        // 检查 secretStorage 是否可用
+        let secretStorage = (this.app as any).secretStorage;
+        if (!secretStorage) {
+            if ((this.app as any).keychain) {
+                secretStorage = (this.app as any).keychain;
+            } else if ((window as any).secretStorage) {
+                secretStorage = (window as any).secretStorage;
+            } else if ((this.app as any).vault?.secretStorage) {
+                secretStorage = (this.app as any).vault.secretStorage;
+            }
+        }
+
+        const hasSecretStorage = secretStorage && (typeof secretStorage.save === "function" || typeof secretStorage.setSecret === "function");
+
+        if (!hasSecretStorage) {
+            return;
+        }
+
+        let hasChanges = false;
+
+        for (const providerId in this.settings.providers) {
+            const provider = this.settings.providers[providerId];
+            if (provider.apiKey && !provider.apiKey.startsWith("secret:")) {
+                try {
+                    const secretId = `markdown-next-ai-api-key-${providerId}`;
+                    const keyToSave = provider.apiKey.trim();
+
+                    if (typeof secretStorage.save === "function") {
+                        await secretStorage.save(secretId, keyToSave);
+                    } else {
+                        await secretStorage.setSecret(secretId, keyToSave);
+                    }
+
+                    provider.apiKey = `secret:${secretId}`;
+                    hasChanges = true;
+                    console.log(`[MarkdownNextAI] Automatically migrated API key for ${providerId} to Keychain.`);
+                } catch (e) {
+                    console.error(`[MarkdownNextAI] Failed to migrate API key for ${providerId} to Keychain:`, e);
+                }
+            }
+        }
+
+        if (hasChanges) {
+            await this.saveSettings();
+            new Notice("已自动将检测到的明文 API Key 迁移至 Keychain 安全存储");
+        }
     }
 
     setupHeaderButton(): void {

@@ -87,5 +87,6 @@ export const DEFAULT_SETTINGS: PluginSettings = {
             { id: 'newline', type: 'regex', pattern: '\\n$', enabled: true },
             { id: 'list-item', type: 'regex', pattern: '(?:^|\\n)[-*+]\\s$', enabled: true }
         ]
-    }
+    },
+    useKeychain: true
 };

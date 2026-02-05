@@ -64,6 +64,29 @@ export class MarkdownNextAISettingTab extends PluginSettingTab {
 
     private renderModelsTab(containerEl: HTMLElement) {
         containerEl.createEl("h3", { text: "供应商、API设置" });
+
+        // Add Keychain setting
+        const secretStorage = (this.app as any).secretStorage || (this.app as any).keychain || (window as any).secretStorage || (this.app as any).vault?.secretStorage;
+        const hasSecretStorage = secretStorage && (typeof secretStorage.save === "function" || typeof secretStorage.setSecret === "function");
+
+        new Setting(containerEl)
+            .setName("使用 Obsidian Keychain 安全存储")
+            .setDesc(hasSecretStorage
+                ? `开启后，新配置的 API Key 将存储在系统钥匙串中 (推荐)`
+                : `当前 Obsidian 版本不支持 Keychain (未检测到 secretStorage API)`)
+            .addToggle(toggle => {
+                toggle.setValue(this.plugin.settings.useKeychain ?? true)
+                    .setDisabled(!hasSecretStorage)
+                    .onChange(async (value) => {
+                        this.plugin.settings.useKeychain = value;
+                        await this.plugin.saveSettings();
+                        if (value) {
+                            await this.plugin.migrateKeysToKeychain();
+                            this.display();
+                        }
+                    });
+            });
+
         containerEl.createEl("p", { text: "APIKey：需在供应商API密钥中设置APIKey", attr: { style: "color: var(--text-muted); margin-bottom: 5px;" } });
         containerEl.createEl("p", { text: "Base URL：选填第三方URL，使用openai兼容格式", attr: { style: "color: var(--text-muted); margin-bottom: 15px;" } });
         const providerTable = containerEl.createEl("table", { cls: "markdown-next-ai-config-table" });
@@ -720,7 +743,6 @@ export class MarkdownNextAISettingTab extends PluginSettingTab {
 
         let tempApiKey = provider?.apiKey || "";
         let tempBaseUrl = provider?.baseUrl || "";
-        let useKeychain = tempApiKey.startsWith("secret:");
 
         let secretStorage = (this.app as any).secretStorage;
 
@@ -737,8 +759,12 @@ export class MarkdownNextAISettingTab extends PluginSettingTab {
 
         const hasSecretStorage = secretStorage && (typeof secretStorage.save === "function" || typeof secretStorage.setSecret === "function");
 
+        let useKeychain = tempApiKey.startsWith("secret:");
+        if (!tempApiKey && (this.plugin.settings.useKeychain ?? true) && hasSecretStorage) {
+            useKeychain = true;
+        }
+
         let apiKeyTextComp: TextComponent;
-        let keychainToggle: ToggleComponent;
 
         // Check for other providers with secret keys
         const otherProvidersWithSecrets = Object.entries(this.plugin.settings.providers)
@@ -769,20 +795,12 @@ export class MarkdownNextAISettingTab extends PluginSettingTab {
                                 apiKeyTextComp.setPlaceholder(`已复用 ${otherProvidersWithSecrets.find(p => p.secretRef === value)?.name} 的 Key`);
                                 apiKeyTextComp.setDisabled(true);
                             }
-                            if (keychainToggle) {
-                                keychainToggle.setValue(true);
-                                keychainToggle.setDisabled(true);
-                            }
                         } else {
                             tempApiKey = "";
                             useKeychain = false;
                             if (apiKeyTextComp) {
                                 apiKeyTextComp.setDisabled(false);
                                 apiKeyTextComp.setPlaceholder("请输入 API Key");
-                            }
-                            if (keychainToggle) {
-                                keychainToggle.setValue(false);
-                                keychainToggle.setDisabled(!hasSecretStorage);
                             }
                         }
                     });
@@ -811,26 +829,7 @@ export class MarkdownNextAISettingTab extends PluginSettingTab {
                     });
             });
 
-        new Setting(contentEl)
-            .setName("使用 Obsidian Keychain 安全存储")
-            .setDesc(hasSecretStorage
-                ? `将 API Key 存储在系统钥匙串中 (推荐)`
-                : `当前 Obsidian 版本不支持 Keychain`)
-            .addToggle(toggle => {
-                keychainToggle = toggle;
-                const isReusing = tempApiKey.startsWith("secret:") && otherProvidersWithSecrets.some(p => p.secretRef === tempApiKey);
-
-                toggle.setValue(useKeychain)
-                    .setDisabled(!hasSecretStorage || isReusing)
-                    .onChange(value => {
-                        useKeychain = value;
-                        if (useKeychain) {
-                            apiKeyTextComp.setPlaceholder("已存储在 Keychain 中 (留空保持不变)");
-                        } else {
-                            apiKeyTextComp.setPlaceholder("请输入 API Key");
-                        }
-                    });
-            });
+        // Keychain toggle moved to global settings
 
         new Setting(contentEl)
             .setName("Base URL")
