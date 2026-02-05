@@ -53,12 +53,7 @@ export class ApplyView extends ItemView {
         state: this.state,
         app: this.app,
         close: () => {
-          const file = this.state?.file
-          if (file) {
-            void this.leaf.openFile(file)
-          } else {
-            this.leaf.detach()
-          }
+          this.leaf.detach()
         },
       })
     )

@@ -1,7 +1,7 @@
 {
   "providers": {
     "openai": {
-      "apiKey": "",
+      "apiKey": "sk-6vDRIidRGzMd9e3652WEO6lgZqQQl6sSgklcguD8BvBGF4if",
       "baseUrl": "https://yunwu.ai/v1",
       "enabled": true,
       "apiKeyLink": "https://platform.openai.com/api-keys"
@@ -37,7 +37,7 @@
       "type": "chat"
     }
   },
-  "currentModel": "gemini-3-pro-preview",
+  "currentModel": "gemini-3-flash-preview",
   "timeout": 30000,
   "enableRightClick": true,
   "enableAtTrigger": true,
