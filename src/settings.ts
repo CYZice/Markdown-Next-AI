@@ -228,8 +228,8 @@ export class MarkdownNextAISettingTab extends PluginSettingTab {
                     this.plugin.updateEventListeners();
                 }));
         new Setting(containerEl)
-            .setName("启用@或&符号触发")
-            .setDesc("输入@或&符号时呼出续写对话框")
+            .setName("启用文本触发器系统")
+            .setDesc("开启后，下方的“对话弹层文本规则”生效；关闭则全部禁用")
             .addToggle(toggle => toggle
                 .setValue(this.plugin.settings.enableAtTrigger)
                 .onChange(async (value) => {
@@ -238,6 +238,7 @@ export class MarkdownNextAISettingTab extends PluginSettingTab {
                     this.plugin.updateEventListeners();
                 }));
         containerEl.createEl("h3", { text: "对话弹层文本规则" });
+        containerEl.createEl("div", { text: "提示：默认包含 @ 与 & 两条规则；可自由增删。列表为空或全部禁用时等同于关闭。", attr: { style: "margin: 6px 0 10px; color: var(--text-muted);" } });
         const toolbar = containerEl.createEl("div", { attr: { style: "display:flex;gap:8px;align-items:center;margin-bottom:8px;" } });
         const typeSelect = toolbar.createEl("select") as HTMLSelectElement;
         ["string", "regex"].forEach(t => typeSelect.createEl("option", { value: t, text: t }));
