@@ -454,9 +454,12 @@ export class AIService {
             model: config.model,
             messages: messages,
             stream: true,
-            max_tokens: options.max_tokens || 50,
             temperature: options.temperature ?? 0.2
         };
+
+        if (options.max_tokens) {
+            requestBody.max_tokens = options.max_tokens;
+        }
         if (typeof options.top_p === 'number') {
             (requestBody as any).top_p = options.top_p;
         }

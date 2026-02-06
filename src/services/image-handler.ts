@@ -98,6 +98,13 @@ export class ImageHandler {
     /**
      * 清空所有图片
      */
+    clear(): void {
+        this.images = [];
+    }
+
+    /**
+     * 创建图片预览元素
+     */
     clearImages(): void {
         this.images = [];
     }

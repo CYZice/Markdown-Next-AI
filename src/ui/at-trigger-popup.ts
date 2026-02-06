@@ -1,10 +1,11 @@
-import { App, Notice, setIcon, TFile, TFolder } from "obsidian";
+import { App, MarkdownRenderer, MarkdownView, Notice, setIcon, TFile, TFolder } from "obsidian";
 import * as React from "react";
 import { createRoot, Root } from "react-dom/client";
 import { MODE_OPTIONS, ModeSelect } from "../components/panels/quick-ask";
 import { MODEL_CATEGORIES } from "../constants";
+import MarkdownNextAIPlugin from "../main";
 import { ImageHandler } from "../services/image-handler";
-import { CursorPosition, ImageData, PluginSettings, QuickAskMode, SelectedContext } from "../types";
+import { ChatMessage, CursorPosition, ImageData, QuickAskMode, SelectedContext } from "../types";
 import { InputContextSelector } from "./context-selector";
 import { PromptSelectorPopup } from "./prompt-selector";
 
@@ -25,13 +26,6 @@ interface EventListenerEntry {
     handler: EventListener;
 }
 
-interface PluginInterface {
-    app: App;
-    settings: PluginSettings;
-    getAvailableModels(): { id: string; name: string }[];
-    saveSettings(): Promise<void>;
-}
-
 interface EditorView {
     containerEl: HTMLElement;
 }
@@ -44,7 +38,7 @@ export class AtTriggerPopup {
     private app: App;
     private onSubmit: (prompt: string, images: ImageData[], modelId: string, contextContent: string, selectedText: string, mode: string) => void;
     private cursorPosition: CursorPosition | null;
-    private plugin: PluginInterface;
+    private plugin: MarkdownNextAIPlugin;
     private view: EditorView | null;
     private selectedText: string;
     private mode: string;
@@ -71,11 +65,18 @@ export class AtTriggerPopup {
     private dropdownEventListeners: EventListenerEntry[] = [];
     private reactRoot: Root | null = null;
 
+    // Chat mode properties
+    private chatHistoryContainer: HTMLElement | null = null;
+    private isGenerating: boolean = false;
+    private currentStreamingMessageEl: HTMLElement | null = null;
+    private currentStreamingContent: string = "";
+    private messages: ChatMessage[] = [];
+
     constructor(
         app: App,
         onSubmit: (prompt: string, images: ImageData[], modelId: string, contextContent: string, selectedText: string, mode: string) => void,
         cursorPosition: CursorPosition | null,
-        plugin: PluginInterface,
+        plugin: MarkdownNextAIPlugin,
         view: EditorView | null,
         selectedText: string = "",
         mode: string = "chat"
@@ -110,6 +111,99 @@ export class AtTriggerPopup {
         return this.closeGuards.size > 0;
     }
 
+    private async renderChatMessage(role: "user" | "assistant", content: string): Promise<void> {
+        if (!this.chatHistoryContainer) return;
+
+        const messageEl = this.chatHistoryContainer.createDiv({ cls: `markdown-next-ai-chat-message ${role}` });
+        messageEl.style.display = "flex";
+        messageEl.style.flexDirection = "column";
+        messageEl.style.alignSelf = role === "user" ? "flex-end" : "flex-start";
+        messageEl.style.maxWidth = "85%";
+        messageEl.style.padding = "8px 12px";
+        messageEl.style.borderRadius = "8px";
+        messageEl.style.marginBottom = "8px";
+        messageEl.style.backgroundColor = role === "user" ? "var(--interactive-accent)" : "var(--background-secondary)";
+        messageEl.style.color = role === "user" ? "var(--text-on-accent)" : "var(--text-normal)";
+        messageEl.style.fontSize = "14px";
+        messageEl.style.lineHeight = "1.5";
+
+        const contentEl = messageEl.createDiv({ cls: "message-content" });
+
+        if (role === "assistant") {
+            await MarkdownRenderer.render(this.app, content, contentEl, "", this.plugin);
+            this.createMessageActions(messageEl, content);
+        } else {
+            contentEl.innerText = content;
+        }
+
+        this.chatHistoryContainer.scrollTop = this.chatHistoryContainer.scrollHeight;
+    }
+
+    private createMessageActions(container: HTMLElement, content: string): void {
+        const existingActions = container.querySelector(".message-actions");
+        if (existingActions) existingActions.remove();
+
+        const actionsEl = container.createDiv({ cls: "message-actions" });
+        actionsEl.style.display = "flex";
+        actionsEl.style.gap = "8px";
+        actionsEl.style.marginTop = "4px";
+        actionsEl.style.opacity = "0.7";
+        actionsEl.style.justifyContent = "flex-end";
+
+        const copyBtn = actionsEl.createEl("button", { cls: "clickable-icon" });
+        copyBtn.style.background = "transparent";
+        copyBtn.style.border = "none";
+        copyBtn.style.cursor = "pointer";
+        copyBtn.title = "复制";
+        setIcon(copyBtn, "copy");
+        copyBtn.onclick = () => {
+            navigator.clipboard.writeText(content);
+            new Notice("已复制");
+        };
+
+        const insertBtn = actionsEl.createEl("button", { cls: "clickable-icon" });
+        insertBtn.style.background = "transparent";
+        insertBtn.style.border = "none";
+        insertBtn.style.cursor = "pointer";
+        insertBtn.title = "插入";
+        setIcon(insertBtn, "corner-down-left");
+        insertBtn.onclick = () => {
+            const editor = this.app.workspace.getActiveViewOfType(MarkdownView)?.editor;
+            if (editor) {
+                editor.replaceSelection(content);
+                new Notice("已插入");
+            }
+        };
+    }
+
+    private updateStreamingMessage(content: string): void {
+        if (!this.currentStreamingMessageEl) return;
+        const contentEl = this.currentStreamingMessageEl.querySelector(".message-content") as HTMLElement;
+        if (contentEl) {
+            contentEl.innerText = content;
+            contentEl.style.whiteSpace = "pre-wrap";
+        }
+        if (this.chatHistoryContainer) {
+            this.chatHistoryContainer.scrollTop = this.chatHistoryContainer.scrollHeight;
+        }
+    }
+
+    private async finalizeStreamingMessage(content: string): Promise<void> {
+        if (!this.currentStreamingMessageEl) return;
+        const contentEl = this.currentStreamingMessageEl.querySelector(".message-content") as HTMLElement;
+        if (contentEl) {
+            contentEl.empty();
+            if (content && content.trim()) {
+                await MarkdownRenderer.render(this.app, content, contentEl, "", this.plugin);
+            } else {
+                contentEl.setText("(No content)");
+            }
+        }
+        this.createMessageActions(this.currentStreamingMessageEl, content);
+        this.currentStreamingMessageEl = null;
+        this.currentStreamingContent = "";
+    }
+
     /**
      * 提交对话
      */
@@ -126,8 +220,87 @@ export class AtTriggerPopup {
             return;
         }
 
+        if (this.mode === 'ask') {
+            await this.handleAskSubmit(prompt, images, modelId, contextContent);
+            return;
+        }
+
         this.onSubmit(prompt, images, modelId, contextContent, this.selectedText, this.mode);
         this.close();
+    }
+
+    private async handleAskSubmit(prompt: string, images: ImageData[], modelId: string, contextContent: string): Promise<void> {
+        if (!this.plugin.aiService) {
+            new Notice("AI Service not available");
+            return;
+        }
+
+        if (this.contextSelector) {
+            this.contextSelector.clear();
+        }
+        if (this.inputEl) {
+            this.inputEl.value = "";
+            this.inputEl.style.height = "";
+        }
+        this.imageHandler.clear();
+        const previews = this.popupEl?.querySelector(".markdown-next-ai-image-previews");
+        if (previews) previews.empty();
+
+        await this.renderChatMessage("user", prompt);
+
+        this.isGenerating = true;
+
+        if (this.chatHistoryContainer) {
+            this.currentStreamingMessageEl = this.chatHistoryContainer.createDiv({ cls: `markdown-next-ai-chat-message assistant` });
+            this.currentStreamingMessageEl.style.display = "flex";
+            this.currentStreamingMessageEl.style.flexDirection = "column";
+            this.currentStreamingMessageEl.style.alignSelf = "flex-start";
+            this.currentStreamingMessageEl.style.maxWidth = "85%";
+            this.currentStreamingMessageEl.style.padding = "8px 12px";
+            this.currentStreamingMessageEl.style.borderRadius = "8px";
+            this.currentStreamingMessageEl.style.marginBottom = "8px";
+            this.currentStreamingMessageEl.style.backgroundColor = "var(--background-secondary)";
+            this.currentStreamingMessageEl.style.color = "var(--text-normal)";
+
+            const contentEl = this.currentStreamingMessageEl.createDiv({ cls: "message-content" });
+            contentEl.innerText = "Thinking...";
+        }
+
+        this.currentStreamingContent = "";
+
+        try {
+            const messages: ChatMessage[] = [
+                ...this.messages,
+                { role: "user", content: contextContent ? `Context:\n${contextContent}\n\nUser: ${prompt}` : prompt }
+            ];
+
+            this.messages.push({ role: "user", content: prompt });
+
+            await this.plugin.aiService.streamCompletion(
+                messages,
+                modelId,
+                {
+                    temperature: this.plugin.settings.tabCompletion?.temperature,
+                    max_tokens: 4000
+                },
+                (chunk) => {
+                    this.currentStreamingContent += chunk;
+                    this.updateStreamingMessage(this.currentStreamingContent);
+                }
+            );
+
+            await this.finalizeStreamingMessage(this.currentStreamingContent);
+            this.messages.push({ role: "assistant", content: this.currentStreamingContent });
+
+        } catch (error) {
+            console.error(error);
+            new Notice("AI Generation failed");
+            if (this.currentStreamingMessageEl) {
+                this.currentStreamingMessageEl.querySelector(".message-content")!.textContent = "Error: " + error.message;
+            }
+        } finally {
+            this.isGenerating = false;
+        }
     }
 
     /**
@@ -190,6 +363,7 @@ export class AtTriggerPopup {
                 </div>
             </div>
             <div class="markdown-next-ai-popup-content">
+                <div class="markdown-next-ai-chat-history" style="display: ${this.mode === 'ask' ? 'flex' : 'none'}; flex-direction: column; overflow-y: auto; max-height: 300px; margin-bottom: 10px; gap: 8px;"></div>
                 ${this.selectedText ? `
                 <div class="markdown-next-ai-selected-text-section">
                     <div class="markdown-next-ai-selected-text-header">
@@ -219,6 +393,7 @@ export class AtTriggerPopup {
 
         // 设置标题图标为 atom
         const titleEl = this.popupEl.querySelector(".markdown-next-ai-popup-title") as HTMLElement | null;
+        this.chatHistoryContainer = this.popupEl.querySelector(".markdown-next-ai-chat-history") as HTMLElement;
         const iconSlot = this.popupEl.querySelector(".markdown-next-ai-title-icon") as HTMLElement | null;
         if (iconSlot) {
             setIcon(iconSlot, "atom");
@@ -630,6 +805,11 @@ export class AtTriggerPopup {
                     const opt = MODE_OPTIONS.find(o => o.value === newMode);
                     if (opt && this.inputEl) {
                         (this.inputEl as HTMLTextAreaElement).placeholder = opt.descFallback;
+                    }
+
+                    // Update chat history visibility
+                    if (this.chatHistoryContainer) {
+                        this.chatHistoryContainer.style.display = newMode === 'ask' ? 'flex' : 'none';
                     }
 
                     // Show toast

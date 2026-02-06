@@ -679,11 +679,6 @@ export default class MarkdownNextAIPlugin extends Plugin {
     }
 
     showAtTriggerModal(selectedText: string = "", mode: string = "chat"): void {
-        // Close existing popup if any
-        if (this.lastAtTriggerPopup) {
-            this.lastAtTriggerPopup.close();
-            this.lastAtTriggerPopup = null;
-        }
 
         const view = this.app.workspace.getActiveViewOfType(MarkdownView);
         const cursorPos = this.getCursorPosition(view) || this.lastMouseUpPosition || this.getFallbackPosition(view);
@@ -708,8 +703,24 @@ export default class MarkdownNextAIPlugin extends Plugin {
         popup.open();
     }
 
-    // showAtTriggerModalGlobal removed as global mode is deprecated
-    // handleContinueWritingGlobal removed as global mode is deprecated
+    showAtTriggerModalGlobal(selectedText: string = "", mode: string = "chat"): void {
+        const view = this.getAnyMarkdownView();
+        const pos = this.getFallbackPosition(view) || this.getFallbackPosition(null);
+        const popup = new AtTriggerPopup(
+            this.app,
+            (prompt: string, images: ImageData[], modelId: string, context: string, sel: string, md: string) => {
+                const finalSel = sel || selectedText;
+                this.handleContinueWriting(prompt, images, modelId, context, finalSel, md);
+            },
+            pos!,
+            this,
+            view || null,
+            selectedText,
+            mode
+        );
+        this.lastAtTriggerPopup = popup;
+        popup.open();
+    }
 
     getCursorPosition(view: MarkdownView | null = null): CursorPosition | null {
         const targetView = view ?? this.getAnyMarkdownView();
