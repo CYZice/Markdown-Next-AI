@@ -64,6 +64,8 @@ export interface PluginSettings {
     timeout: number;
     enableRightClick: boolean;
     enableAtTrigger: boolean;
+    dialogTextTriggers?: TabCompletionTrigger[];
+    dialogOpenKey?: string;
     maxTokens: number;
     maxContextLines: number;
     maxContextChars: number;
@@ -187,6 +189,12 @@ export interface TabCompletionTrigger {
 
 export type TabCompletionLengthPreset = 'short' | 'medium' | 'long';
 
+export interface DialogTrigger {
+    type: 'char' | 'sequence' | 'combo';
+    pattern: string;
+    enabled: boolean;
+}
+
 /**
  * Tab 补全配置
  */
@@ -208,4 +216,8 @@ export interface TabCompletionOptions {
     temperature?: number;
     topP?: number;
     triggers: TabCompletionTrigger[];
+    acceptKey?: string;
+    rejectKey?: string;
+    cancelKey?: string;
+    triggerKey?: string;
 }

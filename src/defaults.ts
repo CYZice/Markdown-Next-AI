@@ -55,6 +55,11 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     timeout: 30000,
     enableRightClick: true,
     enableAtTrigger: true,
+    dialogTextTriggers: [
+        { id: 'dialog-at', type: 'string', pattern: '@', enabled: true },
+        { id: 'dialog-amp', type: 'string', pattern: '&', enabled: true }
+    ],
+    dialogOpenKey: "Alt-Q",
     maxTokens: 5000,
     maxContextLines: 20,
     maxContextChars: 3000,
@@ -92,6 +97,10 @@ export const DEFAULT_SETTINGS: PluginSettings = {
         constraints: "",
         temperature: 0.5,
         topP: 1,
+        acceptKey: "Tab",
+        rejectKey: "Shift-Tab",
+        cancelKey: "Escape",
+        triggerKey: "Alt-/",
         triggers: [
             { id: 'sentence-end-comma', type: 'string', pattern: ', ', enabled: true },
             { id: 'sentence-end-chinese-comma', type: 'string', pattern: '，', enabled: true },

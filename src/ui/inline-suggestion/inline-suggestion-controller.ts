@@ -1,6 +1,6 @@
 import { Compartment, Prec, StateEffect } from '@codemirror/state';
 import { EditorView, keymap } from '@codemirror/view';
-import type { Editor } from 'obsidian';
+import type { Editor, MarkdownView } from 'obsidian';
 import type { TabCompletionController } from '../../features/tab-completion/tab-completion-controller';
 import {
     InlineSuggestionGhostPayload,
@@ -29,6 +29,8 @@ type ContinuationInlineSuggestion = {
 type InlineSuggestionControllerDeps = {
     getEditorView: (editor: Editor) => EditorView | null;
     getTabCompletionController: () => TabCompletionController;
+    getSettings: () => any;
+    getActiveMarkdownView: () => MarkdownView | null;
 };
 
 const escapeMarkdownSpecialChars = (
@@ -71,29 +73,38 @@ const escapeMarkdownSpecialChars = (
 export class InlineSuggestionController {
     private readonly getEditorView: (editor: Editor) => EditorView | null;
     private readonly getTabCompletionController: () => TabCompletionController;
+    private readonly getSettings: () => any;
+    private readonly getActiveMarkdownView: () => MarkdownView | null;
 
     private readonly extensionViews = new Set<EditorView>();
     private readonly compartment = new Compartment();
-    private readonly extension = [
-        inlineSuggestionGhostField,
-        thinkingIndicatorField,
-        Prec.high(
-            keymap.of([
-                {
-                    key: 'Tab',
-                    run: (v) => this.tryAcceptInlineSuggestionFromView(v),
+    private readonly domHandlers = new Map<EditorView, (e: KeyboardEvent) => void>();
+    private buildKeymap() {
+        const tc = this.getSettings()?.tabCompletion ?? {};
+        const acceptKey = (tc.acceptKey || 'Tab').replace(/\+/g, '-');
+        const rejectKey = (tc.rejectKey || 'Shift-Tab').replace(/\+/g, '-');
+        const cancelKey = (tc.cancelKey || 'Escape').replace(/\+/g, '-');
+        const triggerKey = (tc.triggerKey || 'Alt-/').replace(/\+/g, '-');
+        const entries: { key: string; run: (v: EditorView) => boolean }[] = [
+            { key: acceptKey, run: (v) => this.tryAcceptInlineSuggestionFromView(v) },
+            { key: rejectKey, run: (v) => this.tryRejectInlineSuggestionFromView(v) },
+            { key: cancelKey, run: (v) => this.tryRejectInlineSuggestionFromView(v) },
+            {
+                key: triggerKey,
+                run: (v) => {
+                    // Invoke tab completion manually
+                    const mv = this.getActiveMarkdownView();
+                    const editor = mv?.editor;
+                    if (!editor) return false;
+                    this.getTabCompletionController().manualTrigger(editor);
+                    return true;
                 },
-                {
-                    key: 'Shift-Tab',
-                    run: (v) => this.tryRejectInlineSuggestionFromView(v),
-                },
-                {
-                    key: 'Escape',
-                    run: (v) => this.tryRejectInlineSuggestionFromView(v),
-                },
-            ]),
-        ),
-    ];
+            },
+        ];
+        return Prec.high(keymap.of(entries));
+    }
+
+    private readonly extensionBase = [inlineSuggestionGhostField, thinkingIndicatorField];
 
     private activeInlineSuggestion: ActiveInlineSuggestion = null;
     private continuationInlineSuggestion: ContinuationInlineSuggestion = null;
@@ -101,13 +112,16 @@ export class InlineSuggestionController {
     constructor(deps: InlineSuggestionControllerDeps) {
         this.getEditorView = deps.getEditorView;
         this.getTabCompletionController = deps.getTabCompletionController;
+        this.getSettings = deps.getSettings;
+        this.getActiveMarkdownView = deps.getActiveMarkdownView;
     }
 
     ensureInlineSuggestionExtension(view: EditorView) {
         if (this.extensionViews.has(view)) return;
         view.dispatch({
-            effects: StateEffect.appendConfig.of([this.compartment.of(this.extension)]),
+            effects: StateEffect.appendConfig.of([this.compartment.of([...this.extensionBase, this.buildKeymap()])]),
         });
+        this.attachModifierOnlyHandler(view);
         this.extensionViews.add(view);
     }
 
@@ -116,6 +130,7 @@ export class InlineSuggestionController {
         view.dispatch({
             effects: this.compartment.reconfigure([]),
         });
+        this.detachModifierOnlyHandler(view);
         this.extensionViews.delete(view);
     }
 
@@ -126,6 +141,78 @@ export class InlineSuggestionController {
         this.extensionViews.clear();
         this.activeInlineSuggestion = null;
         this.continuationInlineSuggestion = null;
+    }
+    refreshKeymap() {
+        for (const view of this.extensionViews) {
+            view.dispatch({
+                effects: this.compartment.reconfigure([...this.extensionBase, this.buildKeymap()]),
+            });
+            this.detachModifierOnlyHandler(view);
+            this.attachModifierOnlyHandler(view);
+        }
+    }
+
+    private isModifierOnlyKey(k: string): 'alt' | 'ctrl' | 'shift' | 'meta' | null {
+        const x = k.replace(/\+/g, '-').trim().toLowerCase();
+        if (x === 'alt' || x === 'altgraph') return 'alt';
+        if (x === 'ctrl' || x === 'control') return 'ctrl';
+        if (x === 'shift') return 'shift';
+        if (x === 'meta' || x === 'cmd' || x === 'command' || x === 'super' || x === 'win') return 'meta';
+        return null;
+    }
+    private attachModifierOnlyHandler(view: EditorView) {
+        const tc = this.getSettings()?.tabCompletion ?? {};
+        const a = this.isModifierOnlyKey(tc.acceptKey || '');
+        const r = this.isModifierOnlyKey(tc.rejectKey || '');
+        const c = this.isModifierOnlyKey(tc.cancelKey || '');
+        const t = this.isModifierOnlyKey(tc.triggerKey || '');
+        if (!a && !r && !c && !t) return;
+        const handler = (e: KeyboardEvent) => {
+            const key = e.key.length === 1 ? e.key.toUpperCase() : e.key;
+            const ok = (want: 'alt' | 'ctrl' | 'shift' | 'meta') => {
+                if (want === 'alt') return e.altKey && !e.ctrlKey && !e.shiftKey && !e.metaKey && (key === 'Alt' || key === 'AltGraph');
+                if (want === 'ctrl') return e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey && key === 'Control';
+                if (want === 'shift') return e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey && key === 'Shift';
+                if (want === 'meta') return e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey && key === 'Meta';
+                return false;
+            };
+            if (a && ok(a)) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.tryAcceptInlineSuggestionFromView(view);
+                return;
+            }
+            if (r && ok(r)) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.tryRejectInlineSuggestionFromView(view);
+                return;
+            }
+            if (c && ok(c)) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.tryRejectInlineSuggestionFromView(view);
+                return;
+            }
+            if (t && ok(t)) {
+                e.preventDefault();
+                e.stopPropagation();
+                const mv = this.getActiveMarkdownView();
+                const editor = mv?.editor;
+                if (!editor) return;
+                this.getTabCompletionController().manualTrigger(editor);
+                return;
+            }
+        };
+        view.dom.addEventListener('keydown', handler);
+        this.domHandlers.set(view, handler);
+    }
+    private detachModifierOnlyHandler(view: EditorView) {
+        const handler = this.domHandlers.get(view);
+        if (handler) {
+            view.dom.removeEventListener('keydown', handler);
+            this.domHandlers.delete(view);
+        }
     }
 
     setInlineSuggestionGhost(view: EditorView, payload: InlineSuggestionGhostPayload) {

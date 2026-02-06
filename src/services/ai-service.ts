@@ -176,7 +176,8 @@ export class AIService {
         prompt: string = "",
         images: ImageData[] = [],
         chatHistory: ChatMessage[] = [],
-        onStream: ((data: { content: string; thinking: string; fullContent: string; isComplete: boolean }) => void) | null = null
+        onStream: ((data: { content: string; thinking: string; fullContent: string; isComplete: boolean }) => void) | null = null,
+        signal?: AbortSignal
     ): Promise<{ content: string; thinking?: string; usage: Record<string, unknown>; imageData?: unknown }> {
         const config = await this.getCurrentModelConfig();
 
@@ -346,7 +347,7 @@ export class AIService {
             };
 
             if (isStreaming) {
-                return await this.handleStreamRequest(apiUrl, headers, requestBody, onStream);
+                return await this.handleStreamRequest(apiUrl, headers, requestBody, onStream, signal);
             }
 
             const response = await requestUrl({

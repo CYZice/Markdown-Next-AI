@@ -29,6 +29,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
     private eventListeners: EventListenerEntry[] = [];
     private atTriggerTimeout: ReturnType<typeof setTimeout> | null = null;
     private lastAtTriggerPopup: AtTriggerPopup | null = null;
+    private activeAbortControllers: Set<AbortController> = new Set();
 
     // Add a global variable to store the last mouseup position
     private lastMouseUpPosition: CursorPosition | null = null;
@@ -57,6 +58,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
         this.addSettingTab(new MarkdownNextAISettingTab(this.app, this));
         this.addCommands();
         this.updateEventListeners();
+        this.setupGlobalKeyDomEvents();
         this.setupHeaderButton();
 
         // 追踪最后活跃的编辑器视图
@@ -70,10 +72,15 @@ export default class MarkdownNextAIPlugin extends Plugin {
                 // @ts-ignore
                 return editor.cm as any;
             },
-            getTabCompletionController: () => this.tabCompletionController
+            getTabCompletionController: () => this.tabCompletionController,
+            getSettings: () => this.settings,
+            getActiveMarkdownView: () => this.getAnyMarkdownView()
+        });
+        this.addRibbonIcon("atom", "AI对话", () => {
+            const sel = window.getSelection()?.toString().trim() || "";
+            this.showAtTriggerModalGlobal(sel);
         });
 
-        const abortControllers = new Set<AbortController>();
         const getActiveMarkdownView = () => this.getAnyMarkdownView();
         const getActiveFileTitle = () => {
             const v = getActiveMarkdownView();
@@ -102,8 +109,8 @@ export default class MarkdownNextAIPlugin extends Plugin {
             setInlineSuggestionGhost: (view, payload) => this.inlineSuggestionController.setInlineSuggestionGhost(view, payload),
             clearInlineSuggestion: () => this.inlineSuggestionController.clearInlineSuggestion(),
             setActiveInlineSuggestion: (s) => this.inlineSuggestionController.setActiveInlineSuggestion(s),
-            addAbortController: (c) => abortControllers.add(c),
-            removeAbortController: (c) => abortControllers.delete(c),
+            addAbortController: (c) => this.activeAbortControllers.add(c),
+            removeAbortController: (c) => this.activeAbortControllers.delete(c),
             isContinuationInProgress: () => false,
             ai: {
                 streamCompletion: async (messages, modelId, options, onChunk) => {
@@ -137,6 +144,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
         this.cleanupEventListeners();
         this.cleanupHeaderButton();
         console.log("MarkdownNext AI 插件已卸载");
+        this.cancelAllAiTasks();
     }
 
     async loadSettings(): Promise<void> {
@@ -176,6 +184,22 @@ export default class MarkdownNextAIPlugin extends Plugin {
         }
         if (!Array.isArray(this.settings.commonPrompts)) {
             this.settings.commonPrompts = [...DEFAULT_SETTINGS.commonPrompts];
+        }
+
+        // 迁移旧的对话触发配置
+        if (loadedData && Array.isArray((loadedData as any).dialogTriggers)) {
+            const old = (loadedData as any).dialogTriggers as Array<{ type: string; pattern: string; enabled?: boolean }>;
+            if (!Array.isArray(this.settings.dialogTextTriggers)) this.settings.dialogTextTriggers = [];
+            if (!this.settings.dialogOpenKey) {
+                const combo = old.find(x => x.type === "combo" && x.pattern);
+                if (combo) this.settings.dialogOpenKey = combo.pattern.replace(/\+/g, "-");
+            }
+            const converted = old
+                .filter(x => x.type === "char" || x.type === "sequence")
+                .map(x => ({ id: String(Date.now()) + Math.random(), type: "string" as const, pattern: x.pattern, enabled: x.enabled !== false }));
+            if (converted.length > 0) {
+                this.settings.dialogTextTriggers = converted;
+            }
         }
 
         // 尝试自动迁移明文 Key 到 Keychain
@@ -335,6 +359,26 @@ export default class MarkdownNextAIPlugin extends Plugin {
                 }
             }
         });
+
+        this.addCommand({
+            id: "add-selection-to-chat",
+            name: "将选区添加到聊天",
+            editorCallback: (editor: any, view: MarkdownView) => {
+                try {
+                    const selectedText = editor.getSelection() || "";
+                    if (!selectedText || !String(selectedText).trim()) {
+                        new Notice("请先选中文本");
+                        return false;
+                    }
+                    this.showAtTriggerModal(String(selectedText), "chat");
+                    return true;
+                } catch (error) {
+                    console.error("添加选区到聊天命令执行错误:", error);
+                    new Notice("命令执行失败");
+                    return false;
+                }
+            }
+        });
     }
 
     updateEventListeners(): void {
@@ -452,6 +496,35 @@ export default class MarkdownNextAIPlugin extends Plugin {
         // 以避免全局监听导致的冲突
     }
 
+    setupGlobalKeyDomEvents(): void {
+        this.registerDomEvent(document, "keydown", (e: KeyboardEvent) => {
+            if (e.key === "Escape") {
+                this.cancelAllAiTasks();
+            }
+        });
+    }
+
+    private cancelAllAiTasks(): void {
+        try {
+            this.tabCompletionController?.cancelRequest();
+        } catch { }
+        try {
+            this.tabCompletionController?.clearTimer();
+        } catch { }
+        try {
+            this.inlineSuggestionController?.clearInlineSuggestion();
+        } catch { }
+        try {
+            if (this.lastAtTriggerPopup) this.lastAtTriggerPopup.close();
+        } catch { }
+        try {
+            for (const c of Array.from(this.activeAbortControllers)) {
+                try { c.abort(); } catch { }
+            }
+            this.activeAbortControllers.clear();
+        } catch { }
+    }
+
     showPromptSelectorModal(inputEl: HTMLElement): void {
         new PromptSelectorPopup(this.app, this, (content: string) => {
             if ((inputEl as any).contentEditable === "true") {
@@ -501,38 +574,95 @@ export default class MarkdownNextAIPlugin extends Plugin {
 
     setupAtTriggerListener(): void {
         const keydownHandler = (e: KeyboardEvent) => {
-            // @ 或 &
-            if (e.key === "@" || (e.shiftKey && e.key === "2") ||
-                e.key === "&" || (e.shiftKey && e.key === "7")) {
-
-                const activeEl = document.activeElement as HTMLElement;
-                if (activeEl && (activeEl.classList.contains("markdown-next-ai-modify-input") ||
-                    activeEl.classList.contains("markdown-next-ai-continue-input"))) {
-                    return;
+            const activeEl = document.activeElement as HTMLElement;
+            if (activeEl && (activeEl.classList.contains("markdown-next-ai-modify-input") ||
+                activeEl.classList.contains("markdown-next-ai-continue-input"))) {
+                return;
+            }
+            const hk = this.settings.dialogOpenKey || "";
+            if (hk) {
+                const parts = hk.split(/[\+\-]/).map(s => s.trim()).filter(Boolean);
+                let expectKey = "";
+                let c = false, a = false, sft = false, m = false;
+                for (const p of parts) {
+                    if (p.toLowerCase() === "ctrl") c = true;
+                    else if (p.toLowerCase() === "alt") a = true;
+                    else if (p.toLowerCase() === "shift") sft = true;
+                    else if (p.toLowerCase() === "meta") m = true;
+                    else expectKey = p;
                 }
-
-                const view = this.app.workspace.getActiveViewOfType(MarkdownView);
-                if (!view || !view.editor) return;
-
-                if (this.atTriggerTimeout) {
-                    clearTimeout(this.atTriggerTimeout);
-                    this.atTriggerTimeout = null;
-                }
-
-                this.atTriggerTimeout = setTimeout(() => {
-                    const cursor = view.editor.getCursor();
-                    const line = view.editor.getLine(cursor.line);
-                    const textBefore = line.substring(0, cursor.ch);
-                    const lastChar = textBefore.charAt(textBefore.length - 1);
-
-                    if (lastChar === "@" || lastChar === "&") {
-                        if (!textBefore.endsWith("@@") && !textBefore.endsWith("&&")) {
+                const kk = e.key.length === 1 ? e.key.toUpperCase() : e.key;
+                if (!expectKey) {
+                    const onlyOneModifier =
+                        (c ? 1 : 0) + (a ? 1 : 0) + (sft ? 1 : 0) + (m ? 1 : 0) === 1;
+                    if (onlyOneModifier) {
+                        if (a && e.altKey && !e.ctrlKey && !e.shiftKey && !e.metaKey && (kk === "Alt" || kk === "AltGraph")) {
+                            e.preventDefault();
+                            e.stopPropagation();
                             this.showAtTriggerModal();
-                            this.atTriggerTimeout = null;
+                            return;
+                        }
+                        if (c && e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey && kk === "Control") {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            this.showAtTriggerModal();
+                            return;
+                        }
+                        if (sft && e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey && kk === "Shift") {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            this.showAtTriggerModal();
+                            return;
+                        }
+                        if (m && e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey && kk === "Meta") {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            this.showAtTriggerModal();
+                            return;
                         }
                     }
-                }, 500);
+                } else {
+                    const ek = expectKey.length === 1 ? expectKey.toUpperCase() : expectKey;
+                    if (e.ctrlKey === c && e.altKey === a && e.shiftKey === sft && e.metaKey === m && kk === ek) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        this.showAtTriggerModal();
+                        return;
+                    }
+                }
             }
+            const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+            if (!view || !view.editor) return;
+            if (this.atTriggerTimeout) {
+                clearTimeout(this.atTriggerTimeout);
+                this.atTriggerTimeout = null;
+            }
+            this.atTriggerTimeout = setTimeout(() => {
+                const cursor = view.editor.getCursor();
+                const line = view.editor.getLine(cursor.line);
+                const textBefore = line.substring(0, cursor.ch);
+                const list = (this.settings.dialogTextTriggers || []).filter(x => x.enabled);
+                for (const tr of list) {
+                    const p = tr.pattern || "";
+                    if (!p) continue;
+                    if (tr.type === "string") {
+                        if (textBefore.endsWith(p)) {
+                            this.showAtTriggerModal();
+                            this.atTriggerTimeout = null;
+                            return;
+                        }
+                    } else if (tr.type === "regex") {
+                        try {
+                            const re = new RegExp(p);
+                            if (re.test(textBefore)) {
+                                this.showAtTriggerModal();
+                                this.atTriggerTimeout = null;
+                                return;
+                            }
+                        } catch (_e) { }
+                    }
+                }
+            }, 500);
         };
 
         document.addEventListener("keydown", keydownHandler);
@@ -744,12 +874,15 @@ export default class MarkdownNextAIPlugin extends Plugin {
         resultWindow.open();
         resultWindow.updateStatus("正在思考中");
 
+        let controller: AbortController | null = null;
         try {
             const beforeText = view?.editor
                 ? view.editor.getValue().substring(0, view.editor.posToOffset(view.editor.getCursor()))
                 : "";
             const cursorPos = view?.editor?.getCursor() || { line: 0, ch: 0 };
 
+            controller = new AbortController();
+            this.activeAbortControllers.add(controller);
             const result = await this.aiService.sendRequest(
                 mode,
                 {
@@ -772,7 +905,8 @@ export default class MarkdownNextAIPlugin extends Plugin {
                         resultWindow.showActions();
                         void resultWindow.renderMarkdown(streamedContent);
                     }
-                }
+                },
+                controller ? controller.signal : undefined
             );
 
             if (!streamedContent && result?.content) {
@@ -807,10 +941,9 @@ export default class MarkdownNextAIPlugin extends Plugin {
             });
             */
 
+            if (controller) this.activeAbortControllers.delete(controller);
         } catch (error: any) {
-            if (this.lastAtTriggerPopup) {
-                this.lastAtTriggerPopup.updateAssistantStreaming(streamData.content || "", !!streamData.isComplete);
-            }
+            if (controller) this.activeAbortControllers.delete(controller);
             resultWindow.showError(`生成失败: ${error.message}`);
             console.error("全局对话生成失败", error);
         }
@@ -914,7 +1047,10 @@ export default class MarkdownNextAIPlugin extends Plugin {
         );
         previewPopup.open(cursorPos);
         previewPopup.updateStatus("正在思考中");
+        let controller: AbortController | null = null;
         try {
+            controller = new AbortController();
+            this.activeAbortControllers.add(controller);
             const result = await this.aiService.sendRequest(
                 mode,
                 {
@@ -932,7 +1068,8 @@ export default class MarkdownNextAIPlugin extends Plugin {
                         finalContent = streamData.content;
                         previewPopup.updateStatus(`正在生成中(${streamData.content.length}字)`);
                     }
-                }
+                },
+                controller ? controller.signal : undefined
             );
             if (!finalContent && result && result.content) {
                 finalContent = result.content;
@@ -959,15 +1096,14 @@ export default class MarkdownNextAIPlugin extends Plugin {
                     const offset = editor.posToOffset(insertPos);
                     return originalDoc.slice(0, offset) + (finalContent || "") + originalDoc.slice(offset);
                 }
-                if (this.lastAtTriggerPopup) {
-                    this.lastAtTriggerPopup.updateAssistantStreaming(streamData.content || "", !!streamData.isComplete);
-                }
             })();
             previewPopup.close();
             this.openApplyView(view.file!, originalDoc, newDoc);
         } catch (error: any) {
             previewPopup.close();
             new Notice("续写失败: " + error.message);
+        } finally {
+            if (controller) this.activeAbortControllers.delete(controller);
         }
     }
 

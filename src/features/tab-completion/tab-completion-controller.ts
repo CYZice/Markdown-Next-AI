@@ -488,6 +488,13 @@ export class TabCompletionController {
         }
     }
 
+    manualTrigger(editor: Editor) {
+        const view = this.deps.getEditorView(editor);
+        if (!view) return;
+        const offset = view.state.selection.main.head;
+        void this.run(editor, offset);
+    }
+
     tryAcceptFromView(view: EditorView): boolean {
         const suggestion = this.tabCompletionSuggestion;
         if (!suggestion) return false;

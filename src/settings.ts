@@ -237,6 +237,106 @@ export class MarkdownNextAISettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                     this.plugin.updateEventListeners();
                 }));
+        containerEl.createEl("h3", { text: "对话弹层文本规则" });
+        const toolbar = containerEl.createEl("div", { attr: { style: "display:flex;gap:8px;align-items:center;margin-bottom:8px;" } });
+        const typeSelect = toolbar.createEl("select") as HTMLSelectElement;
+        ["string", "regex"].forEach(t => typeSelect.createEl("option", { value: t, text: t }));
+        const addBtn = toolbar.createEl("button", { text: "+ 添加规则", attr: { style: "background: var(--interactive-accent); color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 13px;" } });
+        addBtn.onclick = async () => {
+            if (!Array.isArray(this.plugin.settings.dialogTextTriggers)) this.plugin.settings.dialogTextTriggers = [];
+            const t = typeSelect.value as any;
+            const pattern = t === "regex" ? "\\n$" : "@";
+            this.plugin.settings.dialogTextTriggers.push({ id: String(Date.now()), type: t, pattern, enabled: true });
+            await this.plugin.saveSettings();
+            this.display();
+        };
+        const table = containerEl.createEl("table", { cls: "markdown-next-ai-config-table" });
+        const thead = table.createEl("thead").createEl("tr");
+        thead.createEl("th", { text: "启用" });
+        thead.createEl("th", { text: "类型" });
+        thead.createEl("th", { text: "模式" });
+        thead.createEl("th", { text: "操作" });
+        const tbody = table.createEl("tbody");
+        const list = this.plugin.settings.dialogTextTriggers || [];
+        list.forEach((tr, idx) => {
+            const row = tbody.createEl("tr");
+            const enableCell = row.createEl("td");
+            const enable = enableCell.createEl("input", { type: "checkbox" }) as HTMLInputElement;
+            enable.checked = !!tr.enabled;
+            enable.onchange = async () => {
+                this.plugin.settings.dialogTextTriggers![idx].enabled = enable.checked;
+                await this.plugin.saveSettings();
+            };
+            const typeCell = row.createEl("td");
+            const typeSel = typeCell.createEl("select") as HTMLSelectElement;
+            ["string", "regex"].forEach(t => {
+                const opt = typeSel.createEl("option", { value: t, text: t });
+                if (t === tr.type) opt.selected = true;
+            });
+            typeSel.onchange = async () => {
+                this.plugin.settings.dialogTextTriggers![idx].type = typeSel.value as any;
+                await this.plugin.saveSettings();
+                this.display();
+            };
+            const patCell = row.createEl("td");
+            const patInput = patCell.createEl("input", { type: "text", attr: { style: "width: 100%" } }) as HTMLInputElement;
+            patInput.value = tr.pattern;
+            patInput.onchange = async () => {
+                this.plugin.settings.dialogTextTriggers![idx].pattern = patInput.value;
+                await this.plugin.saveSettings();
+            };
+            const actCell = row.createEl("td");
+            const delBtn = actCell.createEl("button", { text: "删除", attr: { style: "color: var(--text-error);" } });
+            delBtn.onclick = async () => {
+                this.plugin.settings.dialogTextTriggers!.splice(idx, 1);
+                await this.plugin.saveSettings();
+                this.display();
+            };
+        });
+        containerEl.createEl("h3", { text: "对话弹层快捷键" });
+        const kbTable = containerEl.createEl("table", { cls: "markdown-next-ai-config-table" });
+        const kbHead = kbTable.createEl("thead").createEl("tr");
+        kbHead.createEl("th", { text: "功能" });
+        kbHead.createEl("th", { text: "按键" });
+        kbHead.createEl("th", { text: "录制" });
+        const kbBody = kbTable.createEl("tbody");
+        const trOpen = kbBody.createEl("tr");
+        trOpen.createEl("td", { text: "打开对话弹层" });
+        const keyCell = trOpen.createEl("td");
+        const input = keyCell.createEl("input", { type: "text", attr: { style: "width: 70%;" } }) as HTMLInputElement;
+        input.value = this.plugin.settings.dialogOpenKey || "Alt-Q";
+        input.onchange = async () => {
+            this.plugin.settings.dialogOpenKey = input.value;
+            await this.plugin.saveSettings();
+        };
+        const recCell = trOpen.createEl("td");
+        const recBtn = recCell.createEl("button", { text: "录制按键" });
+        recBtn.onclick = () => {
+            const modal = new Modal(this.app);
+            modal.titleEl.setText("录制按键");
+            modal.contentEl.createEl("div", { text: "按下目标按键组合", attr: { style: "padding: 12px; text-align: center;" } });
+            const handler = (e: KeyboardEvent) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const parts: string[] = [];
+                if (e.ctrlKey) parts.push("Ctrl");
+                if (e.shiftKey) parts.push("Shift");
+                if (e.altKey) parts.push("Alt");
+                if (e.metaKey) parts.push("Meta");
+                const k = e.key.length === 1 ? e.key.toUpperCase() : e.key;
+                if (!["Shift", "Control", "Alt", "Meta"].includes(k)) parts.push(k);
+                const patternPlus = parts.join("+");
+                const patternDash = patternPlus.replace(/\+/g, "-");
+                input.value = patternDash;
+                this.plugin.settings.dialogOpenKey = patternDash;
+                this.plugin.saveSettings().then(() => {
+                    modal.close();
+                });
+            };
+            modal.contentEl.addEventListener("keydown", handler);
+            modal.open();
+            setTimeout(() => modal.contentEl.focus(), 10);
+        };
     }
 
     private renderCompletionTab(containerEl: HTMLElement) {
@@ -385,6 +485,61 @@ export class MarkdownNextAISettingTab extends PluginSettingTab {
                     await this.plugin.saveSettings();
                     this.display();
                 }
+            };
+        });
+        containerEl.createEl("h3", { text: "Tab 补全快捷键" });
+        const kbTable = containerEl.createEl("table", { cls: "markdown-next-ai-config-table" });
+        const kbHead = kbTable.createEl("thead").createEl("tr");
+        kbHead.createEl("th", { text: "功能" });
+        kbHead.createEl("th", { text: "按键" });
+        kbHead.createEl("th", { text: "录制" });
+        const kbBody = kbTable.createEl("tbody");
+        const kbRows: Array<{ label: string; keyPath: keyof typeof tabConfig; defaultVal: string }> = [
+            { label: "接受建议", keyPath: "acceptKey", defaultVal: "Tab" },
+            { label: "拒绝建议", keyPath: "rejectKey", defaultVal: "Shift-Tab" },
+            { label: "取消建议", keyPath: "cancelKey", defaultVal: "Escape" },
+            { label: "手动触发", keyPath: "triggerKey", defaultVal: "Alt-/" },
+        ];
+        kbRows.forEach(row => {
+            const tr = kbBody.createEl("tr");
+            tr.createEl("td", { text: row.label });
+            const keyCell = tr.createEl("td");
+            const input = keyCell.createEl("input", { type: "text", attr: { style: "width: 70%;" } }) as HTMLInputElement;
+            const current = (tabConfig as any)[row.keyPath] ?? row.defaultVal;
+            input.value = current;
+            input.onchange = async () => {
+                (tabConfig as any)[row.keyPath] = input.value;
+                await this.plugin.saveSettings();
+                (this.plugin as any).inlineSuggestionController?.refreshKeymap?.();
+            };
+            const recCell = tr.createEl("td");
+            const recBtn = recCell.createEl("button", { text: "录制按键" });
+            recBtn.onclick = () => {
+                const modal = new Modal(this.app);
+                modal.titleEl.setText("录制按键");
+                modal.contentEl.createEl("div", { text: "按下目标按键组合", attr: { style: "padding: 12px; text-align: center;" } });
+                const handler = (e: KeyboardEvent) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const parts: string[] = [];
+                    if (e.ctrlKey) parts.push("Ctrl");
+                    if (e.shiftKey) parts.push("Shift");
+                    if (e.altKey) parts.push("Alt");
+                    if (e.metaKey) parts.push("Meta");
+                    const k = e.key.length === 1 ? e.key.toUpperCase() : e.key;
+                    if (!["Shift", "Control", "Alt", "Meta"].includes(k)) parts.push(k);
+                    const patternPlus = parts.join("+");
+                    const patternDash = patternPlus.replace(/\+/g, "-");
+                    input.value = patternDash;
+                    (tabConfig as any)[row.keyPath] = patternDash;
+                    this.plugin.saveSettings().then(() => {
+                        (this.plugin as any).inlineSuggestionController?.refreshKeymap?.();
+                        modal.close();
+                    });
+                };
+                modal.contentEl.addEventListener("keydown", handler);
+                modal.open();
+                setTimeout(() => modal.contentEl.focus(), 10);
             };
         });
         new Setting(containerEl)
