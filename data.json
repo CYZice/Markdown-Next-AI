@@ -51,19 +51,19 @@
   "enableAtTrigger": true,
   "dialogTextTriggers": [
     {
-      "id": "17703706370090.35547357374407407",
+      "id": "17703969810320.6328068137404842",
       "type": "string",
       "pattern": "@",
       "enabled": true
     },
     {
-      "id": "17703706370090.8438010734798747",
+      "id": "17703969810320.16997673305581906",
       "type": "string",
       "pattern": "&",
       "enabled": true
     },
     {
-      "id": "17703706370090.45809781098555225",
+      "id": "17703969810320.1273245415144021",
       "type": "string",
       "pattern": "!",
       "enabled": true
@@ -105,6 +105,7 @@
   ],
   "lastInsertAction": "insert",
   "baseModelSpecialPrompt": "",
+  "quickAskMode": "ask",
   "tabCompletion": {
     "enabled": true,
     "modelId": "deepseek-chat",
