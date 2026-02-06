@@ -315,25 +315,61 @@ export class MarkdownNextAISettingTab extends PluginSettingTab {
             const modal = new Modal(this.app);
             modal.titleEl.setText("录制按键");
             modal.contentEl.createEl("div", { text: "按下目标按键组合", attr: { style: "padding: 12px; text-align: center;" } });
-            const handler = (e: KeyboardEvent) => {
-                e.preventDefault();
-                e.stopPropagation();
+            modal.contentEl.setAttribute("tabindex", "0");
+            let recorded = false;
+            let activeMods = { ctrl: false, shift: false, alt: false, meta: false };
+            let modsSnapshot = { ctrl: false, shift: false, alt: false, meta: false };
+            const isModifier = (k: string) => k === "Shift" || k === "Control" || k === "Alt" || k === "Meta" || k === "AltGraph";
+            const normalizeKey = (k: string) => {
+                const x = k.length === 1 ? k.toUpperCase() : k;
+                return x === "AltGraph" ? "Alt" : x;
+            };
+            const patternFrom = (mods: { ctrl: boolean; shift: boolean; alt: boolean; meta: boolean }, key?: string) => {
                 const parts: string[] = [];
-                if (e.ctrlKey) parts.push("Ctrl");
-                if (e.shiftKey) parts.push("Shift");
-                if (e.altKey) parts.push("Alt");
-                if (e.metaKey) parts.push("Meta");
-                const k = e.key.length === 1 ? e.key.toUpperCase() : e.key;
-                if (!["Shift", "Control", "Alt", "Meta"].includes(k)) parts.push(k);
-                const patternPlus = parts.join("+");
-                const patternDash = patternPlus.replace(/\+/g, "-");
-                input.value = patternDash;
-                this.plugin.settings.dialogOpenKey = patternDash;
+                if (mods.ctrl) parts.push("Ctrl");
+                if (mods.shift) parts.push("Shift");
+                if (mods.alt) parts.push("Alt");
+                if (mods.meta) parts.push("Meta");
+                if (key && !isModifier(key)) parts.push(key);
+                return parts.join("-");
+            };
+            const finalize = (pattern: string) => {
+                if (recorded) return;
+                const val = pattern.replace(/\+/g, "-");
+                input.value = val;
+                this.plugin.settings.dialogOpenKey = val;
                 this.plugin.saveSettings().then(() => {
+                    recorded = true;
                     modal.close();
                 });
             };
-            modal.contentEl.addEventListener("keydown", handler);
+            const keydownHandler = (e: KeyboardEvent) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const k = normalizeKey(e.key);
+                activeMods.ctrl = e.ctrlKey || k === "Control";
+                activeMods.shift = e.shiftKey || k === "Shift";
+                activeMods.alt = e.altKey || k === "Alt";
+                activeMods.meta = e.metaKey || k === "Meta";
+                if (isModifier(k)) {
+                    modsSnapshot = { ...activeMods };
+                    return;
+                }
+                finalize(patternFrom(activeMods, k));
+            };
+            const keyupHandler = (e: KeyboardEvent) => {
+                if (recorded) return;
+                const k = normalizeKey(e.key);
+                if (k === "Control") activeMods.ctrl = false;
+                if (k === "Shift") activeMods.shift = false;
+                if (k === "Alt") activeMods.alt = false;
+                if (k === "Meta") activeMods.meta = false;
+                if (!activeMods.ctrl && !activeMods.shift && !activeMods.alt && !activeMods.meta && isModifier(k)) {
+                    finalize(patternFrom(modsSnapshot));
+                }
+            };
+            modal.contentEl.addEventListener("keydown", keydownHandler);
+            modal.contentEl.addEventListener("keyup", keyupHandler);
             modal.open();
             setTimeout(() => modal.contentEl.focus(), 10);
         };
@@ -518,26 +554,62 @@ export class MarkdownNextAISettingTab extends PluginSettingTab {
                 const modal = new Modal(this.app);
                 modal.titleEl.setText("录制按键");
                 modal.contentEl.createEl("div", { text: "按下目标按键组合", attr: { style: "padding: 12px; text-align: center;" } });
-                const handler = (e: KeyboardEvent) => {
-                    e.preventDefault();
-                    e.stopPropagation();
+                modal.contentEl.setAttribute("tabindex", "0");
+                let recorded = false;
+                let activeMods = { ctrl: false, shift: false, alt: false, meta: false };
+                let modsSnapshot = { ctrl: false, shift: false, alt: false, meta: false };
+                const isModifier = (k: string) => k === "Shift" || k === "Control" || k === "Alt" || k === "Meta" || k === "AltGraph";
+                const normalizeKey = (k: string) => {
+                    const x = k.length === 1 ? k.toUpperCase() : k;
+                    return x === "AltGraph" ? "Alt" : x;
+                };
+                const patternFrom = (mods: { ctrl: boolean; shift: boolean; alt: boolean; meta: boolean }, key?: string) => {
                     const parts: string[] = [];
-                    if (e.ctrlKey) parts.push("Ctrl");
-                    if (e.shiftKey) parts.push("Shift");
-                    if (e.altKey) parts.push("Alt");
-                    if (e.metaKey) parts.push("Meta");
-                    const k = e.key.length === 1 ? e.key.toUpperCase() : e.key;
-                    if (!["Shift", "Control", "Alt", "Meta"].includes(k)) parts.push(k);
-                    const patternPlus = parts.join("+");
-                    const patternDash = patternPlus.replace(/\+/g, "-");
-                    input.value = patternDash;
-                    (tabConfig as any)[row.keyPath] = patternDash;
+                    if (mods.ctrl) parts.push("Ctrl");
+                    if (mods.shift) parts.push("Shift");
+                    if (mods.alt) parts.push("Alt");
+                    if (mods.meta) parts.push("Meta");
+                    if (key && !isModifier(key)) parts.push(key);
+                    return parts.join("-");
+                };
+                const finalize = (pattern: string) => {
+                    if (recorded) return;
+                    const val = pattern.replace(/\+/g, "-");
+                    input.value = val;
+                    (tabConfig as any)[row.keyPath] = val;
                     this.plugin.saveSettings().then(() => {
                         (this.plugin as any).inlineSuggestionController?.refreshKeymap?.();
+                        recorded = true;
                         modal.close();
                     });
                 };
-                modal.contentEl.addEventListener("keydown", handler);
+                const keydownHandler = (e: KeyboardEvent) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const k = normalizeKey(e.key);
+                    activeMods.ctrl = e.ctrlKey || k === "Control";
+                    activeMods.shift = e.shiftKey || k === "Shift";
+                    activeMods.alt = e.altKey || k === "Alt";
+                    activeMods.meta = e.metaKey || k === "Meta";
+                    if (isModifier(k)) {
+                        modsSnapshot = { ...activeMods };
+                        return;
+                    }
+                    finalize(patternFrom(activeMods, k));
+                };
+                const keyupHandler = (e: KeyboardEvent) => {
+                    if (recorded) return;
+                    const k = normalizeKey(e.key);
+                    if (k === "Control") activeMods.ctrl = false;
+                    if (k === "Shift") activeMods.shift = false;
+                    if (k === "Alt") activeMods.alt = false;
+                    if (k === "Meta") activeMods.meta = false;
+                    if (!activeMods.ctrl && !activeMods.shift && !activeMods.alt && !activeMods.meta && isModifier(k)) {
+                        finalize(patternFrom(modsSnapshot));
+                    }
+                };
+                modal.contentEl.addEventListener("keydown", keydownHandler);
+                modal.contentEl.addEventListener("keyup", keyupHandler);
                 modal.open();
                 setTimeout(() => modal.contentEl.focus(), 10);
             };

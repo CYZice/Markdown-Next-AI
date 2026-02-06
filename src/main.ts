@@ -384,9 +384,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
     updateEventListeners(): void {
         this.cleanupEventListeners();
 
-        if (this.settings.enableAtTrigger) {
-            this.setupAtTriggerListener();
-        }
+        this.setupAtTriggerListener();
 
         this.setupPromptTriggerListener();
         this.setupRightClickListener();
@@ -633,36 +631,38 @@ export default class MarkdownNextAIPlugin extends Plugin {
             }
             const view = this.app.workspace.getActiveViewOfType(MarkdownView);
             if (!view || !view.editor) return;
-            if (this.atTriggerTimeout) {
-                clearTimeout(this.atTriggerTimeout);
-                this.atTriggerTimeout = null;
-            }
-            this.atTriggerTimeout = setTimeout(() => {
-                const cursor = view.editor.getCursor();
-                const line = view.editor.getLine(cursor.line);
-                const textBefore = line.substring(0, cursor.ch);
-                const list = (this.settings.dialogTextTriggers || []).filter(x => x.enabled);
-                for (const tr of list) {
-                    const p = tr.pattern || "";
-                    if (!p) continue;
-                    if (tr.type === "string") {
-                        if (textBefore.endsWith(p)) {
-                            this.showAtTriggerModal();
-                            this.atTriggerTimeout = null;
-                            return;
-                        }
-                    } else if (tr.type === "regex") {
-                        try {
-                            const re = new RegExp(p);
-                            if (re.test(textBefore)) {
+            if (this.settings.enableAtTrigger) {
+                if (this.atTriggerTimeout) {
+                    clearTimeout(this.atTriggerTimeout);
+                    this.atTriggerTimeout = null;
+                }
+                this.atTriggerTimeout = setTimeout(() => {
+                    const cursor = view.editor.getCursor();
+                    const line = view.editor.getLine(cursor.line);
+                    const textBefore = line.substring(0, cursor.ch);
+                    const list = (this.settings.dialogTextTriggers || []).filter(x => x.enabled);
+                    for (const tr of list) {
+                        const p = tr.pattern || "";
+                        if (!p) continue;
+                        if (tr.type === "string") {
+                            if (textBefore.endsWith(p)) {
                                 this.showAtTriggerModal();
                                 this.atTriggerTimeout = null;
                                 return;
                             }
-                        } catch (_e) { }
+                        } else if (tr.type === "regex") {
+                            try {
+                                const re = new RegExp(p);
+                                if (re.test(textBefore)) {
+                                    this.showAtTriggerModal();
+                                    this.atTriggerTimeout = null;
+                                    return;
+                                }
+                            } catch (_e) { }
+                        }
                     }
-                }
-            }, 500);
+                }, 500);
+            }
         };
 
         document.addEventListener("keydown", keydownHandler);
