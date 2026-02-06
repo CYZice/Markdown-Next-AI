@@ -5,7 +5,7 @@ import { AIService } from "./services";
 import { GlobalRuleManager } from "./services/rule-manager";
 import { MarkdownNextAISettingTab } from "./settings";
 import type { CursorPosition, ImageData, PluginSettings } from "./types";
-import { AIPreviewPopup, AIResultFloatingWindow, AtTriggerPopup, PromptSelectorPopup, SelectionManager, SelectionToolbar } from "./ui";
+import { AIPreviewPopup, AtTriggerPopup, PromptSelectorPopup, SelectionManager, SelectionToolbar } from "./ui";
 import { APPLY_VIEW_TYPE, ApplyView } from "./ui/apply-view/ApplyView";
 import { InlineSuggestionController } from "./ui/inline-suggestion/inline-suggestion-controller";
 
@@ -270,7 +270,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
                     e.preventDefault();
                     e.stopPropagation();
                     const sel = window.getSelection()?.toString().trim() || "";
-                    this.showAtTriggerModalGlobal(sel);
+                    this.showAtTriggerModal(sel);
                 };
                 btn.addEventListener("click", handler as EventListener);
                 this.headerButtons.push(btn);
@@ -325,12 +325,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
             callback: () => {
                 try {
                     const view = this.app.workspace.getActiveViewOfType(MarkdownView);
-                    if (!view || !view.editor) {
-                        // 如果没有活跃编辑器，尝试全局模式
-                        this.showAtTriggerModalGlobal("");
-                        return true;
-                    }
-                    const selectedText = view.editor.getSelection() || "";
+                    const selectedText = view?.editor?.getSelection() || "";
                     this.showAtTriggerModal(selectedText);
                     return true;
                 } catch (error) {
@@ -347,10 +342,9 @@ export default class MarkdownNextAIPlugin extends Plugin {
             name: "唤出AI对话框（全局模式）",
             callback: () => {
                 try {
-                    console.log("[markdown-next-ai] 执行全局对话框命令");
-                    const globalSelection = window.getSelection()?.toString().trim() || "";
-                    this.showAtTriggerModalGlobal(globalSelection);
-                    console.log("[markdown-next-ai] 全局对话框已打开");
+                    const view = this.app.workspace.getActiveViewOfType(MarkdownView);
+                    const selectedText = view?.editor?.getSelection() || "";
+                    this.showAtTriggerModal(selectedText);
                     return true;
                 } catch (error) {
                     console.error("全局对话框命令执行错误:", error);
@@ -685,6 +679,12 @@ export default class MarkdownNextAIPlugin extends Plugin {
     }
 
     showAtTriggerModal(selectedText: string = "", mode: string = "chat"): void {
+        // Close existing popup if any
+        if (this.lastAtTriggerPopup) {
+            this.lastAtTriggerPopup.close();
+            this.lastAtTriggerPopup = null;
+        }
+
         const view = this.app.workspace.getActiveViewOfType(MarkdownView);
         const cursorPos = this.getCursorPosition(view) || this.lastMouseUpPosition || this.getFallbackPosition(view);
 
@@ -708,32 +708,8 @@ export default class MarkdownNextAIPlugin extends Plugin {
         popup.open();
     }
 
-    showAtTriggerModalGlobal(selectedText: string = "", mode: string = "chat"): void {
-        console.log("[markdown-next-ai] 进入 showAtTriggerModalGlobal");
-
-        // 无需依赖 Markdown 编辑器，直接使用当前屏幕中心作为定位
-        console.log("[markdown-next-ai] 正在创建 AtTriggerPopup (全局模式，无需编辑器)");
-
-        const fallbackPos = this.getFallbackPosition(null);
-        const mergedSelection = selectedText || window.getSelection()?.toString().trim() || "";
-
-        const popup = new AtTriggerPopup(
-            this.app,
-            (prompt: string, images: ImageData[], modelId: string, context: string, sel: string, mode: string) => {
-                const finalSel = sel || mergedSelection;
-                this.handleContinueWritingGlobal(prompt, images, modelId, context, finalSel, mode);
-            },
-            fallbackPos,
-            this,
-            null,
-            mergedSelection,
-            mode
-        );
-
-        this.lastAtTriggerPopup = popup;
-        popup.open();
-        console.log("[markdown-next-ai] AtTriggerPopup 已打开");
-    }
+    // showAtTriggerModalGlobal removed as global mode is deprecated
+    // handleContinueWritingGlobal removed as global mode is deprecated
 
     getCursorPosition(view: MarkdownView | null = null): CursorPosition | null {
         const targetView = view ?? this.getAnyMarkdownView();
@@ -844,158 +820,8 @@ export default class MarkdownNextAIPlugin extends Plugin {
         };
     }
 
-    async handleContinueWritingGlobal(
-        prompt: string = "",
-        images: ImageData[] = [],
-        modelId: string | null = null,
-        context: string | null = null,
-        selectedText: string = "",
-        mode: string = "chat"
-    ): Promise<void> {
-        const view = this.getAnyMarkdownView();
-
-        // 验证有输入
-        if (!prompt && images.length === 0 && !context && !selectedText) {
-            new Notice("请输入续写要求或上传图片");
-            return;
-        }
-
-        // 生成时的数据缓存（不写入编辑器）
-        let streamedContent = "";
-        const resultWindowPos = this.getCursorPosition(view) || this.getFallbackPosition(view);
-
-        // 创建结果浮窗（初始状态）
-        const resultWindow = new AIResultFloatingWindow(
-            this.app,
-            view || null,
-            modelId || this.settings.currentModel,
-            resultWindowPos
-        );
-        resultWindow.open();
-        resultWindow.updateStatus("正在思考中");
-
-        let controller: AbortController | null = null;
-        try {
-            const beforeText = view?.editor
-                ? view.editor.getValue().substring(0, view.editor.posToOffset(view.editor.getCursor()))
-                : "";
-            const cursorPos = view?.editor?.getCursor() || { line: 0, ch: 0 };
-
-            controller = new AbortController();
-            this.activeAbortControllers.add(controller);
-            const result = await this.aiService.sendRequest(
-                mode,
-                {
-                    selectedText,
-                    beforeText,
-                    afterText: "",
-                    cursorPosition: cursorPos,
-                    additionalContext: context || undefined
-                },
-                prompt,
-                images,
-                [],
-                (streamData) => {
-                    if (streamData.content != null) {
-                        streamedContent = streamData.content;
-                        resultWindow.updateContent(streamedContent);
-                        resultWindow.updateStatus(`正在生成中(${streamData.content.length}字)`);
-                    }
-                    if (streamData.isComplete) {
-                        resultWindow.showActions();
-                        void resultWindow.renderMarkdown(streamedContent);
-                    }
-                },
-                controller ? controller.signal : undefined
-            );
-
-            if (!streamedContent && result?.content) {
-                streamedContent = result.content;
-                resultWindow.updateContent(streamedContent);
-                resultWindow.showActions();
-                void resultWindow.renderMarkdown(streamedContent);
-            }
-
-            // 设置结果窗的回调
-            resultWindow.setOnInsert(() => {
-                this.insertGeneratedContent(view || null, "insert", streamedContent, selectedText);
-                resultWindow.close();
-            });
-            resultWindow.setOnReplace(() => {
-                this.insertGeneratedContent(view || null, "replace", streamedContent, selectedText);
-                resultWindow.close();
-            });
-            resultWindow.setOnCopy(() => {
-                navigator.clipboard.writeText(streamedContent);
-                new Notice("已复制到剪贴板");
-            });
-
-            // 记录对话 - 已移除
-            /*
-            await this.recordConversation({
-                prompt,
-                response: streamedContent,
-                modelId: modelId || this.settings.currentModel,
-                selectedText,
-                contextSnippet: context || undefined
-            });
-            */
-
-            if (controller) this.activeAbortControllers.delete(controller);
-        } catch (error: any) {
-            if (controller) this.activeAbortControllers.delete(controller);
-            resultWindow.showError(`生成失败: ${error.message}`);
-            console.error("全局对话生成失败", error);
-        }
-    }
-
-    private async insertGeneratedContent(
-        view: MarkdownView | null,
-        action: "insert" | "replace" | "copy",
-        content: string,
-        selectedText: string
-    ): Promise<void> {
-        if (!view || !view.editor) {
-            new Notice("请先聚焦编辑器");
-            return;
-        }
-
-        const editor = view.editor;
-        const activeEl = document.activeElement as HTMLElement | null;
-        if (action === "insert") {
-            if (!activeEl || !this.isInEditor(activeEl)) {
-                new Notice("请先聚焦编辑器");
-                return;
-            }
-        }
-        if (action === "replace") {
-            if (!activeEl || !this.isInEditor(activeEl)) {
-                new Notice("请先聚焦编辑器");
-                return;
-            }
-        }
-        const isModification = selectedText.length > 0 && action === "replace";
-
-        try {
-            if (isModification) {
-                // 替换模式：替换当前选区
-                editor.replaceSelection(content);
-            } else {
-                // 插入模式：在光标处插入
-                const cursor = editor.getCursor();
-                editor.replaceRange(content, cursor);
-            }
-
-            new Notice("内容已插入");
-
-            // 记住用户选择
-            this.settings.lastInsertAction = action;
-            await this.saveSettings();
-        } catch (error: any) {
-            new Notice(`插入失败: ${error.message}`);
-            console.error("插入内容失败", error);
-        }
-    }
+    // handleContinueWritingGlobal removed
+    // insertGeneratedContent removed as it was only used by global mode
 
     async handleContinueWriting(
         prompt: string = "",
@@ -1084,6 +910,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
                 new Notice("生成结果为空，已取消打开差异视图");
                 return;
             }
+
             const originalDoc = editor.getValue();
             const newDoc = (() => {
                 if (isModification) {
@@ -1097,8 +924,24 @@ export default class MarkdownNextAIPlugin extends Plugin {
                     return originalDoc.slice(0, offset) + (finalContent || "") + originalDoc.slice(offset);
                 }
             })();
-            previewPopup.close();
-            this.openApplyView(view.file!, originalDoc, newDoc);
+
+            // Logic Branching based on mode
+            if (mode === 'edit-direct') {
+                previewPopup.close();
+                // Direct Apply without confirmation
+                editor.operation(() => {
+                    if (isModification) {
+                        editor.replaceSelection(finalContent);
+                    } else {
+                        editor.replaceRange(finalContent, insertPos);
+                    }
+                });
+                new Notice("已直接应用修改");
+            } else {
+                // Default / Edit / Ask: Open Apply View for confirmation
+                previewPopup.close();
+                this.openApplyView(view.file!, originalDoc, newDoc);
+            }
         } catch (error: any) {
             previewPopup.close();
             new Notice("续写失败: " + error.message);

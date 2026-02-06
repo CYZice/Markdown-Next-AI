@@ -1,7 +1,10 @@
-import { App, Notice, TFile, TFolder, setIcon } from "obsidian";
+import { App, Notice, setIcon, TFile, TFolder } from "obsidian";
+import * as React from "react";
+import { createRoot, Root } from "react-dom/client";
+import { MODE_OPTIONS, ModeSelect } from "../components/panels/quick-ask";
 import { MODEL_CATEGORIES } from "../constants";
 import { ImageHandler } from "../services/image-handler";
-import { CursorPosition, ImageData, PluginSettings, SelectedContext } from "../types";
+import { CursorPosition, ImageData, PluginSettings, QuickAskMode, SelectedContext } from "../types";
 import { InputContextSelector } from "./context-selector";
 import { PromptSelectorPopup } from "./prompt-selector";
 
@@ -66,6 +69,7 @@ export class AtTriggerPopup {
     private modelDropdownKeydownHandler: ((e: KeyboardEvent) => void) | null = null;
     private resizeObserver: ResizeObserver | null = null;
     private dropdownEventListeners: EventListenerEntry[] = [];
+    private reactRoot: Root | null = null;
 
     constructor(
         app: App,
@@ -163,15 +167,24 @@ export class AtTriggerPopup {
         this.popupEl.addClass("markdown-next-ai-at-popup");
         this.addCloseGuard("initial-click");
 
+        // Sync mode with settings
+        if (this.plugin.settings.quickAskMode) {
+            this.mode = this.plugin.settings.quickAskMode;
+        }
+
         const isRewriteMode = this.mode === 'edit';
         const titleText = isRewriteMode ? "修改所选内容" : "Markdown-Next-AI";
-        const placeholderText = isRewriteMode ? "请输入修改要求..." : "@选择文件，#选择常用提示词...";
+        // Dynamic placeholder based on mode
+        const currentOption = MODE_OPTIONS.find(opt => opt.value === this.mode);
+        const placeholderText = currentOption?.descFallback || (isRewriteMode ? "请输入修改要求..." : "@选择文件，#选择常用提示词...");
+
         const selectedTextPreview = this.selectedText;
         const currentModelName = this.getModelNameById(this.plugin.settings.currentModel);
 
         this.popupEl.innerHTML = `
             <div class="markdown-next-ai-popup-header">
                 <span class="markdown-next-ai-popup-title"><span class="markdown-next-ai-title-icon"></span><span class="markdown-next-ai-title-text">${titleText}</span></span>
+                <div class="markdown-next-ai-mode-selector" style="flex: 1; margin-left: 12px;"></div>
                 <div class="markdown-next-ai-popup-actions">
                     <button class="markdown-next-ai-header-btn markdown-next-ai-popup-close"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg></button>
                 </div>
@@ -219,6 +232,13 @@ export class AtTriggerPopup {
         const fileInput = this.popupEl.querySelector(".markdown-next-ai-file-input") as HTMLInputElement;
         const uploadBtn = this.popupEl.querySelector(".markdown-next-ai-upload-btn") as HTMLButtonElement;
         const imagePreviewsEl = this.popupEl.querySelector(".markdown-next-ai-image-previews") as HTMLElement;
+
+        // Mount ModeSelect Component
+        const modeSelectorContainer = this.popupEl.querySelector(".markdown-next-ai-mode-selector");
+        if (modeSelectorContainer) {
+            this.reactRoot = createRoot(modeSelectorContainer);
+            this.renderModeSelect();
+        }
 
         this.contextSelector = new InputContextSelector(
             this.app,
@@ -484,11 +504,15 @@ export class AtTriggerPopup {
         // 点击外部关闭（但允许点击编辑器/预览/结果浮窗以移动光标或查看结果）
         const outsideClickHandler = (e: MouseEvent) => {
             if (this.hasCloseGuard()) return;
+            // 如果点击的元素已不在文档中（例如被 React 卸载），忽略此次点击
+            if (!document.body.contains(e.target as Node)) return;
+
             if (this.popupEl!.hasAttribute("data-prompt-selecting")) return;
             if ((e.target as HTMLElement).closest(".markdown-next-ai-prompt-selector-popup")) return;
             if ((e.target as HTMLElement).closest(".markdown-next-ai-context-suggestions")) return;
             if (this.contextSelector && this.contextSelector.isOpen) return;
             if ((e.target as HTMLElement).closest(".markdown-next-ai-model-dropdown")) return;
+            if ((e.target as HTMLElement).closest(".mn-mode-dropdown")) return;
             // 允许点击编辑器 / 预览区域（避免改变光标时关闭弹窗）
             if ((e.target as HTMLElement).closest(".cm-editor")) return;
             if ((e.target as HTMLElement).closest(".markdown-source-view")) return;
@@ -590,6 +614,32 @@ export class AtTriggerPopup {
                 this.popupEl.style.top = (top - rect.height - 5) + "px";
             }
         }
+    }
+
+    renderModeSelect(): void {
+        if (!this.reactRoot) return;
+        this.reactRoot.render(
+            React.createElement(ModeSelect, {
+                mode: this.mode as QuickAskMode,
+                onChange: (newMode: QuickAskMode) => {
+                    this.mode = newMode;
+                    this.plugin.settings.quickAskMode = newMode;
+                    this.plugin.saveSettings();
+
+                    // Update placeholder
+                    const opt = MODE_OPTIONS.find(o => o.value === newMode);
+                    if (opt && this.inputEl) {
+                        (this.inputEl as HTMLTextAreaElement).placeholder = opt.descFallback;
+                    }
+
+                    // Show toast
+                    new Notice(`已切换至 ${opt?.labelFallback || newMode}`);
+
+                    // Re-render to update UI
+                    this.renderModeSelect();
+                }
+            })
+        );
     }
 
     /**
@@ -712,6 +762,11 @@ export class AtTriggerPopup {
      */
     close(): void {
         if (!this.isOpen) return;
+
+        if (this.reactRoot) {
+            this.reactRoot.unmount();
+            this.reactRoot = null;
+        }
 
         if (this.resizeObserver) {
             this.resizeObserver.disconnect();
