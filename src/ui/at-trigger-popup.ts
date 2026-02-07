@@ -70,7 +70,13 @@ export class AtTriggerPopup {
     private chatHistoryContainer: HTMLElement | null = null;
     private isGenerating: boolean = false;
     private currentStreamingMessageEl: HTMLElement | null = null;
+    private currentStreamingRowEl: HTMLElement | null = null;
     private currentStreamingContent: string = "";
+    private currentStreamingThinking: string = "";
+    private currentStreamingThinkingEl: HTMLElement | null = null;
+    private currentStreamingThinkingDetailsEl: HTMLDetailsElement | null = null;
+    private currentStreamingThinkingUserToggled: boolean = false;
+    private suppressThinkingToggleMark: boolean = false;
     private messages: ChatMessage[] = [];
 
     constructor(
@@ -115,24 +121,14 @@ export class AtTriggerPopup {
     private async renderChatMessage(role: "user" | "assistant", content: string): Promise<void> {
         if (!this.chatHistoryContainer) return;
 
-        const messageEl = this.chatHistoryContainer.createDiv({ cls: `markdown-next-ai-chat-message ${role}` });
-        messageEl.style.display = "flex";
-        messageEl.style.flexDirection = "column";
-        messageEl.style.alignSelf = role === "user" ? "flex-end" : "flex-start";
-        messageEl.style.maxWidth = "85%";
-        messageEl.style.padding = "8px 12px";
-        messageEl.style.borderRadius = "8px";
-        messageEl.style.marginBottom = "8px";
-        messageEl.style.backgroundColor = role === "user" ? "var(--interactive-accent)" : "var(--background-secondary)";
-        messageEl.style.color = role === "user" ? "var(--text-on-accent)" : "var(--text-normal)";
-        messageEl.style.fontSize = "14px";
-        messageEl.style.lineHeight = "1.5";
+        const rowEl = this.chatHistoryContainer.createDiv({ cls: `markdown-next-ai-chat-row ${role}` });
+        const messageEl = rowEl.createDiv({ cls: `markdown-next-ai-chat-message ${role}` });
 
         const contentEl = messageEl.createDiv({ cls: "message-content" });
 
         if (role === "assistant") {
             await MarkdownRenderer.render(this.app, content, contentEl, "", this.plugin);
-            this.createMessageActions(messageEl, content);
+            this.createMessageActions(rowEl, content);
         } else {
             contentEl.innerText = content;
         }
@@ -145,16 +141,8 @@ export class AtTriggerPopup {
         if (existingActions) existingActions.remove();
 
         const actionsEl = container.createDiv({ cls: "message-actions" });
-        actionsEl.style.display = "flex";
-        actionsEl.style.gap = "8px";
-        actionsEl.style.marginTop = "4px";
-        actionsEl.style.opacity = "0.7";
-        actionsEl.style.justifyContent = "flex-end";
 
         const copyBtn = actionsEl.createEl("button", { cls: "clickable-icon" });
-        copyBtn.style.background = "transparent";
-        copyBtn.style.border = "none";
-        copyBtn.style.cursor = "pointer";
         copyBtn.title = "复制";
         setIcon(copyBtn, "copy");
         copyBtn.onclick = () => {
@@ -163,9 +151,6 @@ export class AtTriggerPopup {
         };
 
         const insertBtn = actionsEl.createEl("button", { cls: "clickable-icon" });
-        insertBtn.style.background = "transparent";
-        insertBtn.style.border = "none";
-        insertBtn.style.cursor = "pointer";
         insertBtn.title = "插入";
         setIcon(insertBtn, "corner-down-left");
         insertBtn.onclick = () => {
@@ -177,12 +162,69 @@ export class AtTriggerPopup {
         };
     }
 
+    private createStreamingAssistantMessage(): void {
+        if (!this.chatHistoryContainer) return;
+
+        this.currentStreamingRowEl = this.chatHistoryContainer.createDiv({ cls: "markdown-next-ai-chat-row assistant" });
+        this.currentStreamingMessageEl = this.currentStreamingRowEl.createDiv({
+            cls: "markdown-next-ai-chat-message assistant streaming"
+        });
+
+        // Thinking section (collapsible; hidden by default)
+        this.currentStreamingThinkingUserToggled = false;
+        const thinkingDetails = this.currentStreamingMessageEl.createEl("details", {
+            cls: "markdown-next-ai-thinking-section markdown-next-ai-chat-thinking"
+        }) as HTMLDetailsElement;
+        thinkingDetails.open = false;
+        thinkingDetails.style.display = "none";
+
+        const summaryEl = thinkingDetails.createEl("summary", { cls: "markdown-next-ai-chat-thinking-summary" });
+        summaryEl.setText("思考过程");
+
+        const thinkingContent = thinkingDetails.createDiv({ cls: "markdown-next-ai-thinking-content" });
+        thinkingContent.setText("");
+
+        thinkingDetails.addEventListener("toggle", () => {
+            if (this.suppressThinkingToggleMark) return;
+            this.currentStreamingThinkingUserToggled = true;
+        });
+
+        this.currentStreamingThinkingEl = thinkingContent;
+        this.currentStreamingThinkingDetailsEl = thinkingDetails;
+
+        const contentEl = this.currentStreamingMessageEl.createDiv({ cls: "message-content" });
+        const loadingEl = contentEl.createSpan({ cls: "markdown-next-ai-chat-loading" });
+        loadingEl.setText("思考中");
+    }
+
+    private updateStreamingThinking(thinking: string): void {
+        if (!this.currentStreamingMessageEl || !this.currentStreamingThinkingEl) return;
+        const detailsEl = (this.currentStreamingThinkingDetailsEl ||
+            (this.currentStreamingMessageEl.querySelector(".markdown-next-ai-chat-thinking") as HTMLDetailsElement | null));
+        if (!detailsEl) return;
+
+        const trimmed = (thinking || "").trim();
+        if (!trimmed) {
+            detailsEl.style.display = "none";
+            return;
+        }
+
+        detailsEl.style.display = "block";
+        this.currentStreamingThinkingEl.setText(trimmed);
+
+        // Auto-expand while generating unless user manually toggled.
+        if (this.currentStreamingMessageEl.hasClass("streaming") && !this.currentStreamingThinkingUserToggled && !detailsEl.open) {
+            this.suppressThinkingToggleMark = true;
+            detailsEl.open = true;
+            this.suppressThinkingToggleMark = false;
+        }
+    }
+
     private updateStreamingMessage(content: string): void {
         if (!this.currentStreamingMessageEl) return;
         const contentEl = this.currentStreamingMessageEl.querySelector(".message-content") as HTMLElement;
         if (contentEl) {
             contentEl.innerText = content;
-            contentEl.style.whiteSpace = "pre-wrap";
         }
         if (this.chatHistoryContainer) {
             this.chatHistoryContainer.scrollTop = this.chatHistoryContainer.scrollHeight;
@@ -191,6 +233,16 @@ export class AtTriggerPopup {
 
     private async finalizeStreamingMessage(content: string): Promise<void> {
         if (!this.currentStreamingMessageEl) return;
+
+        // Auto-collapse thinking after completion unless user manually toggled.
+        const detailsEl = (this.currentStreamingThinkingDetailsEl ||
+            (this.currentStreamingMessageEl.querySelector(".markdown-next-ai-chat-thinking") as HTMLDetailsElement | null));
+        if (detailsEl && !this.currentStreamingThinkingUserToggled && detailsEl.open) {
+            this.suppressThinkingToggleMark = true;
+            detailsEl.open = false;
+            this.suppressThinkingToggleMark = false;
+        }
+
         const contentEl = this.currentStreamingMessageEl.querySelector(".message-content") as HTMLElement;
         if (contentEl) {
             contentEl.empty();
@@ -200,9 +252,17 @@ export class AtTriggerPopup {
                 contentEl.setText("(No content)");
             }
         }
-        this.createMessageActions(this.currentStreamingMessageEl, content);
+        if (this.currentStreamingRowEl) {
+            this.createMessageActions(this.currentStreamingRowEl, content);
+        }
+        this.currentStreamingMessageEl.removeClass("streaming");
         this.currentStreamingMessageEl = null;
+        this.currentStreamingRowEl = null;
         this.currentStreamingContent = "";
+        this.currentStreamingThinking = "";
+        this.currentStreamingThinkingEl = null;
+        this.currentStreamingThinkingDetailsEl = null;
+        this.currentStreamingThinkingUserToggled = false;
     }
 
     /**
@@ -236,62 +296,76 @@ export class AtTriggerPopup {
             return;
         }
 
+        const userVisiblePrompt = (() => {
+            const trimmed = (prompt || "").trim();
+            if (trimmed) return trimmed;
+
+            const parts: string[] = [];
+            if (images && images.length > 0) parts.push(`图片 ${images.length} 张`);
+            if (contextContent && contextContent.trim()) parts.push("已附加上下文");
+            if (parts.length === 0) return "（无文本）";
+            return `（${parts.join("，")}）`;
+        })();
+
         if (this.contextSelector) {
             this.contextSelector.clear();
         }
-        if (this.inputEl) {
+        if (this.inputEl instanceof HTMLTextAreaElement) {
             this.inputEl.value = "";
             this.inputEl.style.height = "";
+        } else if (this.inputEl) {
+            this.inputEl.textContent = "";
+            (this.inputEl as HTMLElement).style.removeProperty("height");
         }
         this.imageHandler.clear();
         const previews = this.popupEl?.querySelector(".markdown-next-ai-image-previews");
         if (previews) previews.empty();
 
-        await this.renderChatMessage("user", prompt);
+        await this.renderChatMessage("user", userVisiblePrompt);
 
         this.isGenerating = true;
 
-        if (this.chatHistoryContainer) {
-            this.currentStreamingMessageEl = this.chatHistoryContainer.createDiv({ cls: `markdown-next-ai-chat-message assistant` });
-            this.currentStreamingMessageEl.style.display = "flex";
-            this.currentStreamingMessageEl.style.flexDirection = "column";
-            this.currentStreamingMessageEl.style.alignSelf = "flex-start";
-            this.currentStreamingMessageEl.style.maxWidth = "85%";
-            this.currentStreamingMessageEl.style.padding = "8px 12px";
-            this.currentStreamingMessageEl.style.borderRadius = "8px";
-            this.currentStreamingMessageEl.style.marginBottom = "8px";
-            this.currentStreamingMessageEl.style.backgroundColor = "var(--background-secondary)";
-            this.currentStreamingMessageEl.style.color = "var(--text-normal)";
-
-            const contentEl = this.currentStreamingMessageEl.createDiv({ cls: "message-content" });
-            contentEl.innerText = "Thinking...";
-        }
-
         this.currentStreamingContent = "";
+        this.currentStreamingThinking = "";
+        this.createStreamingAssistantMessage();
 
         try {
-            const messages: ChatMessage[] = [
-                ...this.messages,
-                { role: "user", content: contextContent ? `Context:\n${contextContent}\n\nUser: ${prompt}` : prompt }
-            ];
-
-            this.messages.push({ role: "user", content: prompt });
-
-            await this.plugin.aiService.streamCompletion(
-                messages,
-                modelId,
+            const result = await this.plugin.aiService.sendRequest(
+                "chat",
                 {
-                    temperature: this.plugin.settings.tabCompletion?.temperature,
-                    max_tokens: 4000
+                    selectedText: "",
+                    beforeText: "",
+                    afterText: "",
+                    cursorPosition: { line: 0, ch: 0 },
+                    additionalContext: contextContent || undefined
                 },
-                (chunk) => {
-                    this.currentStreamingContent += chunk;
-                    this.updateStreamingMessage(this.currentStreamingContent);
+                prompt,
+                images,
+                this.messages,
+                (streamData) => {
+                    if (streamData.thinking != null) {
+                        this.currentStreamingThinking = streamData.thinking;
+                        this.updateStreamingThinking(this.currentStreamingThinking);
+                    }
+                    if (streamData.content != null) {
+                        this.currentStreamingContent = streamData.content;
+                        // 若还未产生正文，让“思考中”占位保持在 UI 中
+                        if (this.currentStreamingContent.trim()) {
+                            this.updateStreamingMessage(this.currentStreamingContent);
+                        }
+                    }
                 }
             );
 
-            await this.finalizeStreamingMessage(this.currentStreamingContent);
-            this.messages.push({ role: "assistant", content: this.currentStreamingContent });
+            const finalContent = (result?.content || this.currentStreamingContent || "").trim();
+            if (result?.thinking) {
+                this.currentStreamingThinking = result.thinking;
+                this.updateStreamingThinking(this.currentStreamingThinking);
+            }
+
+            await this.finalizeStreamingMessage(finalContent);
+            this.messages.push({ role: "user", content: userVisiblePrompt });
+            this.messages.push({ role: "assistant", content: finalContent });
 
         } catch (error) {
             console.error(error);
