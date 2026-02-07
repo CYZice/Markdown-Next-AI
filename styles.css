@@ -1238,122 +1238,7 @@
   }
 }
 
-.markdown-next-ai-result-floating-window {
-  background: var(--background-primary);
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 10px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
-  width: min(80vw, 900px);
-  min-width: 520px;
-  max-width: 900px;
-  overflow: hidden;
-  z-index: 10002;
-}
-
-.markdown-next-ai-result-floating-window .result-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--background-modifier-border);
-  background: var(--background-secondary);
-}
-
-.markdown-next-ai-result-floating-window .result-header-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.markdown-next-ai-result-floating-window .model-info {
-  color: var(--text-accent);
-  font-weight: 600;
-  font-size: 12px;
-}
-
-.markdown-next-ai-result-floating-window .char-count {
-  color: var(--text-muted);
-  font-size: 12px;
-}
-
-.markdown-next-ai-result-floating-window .result-close-btn {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-}
-
-.markdown-next-ai-result-floating-window .result-close-btn:hover {
-  background: var(--background-modifier-hover);
-  color: var(--text-normal);
-}
-
-.markdown-next-ai-result-floating-window .result-status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--background-modifier-border);
-}
-
-.markdown-next-ai-result-floating-window .result-status.thinking {
-  background: #FFF4CC;
-  color: #7A5C00;
-}
-
-.markdown-next-ai-result-floating-window .result-status.generating {
-  background: #E6F4FF;
-  color: #014C7A;
-}
-
-.markdown-next-ai-result-floating-window .result-content {
-  padding: 12px;
-  max-height: 60vh;
-  overflow-y: auto;
-}
-
-.markdown-next-ai-result-floating-window .result-content::-webkit-scrollbar {
-  width: 8px;
-}
-
-.markdown-next-ai-result-floating-window .result-content::-webkit-scrollbar-track {
-  background: var(--scrollbar-bg);
-  border-radius: 4px;
-}
-
-.markdown-next-ai-result-floating-window .result-content::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb-bg);
-  border-radius: 4px;
-}
-
-.markdown-next-ai-result-floating-window .result-content::-webkit-scrollbar-thumb:hover {
-  background: var(--scrollbar-thumb-hover-bg);
-}
-
-.markdown-next-ai-result-floating-window .result-actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  padding: 8px 12px;
-  border-top: 1px solid var(--background-modifier-border);
-  background: var(--background-secondary);
-}
-
-.markdown-next-ai-result-floating-window .result-actions button {
-  padding: 6px 10px;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 6px;
-  background: var(--background-primary);
-  color: var(--text-normal);
-  cursor: pointer;
-}
-
-.markdown-next-ai-result-floating-window .result-actions button:hover {
-  background: var(--background-secondary-alt);
-  border-color: var(--interactive-accent);
-}
+/* markdown-next-ai-result-floating-window styles removed */
 
 /* @符号触发弹出窗口样式 */
 .markdown-next-ai-at-popup {
@@ -1409,6 +1294,177 @@
 .markdown-next-ai-left-section {
   display: flex;
   align-items: center;
+}
+
+/* Ask 模式聊天历史：空时不占用额外间距 */
+.markdown-next-ai-chat-history {
+  margin-bottom: 0;
+}
+
+.markdown-next-ai-chat-history:not(:empty) {
+  margin-bottom: 10px;
+}
+
+/* Ask 模式对话历史 UI 优化 */
+.markdown-next-ai-at-popup .markdown-next-ai-chat-history {
+  padding: 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  background: var(--background-secondary);
+}
+
+/* 空历史时：不显示空面板占位 */
+.markdown-next-ai-at-popup .markdown-next-ai-chat-history:empty {
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+.markdown-next-ai-at-popup .markdown-next-ai-chat-message {
+  display: flex;
+  flex-direction: column;
+  align-self: flex-start;
+  max-width: 92%;
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.markdown-next-ai-at-popup .markdown-next-ai-chat-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.markdown-next-ai-at-popup .markdown-next-ai-chat-row.user {
+  justify-content: flex-end;
+}
+
+.markdown-next-ai-at-popup .markdown-next-ai-chat-row.assistant {
+  justify-content: flex-start;
+}
+
+.markdown-next-ai-at-popup .markdown-next-ai-chat-message.user {
+  align-self: flex-end;
+  background: color-mix(in srgb, var(--interactive-accent) 88%, transparent);
+  color: var(--text-on-accent);
+}
+
+.markdown-next-ai-at-popup .markdown-next-ai-chat-message.assistant {
+  background: var(--background-primary);
+  border-color: var(--background-modifier-border);
+  color: var(--text-normal);
+}
+
+.markdown-next-ai-at-popup .markdown-next-ai-chat-message .message-content {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Markdown 渲染在气泡内的排版更紧凑 */
+.markdown-next-ai-at-popup .markdown-next-ai-chat-message .message-content :is(h1, h2, h3) {
+  margin: 0.35em 0 0.25em;
+}
+
+.markdown-next-ai-at-popup .markdown-next-ai-chat-message .message-content :is(p, ul, ol, pre, blockquote) {
+  margin: 0.35em 0;
+}
+
+/* actions 在气泡外：hover 行容器显示 */
+.markdown-next-ai-at-popup .markdown-next-ai-chat-row:hover .message-actions {
+  opacity: 0.85;
+}
+
+.markdown-next-ai-at-popup .markdown-next-ai-chat-row .message-actions {
+  display: flex;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.markdown-next-ai-at-popup .markdown-next-ai-chat-row .message-actions button {
+  background: transparent;
+  border: none;
+  padding: 2px;
+  cursor: pointer;
+  color: var(--text-muted);
+  border-radius: 4px;
+  box-shadow: none !important;
+}
+
+.markdown-next-ai-at-popup .markdown-next-ai-chat-row .message-actions button:hover {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
+}
+
+/* 流式状态：更明显的“思考中” */
+.markdown-next-ai-at-popup .markdown-next-ai-chat-message.streaming .message-content {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.markdown-next-ai-chat-loading {
+  white-space: nowrap;
+  display: inline-block;
+}
+
+.markdown-next-ai-chat-loading::after {
+  content: "...";
+  display: inline-block;
+  width: 1.2em;
+  overflow: hidden;
+  vertical-align: bottom;
+  animation: mnai-ellipsis 1.2s infinite steps(4, end);
+}
+
+@keyframes mnai-ellipsis {
+  0% {
+    width: 0;
+  }
+
+  100% {
+    width: 1.2em;
+  }
+}
+
+/* 聊天气泡内的“思考”区块：可折叠，区别于正文 */
+.markdown-next-ai-at-popup .markdown-next-ai-chat-thinking {
+  margin: 2px 0 6px;
+  padding: 10px;
+  background: var(--background-secondary);
+  border-color: var(--background-modifier-border);
+}
+
+.markdown-next-ai-at-popup .markdown-next-ai-chat-thinking summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.9em;
+  user-select: none;
+}
+
+.markdown-next-ai-at-popup .markdown-next-ai-chat-thinking summary::-webkit-details-marker {
+  display: none;
+}
+
+.markdown-next-ai-at-popup .markdown-next-ai-chat-thinking summary::before {
+  content: "▸";
+  display: inline-block;
+  width: 1em;
+  margin-right: 2px;
+  transform: translateY(-0.5px);
+}
+
+.markdown-next-ai-at-popup .markdown-next-ai-chat-thinking[open] summary::before {
+  content: "▾";
+}
+
+.markdown-next-ai-at-popup .markdown-next-ai-chat-thinking .markdown-next-ai-thinking-content {
+  margin-top: 6px;
+  font-size: 0.82em;
 }
 
 /* 选中文本预览区域样式 */

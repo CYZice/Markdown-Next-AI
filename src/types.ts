@@ -82,6 +82,7 @@ export interface PluginSettings {
     tabCompletion?: TabCompletionOptions;
     baseModelSpecialPrompt?: string;
     useKeychain?: boolean;
+    quickAskMode: QuickAskMode;
 }
 
 // ConversationEntry removed
@@ -185,6 +186,17 @@ export interface TabCompletionTrigger {
     pattern: string;
     enabled: boolean;
     description?: string;
+}
+
+export type QuickAskMode = 'ask' | 'edit' | 'edit-direct';
+
+export interface ModeOption {
+    value: QuickAskMode;
+    labelKey: string;
+    labelFallback: string;
+    descKey: string;
+    descFallback: string;
+    icon: any;
 }
 
 export type TabCompletionLengthPreset = 'short' | 'medium' | 'long';

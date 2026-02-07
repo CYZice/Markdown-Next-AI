@@ -77,6 +77,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     lastInsertAction: "insert",
     // 已移除：LLM 路由默认配置
     baseModelSpecialPrompt: "",
+    quickAskMode: "edit",
     tabCompletion: {
         enabled: false,
         modelId: "deepseek-chat",

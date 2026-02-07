@@ -30,6 +30,15 @@ export class InputContextSelector {
     }
 
     /**
+     * 清空内容
+     */
+    clear(): void {
+        this.inputEl.innerHTML = "";
+        this.selectedTags = [];
+        this.updatePlaceholder();
+    }
+
+    /**
      * 将 textarea 转换为 contentEditable div
      */
     convertToContentEditable(): void {
