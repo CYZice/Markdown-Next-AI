@@ -104,7 +104,7 @@
   ],
   "lastInsertAction": "insert",
   "baseModelSpecialPrompt": "",
-  "quickAskMode": "ask",
+  "quickAskMode": "edit",
   "tabCompletion": {
     "enabled": true,
     "modelId": "deepseek-chat",
