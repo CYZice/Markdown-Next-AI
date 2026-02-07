@@ -96,14 +96,6 @@ export class SelectionToolbar {
         content.addClass("markdown-next-ai-selection-menu-content");
 
         // 1. Core Actions
-        // AI Modify
-        content.appendChild(this.createMenuItem("AI Modify", "pencil", () => {
-            if (this.currentSelection) {
-                this.plugin.showAtTriggerModal(this.currentSelection.text, "edit");
-                this.hide();
-            }
-        }));
-
         // Add to Chat
         content.appendChild(this.createMenuItem("Add to Chat", "message-square", () => {
             if (this.currentSelection) {
