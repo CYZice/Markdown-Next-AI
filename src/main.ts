@@ -384,8 +384,21 @@ export default class MarkdownNextAIPlugin extends Plugin {
         this.setupRightClickListener();
 
         const mouseUpHandler = (e: MouseEvent) => {
+            if (document.body.dataset.mnaiDraggingAtPopup === "1") return;
+
+            // If mouseup happens inside our own UI (e.g. dragging popup header),
+            // skip selection measurement to avoid extra layout work.
+            const target = e.target as HTMLElement | null;
+            if (target?.closest?.(
+                ".markdown-next-ai-at-popup, .markdown-next-ai-result-floating-window, .markdown-next-ai-selection-toolbar"
+            )) {
+                return;
+            }
+
             const selection = window.getSelection();
-            if (selection && selection.rangeCount > 0) {
+            if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return;
+
+            if (selection.rangeCount > 0) {
                 const range = selection.getRangeAt(0);
                 const rect = range.getBoundingClientRect();
                 if (rect.width > 0 || rect.height > 0) {
@@ -507,7 +520,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
             this.inlineSuggestionController?.clearInlineSuggestion();
         } catch { }
         try {
-            if (this.lastAtTriggerPopup) this.lastAtTriggerPopup.close();
+            this.closeLastAtTriggerPopup();
         } catch { }
         try {
             for (const c of Array.from(this.activeAbortControllers)) {
@@ -678,7 +691,21 @@ export default class MarkdownNextAIPlugin extends Plugin {
         }
     }
 
+    private closeLastAtTriggerPopup(): void {
+        if (!this.lastAtTriggerPopup) return;
+        try {
+            this.lastAtTriggerPopup.close();
+        } catch (e) {
+            console.warn("[MarkdownNextAI] Failed to close last AtTriggerPopup:", e);
+        } finally {
+            this.lastAtTriggerPopup = null;
+        }
+    }
+
     showAtTriggerModal(selectedText: string = "", mode: string = "chat"): void {
+
+        // 防多开：打开新弹窗前先关闭旧弹窗
+        this.closeLastAtTriggerPopup();
 
         const view = this.app.workspace.getActiveViewOfType(MarkdownView);
         const cursorPos = this.getCursorPosition(view) || this.lastMouseUpPosition || this.getFallbackPosition(view);
@@ -704,6 +731,9 @@ export default class MarkdownNextAIPlugin extends Plugin {
     }
 
     showAtTriggerModalGlobal(selectedText: string = "", mode: string = "chat"): void {
+        // 防多开：打开新弹窗前先关闭旧弹窗
+        this.closeLastAtTriggerPopup();
+
         const view = this.getAnyMarkdownView();
         const pos = this.getFallbackPosition(view) || this.getFallbackPosition(null);
         const popup = new AtTriggerPopup(

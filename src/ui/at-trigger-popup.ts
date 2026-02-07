@@ -55,6 +55,7 @@ export class AtTriggerPopup {
     private outsideClickHandler: ((e: MouseEvent) => void) | null = null;
     private historyVisible: boolean = false;
     private isDragging: boolean = false;
+    private isPinned: boolean = false;
     private closeGuards: Set<string> = new Set();
     private modelDropdownEl: HTMLElement | null = null;
     private modelDropdownScrollHandler: ((e: Event) => void) | null = null;
@@ -336,6 +337,7 @@ export class AtTriggerPopup {
         if (this.isOpen) return;
 
         this.isOpen = true;
+        this.isPinned = false;
         this.popupEl = document.createElement("div");
         this.popupEl.addClass("markdown-next-ai-at-popup");
         this.addCloseGuard("initial-click");
@@ -363,7 +365,7 @@ export class AtTriggerPopup {
                 </div>
             </div>
             <div class="markdown-next-ai-popup-content">
-                <div class="markdown-next-ai-chat-history" style="display: ${this.mode === 'ask' ? 'flex' : 'none'}; flex-direction: column; overflow-y: auto; max-height: 300px; margin-bottom: 10px; gap: 8px;"></div>
+                <div class="markdown-next-ai-chat-history" style="display: ${this.mode === 'ask' ? 'flex' : 'none'}; flex-direction: column; overflow-y: auto; max-height: 300px; gap: 8px;"></div>
                 ${this.selectedText ? `
                 <div class="markdown-next-ai-selected-text-section">
                     <div class="markdown-next-ai-selected-text-header">
@@ -676,7 +678,7 @@ export class AtTriggerPopup {
         this.inputEl!.addEventListener("keydown", keydownHandler as EventListener);
         this.eventListeners.push({ element: this.inputEl!, event: "keydown", handler: keydownHandler as EventListener });
 
-        // 点击外部关闭（但允许点击编辑器/预览/结果浮窗以移动光标或查看结果）
+        // 点击外部关闭
         const outsideClickHandler = (e: MouseEvent) => {
             if (this.hasCloseGuard()) return;
             // 如果点击的元素已不在文档中（例如被 React 卸载），忽略此次点击
@@ -688,10 +690,6 @@ export class AtTriggerPopup {
             if (this.contextSelector && this.contextSelector.isOpen) return;
             if ((e.target as HTMLElement).closest(".markdown-next-ai-model-dropdown")) return;
             if ((e.target as HTMLElement).closest(".mn-mode-dropdown")) return;
-            // 允许点击编辑器 / 预览区域（避免改变光标时关闭弹窗）
-            if ((e.target as HTMLElement).closest(".cm-editor")) return;
-            if ((e.target as HTMLElement).closest(".markdown-source-view")) return;
-            if ((e.target as HTMLElement).closest(".markdown-preview-view")) return;
             // 允许点击生成结果浮窗（避免查看/操作时关闭弹窗）
             if ((e.target as HTMLElement).closest(".markdown-next-ai-result-floating-window")) return;
             if (this.popupEl!.contains(e.target as Node)) return;
@@ -739,6 +737,8 @@ export class AtTriggerPopup {
      */
     positionPopup(): void {
         if (!this.popupEl || !this.cursorPosition) return;
+        // 用户拖拽过后就固定位置，避免后续自动定位覆盖
+        if (this.isPinned) return;
 
         const { left, top, height = 20 } = this.cursorPosition;
 
@@ -838,24 +838,85 @@ export class AtTriggerPopup {
 
         let startX = 0;
         let startY = 0;
-        let currentTranslateX = 0;
-        let currentTranslateY = 0;
+        let startLeft = 0;
+        let startTop = 0;
+        let didMove = false;
+
+        // Perf: avoid layout thrash while dragging by moving via transform (compositor)
+        let rafId: number | null = null;
+        let pendingDx = 0;
+        let pendingDy = 0;
+        const scheduleTransform = () => {
+            if (!this.popupEl) return;
+            if (rafId !== null) return;
+            rafId = window.requestAnimationFrame(() => {
+                rafId = null;
+                if (!this.popupEl) return;
+                this.popupEl.style.transform = `translate3d(${pendingDx}px, ${pendingDy}px, 0)`;
+            });
+        };
+
+        const commitPosition = (dx: number, dy: number) => {
+            if (!this.popupEl) return;
+            // Apply final position, clear transform so left/top remains the source of truth.
+            this.popupEl.style.left = `${startLeft + dx}px`;
+            this.popupEl.style.top = `${startTop + dy}px`;
+            this.popupEl.style.transform = "none";
+            this.popupEl.style.removeProperty("will-change");
+        };
+
+        const getCurrentLeftTop = (): { left: number; top: number } => {
+            if (!this.popupEl) return { left: 0, top: 0 };
+
+            const styleLeft = parseFloat(this.popupEl.style.left);
+            const styleTop = parseFloat(this.popupEl.style.top);
+            if (!Number.isNaN(styleLeft) && !Number.isNaN(styleTop)) {
+                return { left: styleLeft, top: styleTop };
+            }
+
+            const rect = this.popupEl.getBoundingClientRect();
+            // 如果在 scrollContainer 内使用 absolute 定位，需要换算成容器坐标系
+            if (this.scrollContainer && this.popupEl.style.position === "absolute") {
+                const containerRect = this.scrollContainer.getBoundingClientRect();
+                const scrollLeft = this.scrollContainer.scrollLeft;
+                const scrollTop = this.scrollContainer.scrollTop;
+                return {
+                    left: rect.left - containerRect.left + scrollLeft,
+                    top: rect.top - containerRect.top + scrollTop
+                };
+            }
+
+            // fixed/其他：直接使用视口坐标
+            return { left: rect.left, top: rect.top };
+        };
 
         const onMouseDown = (e: MouseEvent) => {
             if (e.button !== 0 || !this.popupEl) return;
             if ((e.target as HTMLElement).closest(".markdown-next-ai-popup-actions")) return;
+            e.preventDefault();
+            e.stopPropagation();
             this.isDragging = true;
+            document.body.dataset.mnaiDraggingAtPopup = "1";
+            didMove = false;
 
             startX = e.clientX;
             startY = e.clientY;
 
-            // Extract current transform values
-            const transform = this.popupEl.style.transform || "translate(0, 0)";
-            const matches = transform.match(/translate\(([^,]+),\s*([^)]+)\)/);
-            if (matches) {
-                currentTranslateX = parseFloat(matches[1]) || 0;
-                currentTranslateY = parseFloat(matches[2]) || 0;
-            }
+            // 禁用 appear 动画；拖拽时使用 transform（合成层）移动，避免 left/top 引发布局重排
+            this.popupEl.style.animation = "none";
+            this.popupEl.style.willChange = "transform";
+            this.popupEl.style.transform = "translate3d(0px, 0px, 0)";
+
+            const { left, top } = getCurrentLeftTop();
+            startLeft = left;
+            startTop = top;
+
+            // Ensure left/top are explicitly set as baseline for commitPosition()
+            this.popupEl.style.left = `${startLeft}px`;
+            this.popupEl.style.top = `${startTop}px`;
+
+            pendingDx = 0;
+            pendingDy = 0;
 
             document.body.style.userSelect = "none";
         };
@@ -863,37 +924,66 @@ export class AtTriggerPopup {
         const onMouseMove = (e: MouseEvent) => {
             if (!this.isDragging || !this.popupEl) return;
             e.preventDefault();
+            e.stopPropagation();
 
             const deltaX = e.clientX - startX;
             const deltaY = e.clientY - startY;
 
-            const nextTranslateX = currentTranslateX + deltaX;
-            const nextTranslateY = currentTranslateY + deltaY;
+            if (!didMove && (deltaX !== 0 || deltaY !== 0)) {
+                didMove = true;
+            }
 
-            // Apply transform: translate
-            this.popupEl.style.transform = `translate(${nextTranslateX}px, ${nextTranslateY}px)`;
+            pendingDx = deltaX;
+            pendingDy = deltaY;
+            scheduleTransform();
         };
 
         const onMouseUp = () => {
             if (!this.isDragging) return;
             this.isDragging = false;
             document.body.style.removeProperty("user-select");
+            delete document.body.dataset.mnaiDraggingAtPopup;
+
+            if (rafId !== null) {
+                window.cancelAnimationFrame(rafId);
+                rafId = null;
+            }
+
+            // Commit final position
+            commitPosition(pendingDx, pendingDy);
+
+            if (didMove) {
+                this.isPinned = true;
+            }
         };
 
         const onTouchStart = (e: TouchEvent) => {
             if (!this.popupEl) return;
             this.isDragging = true;
 
+            document.body.dataset.mnaiDraggingAtPopup = "1";
+
+            didMove = false;
+
+            e.preventDefault();
+            e.stopPropagation();
+
             startX = e.touches[0].clientX;
             startY = e.touches[0].clientY;
 
-            // Extract current transform values
-            const transform = this.popupEl.style.transform || "translate(0, 0)";
-            const matches = transform.match(/translate\(([^,]+),\s*([^)]+)\)/);
-            if (matches) {
-                currentTranslateX = parseFloat(matches[1]) || 0;
-                currentTranslateY = parseFloat(matches[2]) || 0;
-            }
+            this.popupEl.style.animation = "none";
+            this.popupEl.style.willChange = "transform";
+            this.popupEl.style.transform = "translate3d(0px, 0px, 0)";
+
+            const { left, top } = getCurrentLeftTop();
+            startLeft = left;
+            startTop = top;
+
+            this.popupEl.style.left = `${startLeft}px`;
+            this.popupEl.style.top = `${startTop}px`;
+
+            pendingDx = 0;
+            pendingDy = 0;
 
             document.body.style.userSelect = "none";
         };
@@ -901,21 +991,36 @@ export class AtTriggerPopup {
         const onTouchMove = (e: TouchEvent) => {
             if (!this.isDragging || !this.popupEl) return;
             e.preventDefault();
+            e.stopPropagation();
 
             const deltaX = e.touches[0].clientX - startX;
             const deltaY = e.touches[0].clientY - startY;
 
-            const nextTranslateX = currentTranslateX + deltaX;
-            const nextTranslateY = currentTranslateY + deltaY;
+            if (!didMove && (deltaX !== 0 || deltaY !== 0)) {
+                didMove = true;
+            }
 
-            // Apply transform: translate
-            this.popupEl.style.transform = `translate(${nextTranslateX}px, ${nextTranslateY}px)`;
+            pendingDx = deltaX;
+            pendingDy = deltaY;
+            scheduleTransform();
         };
 
         const onTouchEnd = () => {
             if (!this.isDragging) return;
             this.isDragging = false;
             document.body.style.removeProperty("user-select");
+            delete document.body.dataset.mnaiDraggingAtPopup;
+
+            if (rafId !== null) {
+                window.cancelAnimationFrame(rafId);
+                rafId = null;
+            }
+
+            commitPosition(pendingDx, pendingDy);
+
+            if (didMove) {
+                this.isPinned = true;
+            }
         };
 
         header.addEventListener("mousedown", onMouseDown);
@@ -942,6 +1047,8 @@ export class AtTriggerPopup {
      */
     close(): void {
         if (!this.isOpen) return;
+
+        delete document.body.dataset.mnaiDraggingAtPopup;
 
         if (this.reactRoot) {
             this.reactRoot.unmount();

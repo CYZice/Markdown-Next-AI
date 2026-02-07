@@ -1296,6 +1296,15 @@
   align-items: center;
 }
 
+/* Ask 模式聊天历史：空时不占用额外间距 */
+.markdown-next-ai-chat-history {
+  margin-bottom: 0;
+}
+
+.markdown-next-ai-chat-history:not(:empty) {
+  margin-bottom: 10px;
+}
+
 /* 选中文本预览区域样式 */
 .markdown-next-ai-selected-text-section {
   background: var(--background-secondary);
