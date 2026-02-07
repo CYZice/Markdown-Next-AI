@@ -45,26 +45,23 @@ src/settings/
 ## 2. 模块重构方案：对话弹窗 (`at-trigger-popup.ts`)
 
 ### 目标架构
-**React 全面接管 UI**。将手动 DOM 操作转换为声明式组件。
+**原生 TypeScript 模块化拆分** (不引入 React)。
+将上帝类拆分为“视图管理”与“业务逻辑”分离的协作类，保持原生 DOM 操作的高性能与轻量级。
 
 ```text
-src/ui/chat-window/
-├── ChatWindowController.ts # 原 AtTriggerPopup，仅保留 Obsidian 桥接逻辑 (open/close)
-├── components/             # React 组件
-│   ├── ChatWindow.tsx      # 根组件
-│   ├── MessageList.tsx     # 消息列表容器
-│   ├── MessageItem.tsx     # 单条消息 (负责 Markdown 渲染, Copy 按钮)
-│   ├── InputBox.tsx        # 输入框、上下文选择器
-│   └── ModelSelector.tsx   # 模型下拉框
-└── hooks/
-    ├── useChatStream.ts    # 核心逻辑：封装流式对话状态 (thinking, streaming)
-    └── useHotkeys.ts       # 快捷键处理
+src/ui/popup/
+├── components/
+│   ├── WindowManager.ts        # 负责窗口生命周期：创建、定位(Positioning)、拖拽(Drag)、关闭守卫
+│   ├── ChatRenderer.ts         # 负责消息流渲染：DOM生成、Markdown渲染、正在思考(Thinking)动效
+│   └── InputManager.ts         # 负责输入交互：高度自适应、@/# 触发器、ContextSelector管理
+├── AtTriggerPopup.ts           # 主控制器 (Coordinator)，协调上述组件与 AI Service
+└── types.ts                    # 弹窗专用类型定义
 ```
 
 ### 关键改动
-1.  **状态管理**: 使用 React `useState` / `useReducer` 管理 `messages`, `isGenerating`, `input` 等状态，替代 `this.messages`, `this.currentStreamingMessageEl`。
-2.  **流式逻辑分离**: 将 `aiService` 的调用逻辑封装在 Hook 中，视图层只负责展示 data。
-3.  **移除 DOM 操作**: 不需要再写 `createEl('div')` 或 `innerHTML`，全部改用 JSX。
+1.  **提取窗口逻辑**: 将 `positionPopup`, `enableDragging`, `closeGuards` 等约 200 行代码移入 `WindowManager`。
+2.  **封装流式渲染**: 将 `createStreamingAssistantMessage`, `updateStreamingThinking` 等流式 DOM 操作移入 `ChatRenderer`。
+3.  **输入逻辑解耦**: 将 `InputContextSelector` 和 `PromptSelector` 的初始化与事件绑定移入 `InputManager`。
 
 ---
 
@@ -100,9 +97,9 @@ src/
     *   原因: 清理入口，让代码结构更清晰。
     *   *Action*: 在 Phase 1 完成后执行。
 
-3.  **Phase 3: Popup React 化** (预计耗时: 高)
-    *   原因: 涉及 UI 重写和状态逻辑迁移，工作量大且容易影响核心体验。
-    *   *Action*: 需要单独的分支进行，分步替换（例如先替换内部的消息列表，再替换外壳）。
+3.  **Phase 3: Popup 模块化重构** (预计耗时: 中)
+    *   原因: 虽然不涉及 React 重写，但逻辑拆分仍需细致处理状态同步。
+    *   *Action*: 分步提取。先提取最独立的 `PopupWindowManager` (定位与拖拽)，再提取 `ChatStreamRenderer` (渲染)。
 
 ## 下一步行动建议
 请确认是否开始 **Phase 1: Settings 重构**？我们将优先拆分 `settings.ts` 文件。

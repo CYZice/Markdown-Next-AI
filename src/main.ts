@@ -272,7 +272,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
                     e.preventDefault();
                     e.stopPropagation();
                     const sel = window.getSelection()?.toString().trim() || "";
-                    this.showAtTriggerModal(sel);
+                    this.showAtTriggerModalGlobal(sel);
                 };
                 btn.addEventListener("click", handler as EventListener);
                 this.headerButtons.push(btn);
@@ -719,17 +719,13 @@ export default class MarkdownNextAIPlugin extends Plugin {
 
         const popup = new AtTriggerPopup(
             this.app,
-            (prompt: string, images: ImageData[], modelId: string, context: string, selectedText: string, mode: string) => {
-                this.handleContinueWriting(prompt, images, modelId, context, selectedText, mode);
-            },
-            cursorPos,
             this,
-            view,
-            selectedText,
-            mode
+            (prompt: string, images: ImageData[], modelId: string, context: string, selectedText: string, md: string) => {
+                this.handleContinueWriting(prompt, images, modelId, context, selectedText, md);
+            }
         );
         this.lastAtTriggerPopup = popup;
-        popup.open();
+        popup.open(cursorPos, selectedText, view);
     }
 
     showAtTriggerModalGlobal(selectedText: string = "", mode: string = "chat"): void {
@@ -740,18 +736,14 @@ export default class MarkdownNextAIPlugin extends Plugin {
         const pos = this.getFallbackPosition(view) || this.getFallbackPosition(null);
         const popup = new AtTriggerPopup(
             this.app,
+            this,
             (prompt: string, images: ImageData[], modelId: string, context: string, sel: string, md: string) => {
                 const finalSel = sel || selectedText;
                 this.handleContinueWriting(prompt, images, modelId, context, finalSel, md);
-            },
-            pos!,
-            this,
-            view || null,
-            selectedText,
-            mode
+            }
         );
         this.lastAtTriggerPopup = popup;
-        popup.open();
+        popup.open(pos!, selectedText, view || null);
     }
 
     getCursorPosition(view: MarkdownView | null = null): CursorPosition | null {
