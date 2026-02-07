@@ -9,6 +9,8 @@ export class WindowManager {
     private closeGuards: Set<string> = new Set();
     private eventListeners: EventListenerEntry[] = [];
     public isPinned: boolean = false;
+    private xOffset = 0;
+    private yOffset = 0;
 
     constructor(app: App) {
         this.app = app;
@@ -61,6 +63,11 @@ export class WindowManager {
             return;
         }
 
+        // Reset transform since we are repositioning
+        this.xOffset = 0;
+        this.yOffset = 0;
+        this.popupEl.style.transform = "none";
+
         if (!cursorPosition) return;
 
         const { left, top, height = 20 } = cursorPosition;
@@ -73,7 +80,8 @@ export class WindowManager {
         const popupWidth = popupRect.width || 450;
         const popupHeight = popupRect.height || 400;
 
-        if (this.scrollContainer && this.popupEl.style.position === "absolute") {
+        const computedPos = window.getComputedStyle(this.popupEl).position;
+        if (this.scrollContainer && computedPos === "absolute") {
             const containerRect = this.scrollContainer.getBoundingClientRect();
             const scrollTop = this.scrollContainer.scrollTop;
             const scrollLeft = this.scrollContainer.scrollLeft;
@@ -133,43 +141,44 @@ export class WindowManager {
         requestAnimationFrame(() => {
             if (!this.popupEl) return;
             const rect = this.popupEl.getBoundingClientRect();
-            let newLeft = rect.left;
-            let newTop = rect.top;
+            let newVisualLeft = rect.left;
+            let newVisualTop = rect.top;
             let changed = false;
 
-            if (this.scrollContainer && this.popupEl.style.position === "absolute") {
+            const computedPos = window.getComputedStyle(this.popupEl).position;
+            if (this.scrollContainer && computedPos === "absolute") {
                 // Container based logic
                 const containerRect = this.scrollContainer.getBoundingClientRect();
                 const scrollLeft = this.scrollContainer.scrollLeft;
                 const scrollTop = this.scrollContainer.scrollTop;
 
-                // Current position relative to container content
-                let currentLeft = parseFloat(this.popupEl.style.left || "0");
-                let currentTop = parseFloat(this.popupEl.style.top || "0");
+                // Visual position relative to container content
+                let visualLeftRel = rect.left - containerRect.left + scrollLeft;
+                let visualTopRel = rect.top - containerRect.top + scrollTop;
 
                 const contentRight = scrollLeft + this.scrollContainer.clientWidth;
                 const contentBottom = scrollTop + this.scrollContainer.clientHeight;
 
-                const rightEdge = currentLeft + rect.width;
-                const bottomEdge = currentTop + rect.height;
-
-                if (rightEdge > contentRight) {
-                    currentLeft = Math.max(scrollLeft, contentRight - rect.width - 10);
+                if (visualLeftRel + rect.width > contentRight) {
+                    visualLeftRel = Math.max(scrollLeft, contentRight - rect.width - 10);
                     changed = true;
                 }
-                if (currentLeft < scrollLeft) {
-                    currentLeft = scrollLeft + 10;
+                if (visualLeftRel < scrollLeft) {
+                    visualLeftRel = scrollLeft + 10;
                     changed = true;
                 }
-                if (bottomEdge > contentBottom) {
-                    currentTop = Math.max(scrollTop, contentBottom - rect.height - 10);
+                if (visualTopRel + rect.height > contentBottom) {
+                    visualTopRel = Math.max(scrollTop, contentBottom - rect.height - 10);
                     changed = true;
                 }
-                // Top check? maybe
+                if (visualTopRel < scrollTop) {
+                    visualTopRel = scrollTop + 10;
+                    changed = true;
+                }
 
                 if (changed) {
-                    this.popupEl.style.left = `${currentLeft}px`;
-                    this.popupEl.style.top = `${currentTop}px`;
+                    this.popupEl.style.left = `${visualLeftRel - this.xOffset}px`;
+                    this.popupEl.style.top = `${visualTopRel - this.yOffset}px`;
                 }
 
             } else {
@@ -178,25 +187,25 @@ export class WindowManager {
                 const viewportHeight = window.innerHeight;
 
                 if (rect.right > viewportWidth) {
-                    newLeft = Math.max(10, viewportWidth - rect.width - 10);
+                    newVisualLeft = Math.max(10, viewportWidth - rect.width - 10);
                     changed = true;
                 }
                 if (rect.left < 0) {
-                    newLeft = 10;
+                    newVisualLeft = 10;
                     changed = true;
                 }
                 if (rect.bottom > viewportHeight) {
-                    newTop = Math.max(10, viewportHeight - rect.height - 10);
+                    newVisualTop = Math.max(10, viewportHeight - rect.height - 10);
                     changed = true;
                 }
                 if (rect.top < 0) {
-                    newTop = 10;
+                    newVisualTop = 10;
                     changed = true;
                 }
 
                 if (changed) {
-                    this.popupEl.style.left = `${newLeft}px`;
-                    this.popupEl.style.top = `${newTop}px`;
+                    this.popupEl.style.left = `${newVisualLeft - this.xOffset}px`;
+                    this.popupEl.style.top = `${newVisualTop - this.yOffset}px`;
                 }
             }
         });
@@ -205,170 +214,91 @@ export class WindowManager {
     public enableDragging(headerEl: HTMLElement): void {
         if (!this.popupEl || !headerEl) return;
 
-        let startX = 0;
-        let startY = 0;
-        let startLeft = 0;
-        let startTop = 0;
+        let isDragging = false;
+        let currentX: number;
+        let currentY: number;
+        let initialX: number;
+        let initialY: number;
 
-        let rafId: number | null = null;
-        let pendingDx = 0;
-        let pendingDy = 0;
+        const setTranslate = (xPos: number, yPos: number, el: HTMLElement) => {
+            el.style.transform = `translate(${xPos}px, ${yPos}px)`;
+        };
 
-        const commitPosition = (dx: number, dy: number) => {
+        const dragStart = (e: MouseEvent | TouchEvent) => {
             if (!this.popupEl) return;
-            const newLeft = startLeft + dx;
-            const newTop = startTop + dy;
-            this.popupEl.style.transform = "none";
-            this.popupEl.style.left = `${newLeft}px`;
-            this.popupEl.style.top = `${newTop}px`;
-        };
+            const target = e.target as HTMLElement;
+            // 确保点击的是 header 区域
+            if (target !== headerEl && !headerEl.contains(target)) return;
 
-        const onMouseDown = (e: MouseEvent) => {
-            if (e.target !== headerEl && !headerEl.contains(e.target as Node)) return;
-            const targetEl = e.target as HTMLElement;
-            if (targetEl.closest(".markdown-next-ai-popup-close")) return;
-            if (targetEl.closest(".mn-mode-select-container")) return;
-            if (targetEl.closest(".markdown-next-ai-model-select")) return;
+            // 忽略特定的交互元素
+            if (target.closest(".markdown-next-ai-popup-close")) return;
+            if (target.closest(".mn-mode-select-container")) return;
+            if (target.closest(".markdown-next-ai-model-select")) return;
 
-            this.isPinned = true;
-            startX = e.clientX;
-            startY = e.clientY;
-
-            const rect = this.popupEl!.getBoundingClientRect();
-            if (this.scrollContainer && this.popupEl!.style.position === "absolute") {
-                const containerRect = this.scrollContainer.getBoundingClientRect();
-                const scrollLeft = this.scrollContainer.scrollLeft;
-                const scrollTop = this.scrollContainer.scrollTop;
-                startLeft = rect.left - containerRect.left + scrollLeft;
-                startTop = rect.top - containerRect.top + scrollTop;
-                this.popupEl!.style.left = `${startLeft}px`;
-                this.popupEl!.style.top = `${startTop}px`;
+            if (e.type === "touchstart") {
+                initialX = (e as TouchEvent).touches[0].clientX - this.xOffset;
+                initialY = (e as TouchEvent).touches[0].clientY - this.yOffset;
             } else {
-                startLeft = rect.left;
-                startTop = rect.top;
-                this.popupEl!.style.left = `${startLeft}px`;
-                this.popupEl!.style.top = `${startTop}px`;
+                initialX = (e as MouseEvent).clientX - this.xOffset;
+                initialY = (e as MouseEvent).clientY - this.yOffset;
             }
 
-            document.body.dataset.mnaiDraggingAtPopup = "true";
-
-            document.addEventListener("mousemove", onMouseMove);
-            document.addEventListener("mouseup", onMouseUp);
-            e.preventDefault();
-        };
-
-        const onMouseMove = (e: MouseEvent) => {
-            pendingDx = e.clientX - startX;
-            pendingDy = e.clientY - startY;
-
-            if (rafId === null) {
-                rafId = requestAnimationFrame(() => {
-                    if (this.popupEl) {
-                        this.popupEl.style.transform = `translate(${pendingDx}px, ${pendingDy}px)`;
-                    }
-                    rafId = null;
-                });
+            if (target === headerEl || headerEl.contains(target)) {
+                isDragging = true;
+                this.isPinned = true;
+                headerEl.style.cursor = "grabbing";
+                document.body.dataset.mnaiDraggingAtPopup = "true";
             }
         };
 
-        const onMouseUp = () => {
-            if (rafId !== null) {
-                cancelAnimationFrame(rafId);
-                rafId = null;
-            }
-            commitPosition(pendingDx, pendingDy);
+        const dragEnd = () => {
+            if (!isDragging) return;
 
-            document.removeEventListener("mousemove", onMouseMove);
-            document.removeEventListener("mouseup", onMouseUp);
+            initialX = currentX;
+            initialY = currentY;
+            isDragging = false;
+            headerEl.style.cursor = "grab";
             delete document.body.dataset.mnaiDraggingAtPopup;
         };
 
-        headerEl.addEventListener("mousedown", onMouseDown);
+        const drag = (e: MouseEvent | TouchEvent) => {
+            if (isDragging && this.popupEl) {
+                e.preventDefault();
+
+                if (e.type === "touchmove") {
+                    currentX = (e as TouchEvent).touches[0].clientX - initialX;
+                    currentY = (e as TouchEvent).touches[0].clientY - initialY;
+                } else {
+                    currentX = (e as MouseEvent).clientX - initialX;
+                    currentY = (e as MouseEvent).clientY - initialY;
+                }
+
+                this.xOffset = currentX;
+                this.yOffset = currentY;
+
+                setTranslate(currentX, currentY, this.popupEl);
+            }
+        };
+
+        headerEl.style.cursor = "grab";
+        headerEl.style.userSelect = "none";
+
+        headerEl.addEventListener("mousedown", dragStart);
+        headerEl.addEventListener("touchstart", dragStart, { passive: false });
+
+        document.addEventListener("mousemove", drag);
+        document.addEventListener("touchmove", drag, { passive: false });
+
+        document.addEventListener("mouseup", dragEnd);
+        document.addEventListener("touchend", dragEnd);
 
         this.eventListeners.push(
-            { element: headerEl, event: "mousedown", handler: onMouseDown as EventListener },
-        );
-
-        const onTouchStart = (e: TouchEvent) => {
-            if (!this.popupEl) return;
-            if (e.target !== headerEl && !headerEl.contains(e.target as Node)) return;
-            const targetEl = e.target as HTMLElement;
-            if (targetEl.closest(".markdown-next-ai-popup-close")) return;
-            if (targetEl.closest(".mn-mode-select-container")) return;
-            if (targetEl.closest(".markdown-next-ai-model-select")) return;
-
-            this.isPinned = true;
-            document.body.dataset.mnaiDraggingAtPopup = "true";
-            e.preventDefault(); // Prevent scroll while dragging header
-            e.stopPropagation();
-
-            startX = e.touches[0].clientX;
-            startY = e.touches[0].clientY;
-
-            const rect = this.popupEl!.getBoundingClientRect();
-            // ... Initialize start positions (same as mouse) ...
-            if (this.scrollContainer && this.popupEl!.style.position === "absolute") {
-                const containerRect = this.scrollContainer.getBoundingClientRect();
-                const scrollLeft = this.scrollContainer.scrollLeft;
-                const scrollTop = this.scrollContainer.scrollTop;
-                startLeft = rect.left - containerRect.left + scrollLeft;
-                startTop = rect.top - containerRect.top + scrollTop;
-                this.popupEl!.style.left = `${startLeft}px`;
-                this.popupEl!.style.top = `${startTop}px`;
-            } else {
-                startLeft = rect.left;
-                startTop = rect.top;
-                this.popupEl!.style.left = `${startLeft}px`;
-                this.popupEl!.style.top = `${startTop}px`;
-            }
-
-            this.popupEl.style.willChange = "transform";
-            this.popupEl.style.transform = "translate3d(0px, 0px, 0)";
-
-            // Dynamically attach move/end listeners
-            document.addEventListener("touchmove", onTouchMove, { passive: false });
-            document.addEventListener("touchend", onTouchEnd);
-        };
-
-        const onTouchMove = (e: TouchEvent) => {
-            if (!this.popupEl) return;
-            // Prevent default ONLY when dragging
-            e.preventDefault();
-            e.stopPropagation();
-
-            pendingDx = e.touches[0].clientX - startX;
-            pendingDy = e.touches[0].clientY - startY;
-
-            if (rafId === null) {
-                rafId = requestAnimationFrame(() => {
-                    if (this.popupEl) {
-                        this.popupEl.style.transform = `translate(${pendingDx}px, ${pendingDy}px)`;
-                    }
-                    rafId = null;
-                });
-            }
-        };
-
-        const onTouchEnd = () => {
-            if (!this.popupEl) return;
-            if (rafId !== null) {
-                cancelAnimationFrame(rafId);
-                rafId = null;
-            }
-            commitPosition(pendingDx, pendingDy);
-            delete document.body.dataset.mnaiDraggingAtPopup;
-
-            // Cleanup dynamic listeners
-            document.removeEventListener("touchmove", onTouchMove);
-            document.removeEventListener("touchend", onTouchEnd);
-        };
-
-        // Only listen for start initially
-        headerEl.addEventListener("touchstart", onTouchStart, { passive: false });
-
-        // Register ONLY the start listener for cleanup
-        this.eventListeners.push(
-            { element: headerEl, event: "touchstart", handler: onTouchStart as EventListener }
+            { element: headerEl, event: "mousedown", handler: dragStart as EventListener },
+            { element: headerEl, event: "touchstart", handler: dragStart as EventListener },
+            { element: document, event: "mousemove", handler: drag as EventListener },
+            { element: document, event: "touchmove", handler: drag as EventListener },
+            { element: document, event: "mouseup", handler: dragEnd as EventListener },
+            { element: document, event: "touchend", handler: dragEnd as EventListener }
         );
     }
 
