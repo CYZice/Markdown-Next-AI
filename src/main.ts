@@ -3,7 +3,8 @@ import { DEFAULT_SETTINGS } from "./defaults";
 import { TabCompletionController } from "./features/tab-completion/tab-completion-controller";
 import { AIService } from "./services";
 import { GlobalRuleManager } from "./services/rule-manager";
-import { MarkdownNextAISettingTab } from "./settings";
+// Use the refactored settings tab entry
+import { MarkdownNextAISettingTab } from "./settings/index";
 import type { CursorPosition, ImageData, PluginSettings } from "./types";
 import { AIPreviewPopup, AtTriggerPopup, PromptSelectorPopup, SelectionManager, SelectionToolbar } from "./ui";
 import { APPLY_VIEW_TYPE, ApplyView } from "./ui/apply-view/ApplyView";
@@ -55,6 +56,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
             }
         });
 
+        // Switch to refactored SettingsTab (compatible signature)
         this.addSettingTab(new MarkdownNextAISettingTab(this.app, this));
         this.addCommands();
         this.updateEventListeners();

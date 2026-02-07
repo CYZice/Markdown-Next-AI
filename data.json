@@ -51,25 +51,25 @@
   "enableAtTrigger": true,
   "dialogTextTriggers": [
     {
-      "id": "17704519712640.2920746487967981",
+      "id": "17704558554870.3570279431935559",
       "type": "string",
       "pattern": "@",
       "enabled": true
     },
     {
-      "id": "17704519712640.8757670344526043",
+      "id": "17704558554870.7998393963510037",
       "type": "string",
       "pattern": "&",
       "enabled": true
     },
     {
-      "id": "17704519712640.5468375836698753",
+      "id": "17704558554870.19037230643174097",
       "type": "string",
       "pattern": "!",
       "enabled": true
     }
   ],
-  "dialogOpenKey": "Alt-Q",
+  "dialogOpenKey": "Alt",
   "maxTokens": 5000,
   "maxContextLines": 20,
   "maxContextChars": 3000,
