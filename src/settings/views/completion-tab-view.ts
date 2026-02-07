@@ -141,64 +141,91 @@ export class CompletionTabView extends AbstractTabView {
             recBtn.onclick = () => {
                 const modal = new Modal(this.app);
                 modal.titleEl.setText("录制按键");
-                modal.contentEl.createEl("div", { text: "按下目标按键组合", attr: { style: "padding: 12px; text-align: center;" } });
-                modal.contentEl.setAttribute("tabindex", "0");
+
+                const container = modal.contentEl.createDiv();
+                container.style.textAlign = "center";
+                container.style.padding = "20px";
+
+                const display = container.createEl("div", {
+                    text: "请按下按键组合...",
+                    attr: { style: "font-size: 24px; font-weight: bold; margin-bottom: 20px; min-height: 40px; padding: 10px; border: 1px dashed var(--background-modifier-border); border-radius: 6px; background: var(--background-primary);" }
+                });
+
+                let currentPattern = "";
                 let recorded = false;
-                let activeMods = { ctrl: false, shift: false, alt: false, meta: false };
-                let modsSnapshot = { ctrl: false, shift: false, alt: false, meta: false };
+
+                const btnContainer = container.createDiv({ attr: { style: "display: flex; justify-content: center; gap: 10px;" } });
+
+                const confirmBtn = btnContainer.createEl("button", { text: "确认", cls: "mod-cta" });
+                confirmBtn.disabled = true;
+                confirmBtn.onclick = () => {
+                    if (currentPattern) {
+                        const val = currentPattern.replace(/\+/g, "-");
+                        input.value = val;
+                        (tc as any)[row.keyPath] = val;
+                        this.settings.save();
+                        recorded = true;
+                        modal.close();
+                    } else {
+                        new Notice("请先输入按键组合");
+                    }
+                };
+
+                const clearBtn = btnContainer.createEl("button", { text: "清除" });
+                clearBtn.onclick = () => {
+                    currentPattern = "";
+                    display.setText("请按下按键组合...");
+                    confirmBtn.disabled = true;
+                    // Keep focus on container to continue capturing keys
+                    container.focus();
+                };
+
+                const cancelBtn = btnContainer.createEl("button", { text: "取消" });
+                cancelBtn.onclick = () => modal.close();
+
+                // Focusable container for key events
+                container.setAttribute("tabindex", "0");
+
                 const isModifier = (k: string) => k === "Shift" || k === "Control" || k === "Alt" || k === "Meta" || k === "AltGraph";
                 const normalizeKey = (k: string) => {
                     const x = k.length === 1 ? k.toUpperCase() : k;
                     return x === "AltGraph" ? "Alt" : x;
                 };
-                const patternFrom = (mods: { ctrl: boolean; shift: boolean; alt: boolean; meta: boolean }, key?: string) => {
+
+                const updateDisplay = (e: KeyboardEvent) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const k = normalizeKey(e.key);
+                    const mods = {
+                        ctrl: e.ctrlKey || k === "Control",
+                        shift: e.shiftKey || k === "Shift",
+                        alt: e.altKey || k === "Alt",
+                        meta: e.metaKey || k === "Meta"
+                    };
+
                     const parts: string[] = [];
                     if (mods.ctrl) parts.push("Ctrl");
                     if (mods.shift) parts.push("Shift");
                     if (mods.alt) parts.push("Alt");
                     if (mods.meta) parts.push("Meta");
-                    if (key && !isModifier(key)) parts.push(key);
-                    return parts.join("-");
-                };
-                const finalize = (pattern: string) => {
-                    if (recorded) return;
-                    const val = pattern.replace(/\+/g, "-");
-                    input.value = val;
-                    (tc as any)[row.keyPath] = val;
-                    this.settings.save().then(() => {
-                        recorded = true;
-                        modal.close();
-                    });
-                };
-                const keydownHandler = (e: KeyboardEvent) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    const k = normalizeKey(e.key);
-                    activeMods.ctrl = e.ctrlKey || k === "Control";
-                    activeMods.shift = e.shiftKey || k === "Shift";
-                    activeMods.alt = e.altKey || k === "Alt";
-                    activeMods.meta = e.metaKey || k === "Meta";
-                    if (isModifier(k)) {
-                        modsSnapshot = { ...activeMods };
-                        return;
+
+                    if (!isModifier(k)) {
+                        parts.push(k);
                     }
-                    finalize(patternFrom(activeMods, k));
-                };
-                const keyupHandler = (e: KeyboardEvent) => {
-                    if (recorded) return;
-                    const k = normalizeKey(e.key);
-                    if (k === "Control") activeMods.ctrl = false;
-                    if (k === "Shift") activeMods.shift = false;
-                    if (k === "Alt") activeMods.alt = false;
-                    if (k === "Meta") activeMods.meta = false;
-                    if (!activeMods.ctrl && !activeMods.shift && !activeMods.alt && !activeMods.meta && isModifier(k)) {
-                        finalize(patternFrom(modsSnapshot));
+
+                    const pattern = parts.join("-");
+                    if (pattern) {
+                        currentPattern = pattern;
+                        display.setText(pattern);
+                        confirmBtn.disabled = false;
                     }
                 };
-                modal.contentEl.addEventListener("keydown", keydownHandler);
-                modal.contentEl.addEventListener("keyup", keyupHandler);
+
+                container.addEventListener("keydown", updateDisplay);
+
                 modal.open();
-                setTimeout(() => modal.contentEl.focus(), 10);
+                setTimeout(() => container.focus(), 50);
             };
         });
     }

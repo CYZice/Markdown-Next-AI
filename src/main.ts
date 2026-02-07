@@ -192,10 +192,6 @@ export default class MarkdownNextAIPlugin extends Plugin {
         if (loadedData && Array.isArray((loadedData as any).dialogTriggers)) {
             const old = (loadedData as any).dialogTriggers as Array<{ type: string; pattern: string; enabled?: boolean }>;
             if (!Array.isArray(this.settings.dialogTextTriggers)) this.settings.dialogTextTriggers = [];
-            if (!this.settings.dialogOpenKey) {
-                const combo = old.find(x => x.type === "combo" && x.pattern);
-                if (combo) this.settings.dialogOpenKey = combo.pattern.replace(/\+/g, "-");
-            }
             const converted = old
                 .filter(x => x.type === "char" || x.type === "sequence")
                 .map(x => ({ id: String(Date.now()) + Math.random(), type: "string" as const, pattern: x.pattern, enabled: x.enabled !== false }));
@@ -324,6 +320,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
         this.addCommand({
             id: "open-ai-popup",
             name: "唤出AI对话框",
+            hotkeys: [{ modifiers: ["Alt"], key: "Q" }],
             callback: () => {
                 try {
                     const view = this.app.workspace.getActiveViewOfType(MarkdownView);
@@ -586,58 +583,9 @@ export default class MarkdownNextAIPlugin extends Plugin {
                 activeEl.classList.contains("markdown-next-ai-continue-input"))) {
                 return;
             }
-            const hk = this.settings.dialogOpenKey || "";
-            if (hk) {
-                const parts = hk.split(/[\+\-]/).map(s => s.trim()).filter(Boolean);
-                let expectKey = "";
-                let c = false, a = false, sft = false, m = false;
-                for (const p of parts) {
-                    if (p.toLowerCase() === "ctrl") c = true;
-                    else if (p.toLowerCase() === "alt") a = true;
-                    else if (p.toLowerCase() === "shift") sft = true;
-                    else if (p.toLowerCase() === "meta") m = true;
-                    else expectKey = p;
-                }
-                const kk = e.key.length === 1 ? e.key.toUpperCase() : e.key;
-                if (!expectKey) {
-                    const onlyOneModifier =
-                        (c ? 1 : 0) + (a ? 1 : 0) + (sft ? 1 : 0) + (m ? 1 : 0) === 1;
-                    if (onlyOneModifier) {
-                        if (a && e.altKey && !e.ctrlKey && !e.shiftKey && !e.metaKey && (kk === "Alt" || kk === "AltGraph")) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            this.showAtTriggerModal();
-                            return;
-                        }
-                        if (c && e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey && kk === "Control") {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            this.showAtTriggerModal();
-                            return;
-                        }
-                        if (sft && e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey && kk === "Shift") {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            this.showAtTriggerModal();
-                            return;
-                        }
-                        if (m && e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey && kk === "Meta") {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            this.showAtTriggerModal();
-                            return;
-                        }
-                    }
-                } else {
-                    const ek = expectKey.length === 1 ? expectKey.toUpperCase() : expectKey;
-                    if (e.ctrlKey === c && e.altKey === a && e.shiftKey === sft && e.metaKey === m && kk === ek) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        this.showAtTriggerModal();
-                        return;
-                    }
-                }
-            }
+
+            // Remove manual key handling logic
+
             const view = this.app.workspace.getActiveViewOfType(MarkdownView);
             if (!view || !view.editor) return;
             if (this.settings.enableAtTrigger) {
