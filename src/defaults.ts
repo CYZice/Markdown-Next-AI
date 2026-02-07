@@ -59,7 +59,6 @@ export const DEFAULT_SETTINGS: PluginSettings = {
         { id: 'dialog-at', type: 'string', pattern: '@', enabled: true },
         { id: 'dialog-amp', type: 'string', pattern: '&', enabled: true }
     ],
-    dialogOpenKey: "Alt-Q",
     maxTokens: 5000,
     maxContextLines: 20,
     maxContextChars: 3000,

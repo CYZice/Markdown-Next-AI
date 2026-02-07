@@ -3,7 +3,8 @@ import { DEFAULT_SETTINGS } from "./defaults";
 import { TabCompletionController } from "./features/tab-completion/tab-completion-controller";
 import { AIService } from "./services";
 import { GlobalRuleManager } from "./services/rule-manager";
-import { MarkdownNextAISettingTab } from "./settings";
+// Use the refactored settings tab entry
+import { MarkdownNextAISettingTab } from "./settings/index";
 import type { CursorPosition, ImageData, PluginSettings } from "./types";
 import { AIPreviewPopup, AtTriggerPopup, PromptSelectorPopup, SelectionManager, SelectionToolbar } from "./ui";
 import { APPLY_VIEW_TYPE, ApplyView } from "./ui/apply-view/ApplyView";
@@ -55,6 +56,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
             }
         });
 
+        // Switch to refactored SettingsTab (compatible signature)
         this.addSettingTab(new MarkdownNextAISettingTab(this.app, this));
         this.addCommands();
         this.updateEventListeners();
@@ -190,10 +192,6 @@ export default class MarkdownNextAIPlugin extends Plugin {
         if (loadedData && Array.isArray((loadedData as any).dialogTriggers)) {
             const old = (loadedData as any).dialogTriggers as Array<{ type: string; pattern: string; enabled?: boolean }>;
             if (!Array.isArray(this.settings.dialogTextTriggers)) this.settings.dialogTextTriggers = [];
-            if (!this.settings.dialogOpenKey) {
-                const combo = old.find(x => x.type === "combo" && x.pattern);
-                if (combo) this.settings.dialogOpenKey = combo.pattern.replace(/\+/g, "-");
-            }
             const converted = old
                 .filter(x => x.type === "char" || x.type === "sequence")
                 .map(x => ({ id: String(Date.now()) + Math.random(), type: "string" as const, pattern: x.pattern, enabled: x.enabled !== false }));
@@ -270,7 +268,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
                     e.preventDefault();
                     e.stopPropagation();
                     const sel = window.getSelection()?.toString().trim() || "";
-                    this.showAtTriggerModal(sel);
+                    this.showAtTriggerModalGlobal(sel);
                 };
                 btn.addEventListener("click", handler as EventListener);
                 this.headerButtons.push(btn);
@@ -322,6 +320,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
         this.addCommand({
             id: "open-ai-popup",
             name: "唤出AI对话框",
+            hotkeys: [{ modifiers: ["Alt"], key: "Q" }],
             callback: () => {
                 try {
                     const view = this.app.workspace.getActiveViewOfType(MarkdownView);
@@ -584,58 +583,9 @@ export default class MarkdownNextAIPlugin extends Plugin {
                 activeEl.classList.contains("markdown-next-ai-continue-input"))) {
                 return;
             }
-            const hk = this.settings.dialogOpenKey || "";
-            if (hk) {
-                const parts = hk.split(/[\+\-]/).map(s => s.trim()).filter(Boolean);
-                let expectKey = "";
-                let c = false, a = false, sft = false, m = false;
-                for (const p of parts) {
-                    if (p.toLowerCase() === "ctrl") c = true;
-                    else if (p.toLowerCase() === "alt") a = true;
-                    else if (p.toLowerCase() === "shift") sft = true;
-                    else if (p.toLowerCase() === "meta") m = true;
-                    else expectKey = p;
-                }
-                const kk = e.key.length === 1 ? e.key.toUpperCase() : e.key;
-                if (!expectKey) {
-                    const onlyOneModifier =
-                        (c ? 1 : 0) + (a ? 1 : 0) + (sft ? 1 : 0) + (m ? 1 : 0) === 1;
-                    if (onlyOneModifier) {
-                        if (a && e.altKey && !e.ctrlKey && !e.shiftKey && !e.metaKey && (kk === "Alt" || kk === "AltGraph")) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            this.showAtTriggerModal();
-                            return;
-                        }
-                        if (c && e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey && kk === "Control") {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            this.showAtTriggerModal();
-                            return;
-                        }
-                        if (sft && e.shiftKey && !e.ctrlKey && !e.altKey && !e.metaKey && kk === "Shift") {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            this.showAtTriggerModal();
-                            return;
-                        }
-                        if (m && e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey && kk === "Meta") {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            this.showAtTriggerModal();
-                            return;
-                        }
-                    }
-                } else {
-                    const ek = expectKey.length === 1 ? expectKey.toUpperCase() : expectKey;
-                    if (e.ctrlKey === c && e.altKey === a && e.shiftKey === sft && e.metaKey === m && kk === ek) {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        this.showAtTriggerModal();
-                        return;
-                    }
-                }
-            }
+
+            // Remove manual key handling logic
+
             const view = this.app.workspace.getActiveViewOfType(MarkdownView);
             if (!view || !view.editor) return;
             if (this.settings.enableAtTrigger) {
@@ -717,17 +667,13 @@ export default class MarkdownNextAIPlugin extends Plugin {
 
         const popup = new AtTriggerPopup(
             this.app,
-            (prompt: string, images: ImageData[], modelId: string, context: string, selectedText: string, mode: string) => {
-                this.handleContinueWriting(prompt, images, modelId, context, selectedText, mode);
-            },
-            cursorPos,
             this,
-            view,
-            selectedText,
-            mode
+            (prompt: string, images: ImageData[], modelId: string, context: string, selectedText: string, md: string) => {
+                this.handleContinueWriting(prompt, images, modelId, context, selectedText, md);
+            }
         );
         this.lastAtTriggerPopup = popup;
-        popup.open();
+        popup.open(cursorPos, selectedText, view);
     }
 
     showAtTriggerModalGlobal(selectedText: string = "", mode: string = "chat"): void {
@@ -738,18 +684,14 @@ export default class MarkdownNextAIPlugin extends Plugin {
         const pos = this.getFallbackPosition(view) || this.getFallbackPosition(null);
         const popup = new AtTriggerPopup(
             this.app,
+            this,
             (prompt: string, images: ImageData[], modelId: string, context: string, sel: string, md: string) => {
                 const finalSel = sel || selectedText;
                 this.handleContinueWriting(prompt, images, modelId, context, finalSel, md);
-            },
-            pos!,
-            this,
-            view || null,
-            selectedText,
-            mode
+            }
         );
         this.lastAtTriggerPopup = popup;
-        popup.open();
+        popup.open(pos!, selectedText, view || null);
     }
 
     getCursorPosition(view: MarkdownView | null = null): CursorPosition | null {

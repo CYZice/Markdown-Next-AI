@@ -65,7 +65,6 @@ export interface PluginSettings {
     enableRightClick: boolean;
     enableAtTrigger: boolean;
     dialogTextTriggers?: TabCompletionTrigger[];
-    dialogOpenKey?: string;
     maxTokens: number;
     maxContextLines: number;
     maxContextChars: number;
