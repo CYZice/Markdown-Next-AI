@@ -100,3 +100,48 @@ export function createDiffBlocks(
 
   return blocks
 }
+
+export function computeCharDiff(
+  oldText: string,
+  newText: string,
+): { type: 'same' | 'added' | 'removed'; value: string }[] {
+  let prefixLen = 0
+  while (
+    prefixLen < oldText.length &&
+    prefixLen < newText.length &&
+    oldText[prefixLen] === newText[prefixLen]
+  ) {
+    prefixLen++
+  }
+
+  let suffixLen = 0
+  while (
+    suffixLen < oldText.length - prefixLen &&
+    suffixLen < newText.length - prefixLen &&
+    oldText[oldText.length - 1 - suffixLen] ===
+    newText[newText.length - 1 - suffixLen]
+  ) {
+    suffixLen++
+  }
+
+  const result: { type: 'same' | 'added' | 'removed'; value: string }[] = []
+
+  if (prefixLen > 0) {
+    result.push({ type: 'same', value: oldText.substring(0, prefixLen) })
+  }
+
+  const removed = oldText.substring(prefixLen, oldText.length - suffixLen)
+  const added = newText.substring(prefixLen, newText.length - suffixLen)
+
+  if (removed.length > 0) result.push({ type: 'removed', value: removed })
+  if (added.length > 0) result.push({ type: 'added', value: added })
+
+  if (suffixLen > 0) {
+    result.push({
+      type: 'same',
+      value: oldText.substring(oldText.length - suffixLen),
+    })
+  }
+
+  return result
+}

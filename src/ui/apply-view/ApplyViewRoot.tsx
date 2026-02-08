@@ -1,15 +1,9 @@
 import { App, MarkdownView, TFile } from 'obsidian'
 import * as React from 'react'
-import {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Check, Undo2, X } from 'lucide-react'
 
-import { createDiffBlocks, DiffBlock } from '../../utils/diff'
+import { computeCharDiff, createDiffBlocks, DiffBlock } from '../../utils/diff'
 
 export type ApplyViewState = {
   file: TFile
@@ -17,8 +11,7 @@ export type ApplyViewState = {
   newContent: string
 }
 
-// Decision type for each diff block
-type BlockDecision = 'pending' | 'incoming' | 'current' | 'both'
+type BlockDecision = 'pending' | 'incoming' | 'current'
 
 export default function ApplyViewRoot({
   state,
@@ -29,18 +22,17 @@ export default function ApplyViewRoot({
   app: App
   close: (shouldDetach?: boolean) => void
 }) {
-  const [, setCurrentDiffIndex] = useState(0)
+  const [currentDiffIndex, setCurrentDiffIndex] = useState(0)
   const diffBlockRefs = useRef<(HTMLDivElement | null)[]>([])
   const scrollerRef = useRef<HTMLDivElement>(null)
 
-  // Simple translation helper
   const t = (key: string, fallback: string) => fallback
 
   const diff = useMemo(() => {
     try {
       return createDiffBlocks(state.originalContent, state.newContent)
     } catch (e) {
-      console.error('[markdown-next-ai] diff 计算失败，使用兜底逻辑:', e)
+      console.error('[markdown-next-ai] diff failed, using fallback:', e)
       if (state.originalContent === state.newContent) {
         return state.originalContent
           ? [{ type: 'unchanged', value: state.originalContent }]
@@ -62,7 +54,6 @@ export default function ApplyViewRoot({
     }
   }, [state.newContent, state.originalContent])
 
-  // Track decisions for each modified block
   const [decisions, setDecisions] = useState<Map<number, BlockDecision>>(
     () => new Map(),
   )
@@ -78,7 +69,6 @@ export default function ApplyViewRoot({
     [diff],
   )
 
-  // Count of decided and pending blocks
   const decidedCount = useMemo(
     () =>
       modifiedBlockIndices.filter(
@@ -86,14 +76,13 @@ export default function ApplyViewRoot({
       ).length,
     [decisions, modifiedBlockIndices],
   )
-  const totalModifiedBlocks = modifiedBlockIndices.length
 
   const scrollToDiffBlock = useCallback(
     (index: number) => {
       if (index >= 0 && index < modifiedBlockIndices.length) {
         const element = diffBlockRefs.current[modifiedBlockIndices[index]]
         if (element) {
-          element.scrollIntoView({ block: 'start' })
+          element.scrollIntoView({ block: 'center', behavior: 'smooth' })
           setCurrentDiffIndex(index)
         }
       }
@@ -101,19 +90,6 @@ export default function ApplyViewRoot({
     [modifiedBlockIndices],
   )
 
-  // Scroll to the next undecided block
-  const scrollToNextUndecided = useCallback(() => {
-    for (let i = 0; i < modifiedBlockIndices.length; i++) {
-      const idx = modifiedBlockIndices[i]
-      const decision = decisions.get(idx)
-      if (!decision || decision === 'pending') {
-        scrollToDiffBlock(i)
-        return
-      }
-    }
-  }, [decisions, modifiedBlockIndices, scrollToDiffBlock])
-
-  // Generate final content based on decisions
   const generateFinalContent = useCallback(
     (defaultDecision: 'incoming' | 'current' = 'current') => {
       return diff
@@ -131,8 +107,6 @@ export default function ApplyViewRoot({
               return decision === 'pending' && defaultDecision === 'incoming'
                 ? incoming || original
                 : original
-            case 'both':
-              return [original, incoming].filter(Boolean).join('\n')
             default:
               return original
           }
@@ -166,44 +140,14 @@ export default function ApplyViewRoot({
     }
   }
 
-  // Individual block decisions (don't close, just mark decision)
-  const makeDecision = useCallback(
-    (index: number, decision: BlockDecision) => {
-      setDecisions((prev) => {
-        const next = new Map(prev)
-        next.set(index, decision)
-        return next
-      })
-      // Auto-scroll to next undecided block after a short delay
-      setTimeout(() => {
-        scrollToNextUndecided()
-      }, 100)
-    },
-    [scrollToNextUndecided],
-  )
+  const makeDecision = useCallback((index: number, decision: BlockDecision) => {
+    setDecisions((prev) => {
+      const next = new Map(prev)
+      next.set(index, decision)
+      return next
+    })
+  }, [])
 
-  const acceptIncomingBlock = useCallback(
-    (index: number) => {
-      makeDecision(index, 'incoming')
-    },
-    [makeDecision],
-  )
-
-  const acceptCurrentBlock = useCallback(
-    (index: number) => {
-      makeDecision(index, 'current')
-    },
-    [makeDecision],
-  )
-
-  const acceptBothBlocks = useCallback(
-    (index: number) => {
-      makeDecision(index, 'both')
-    },
-    [makeDecision],
-  )
-
-  // Undo a decision
   const undoDecision = useCallback((index: number) => {
     setDecisions((prev) => {
       const next = new Map(prev)
@@ -212,62 +156,190 @@ export default function ApplyViewRoot({
     })
   }, [])
 
-  // Global actions
-  const acceptAllIncoming = useCallback(() => {
-    const newDecisions = new Map<number, BlockDecision>()
-    modifiedBlockIndices.forEach((idx) => {
-      newDecisions.set(idx, 'incoming')
-    })
-    setDecisions(newDecisions)
-  }, [modifiedBlockIndices])
-
-  const acceptAllCurrent = useCallback(() => {
-    const newDecisions = new Map<number, BlockDecision>()
-    modifiedBlockIndices.forEach((idx) => {
-      newDecisions.set(idx, 'current')
-    })
-    setDecisions(newDecisions)
-  }, [modifiedBlockIndices])
-
-  const resetAllDecisions = useCallback(() => {
-    setDecisions(new Map())
-  }, [])
-
-  const updateCurrentDiffFromScroll = useCallback(() => {
-    const scroller = scrollerRef.current
-    if (!scroller) return
-
-    const scrollerRect = scroller.getBoundingClientRect()
-    const scrollerTop = scrollerRect.top
-    const visibleThreshold = 10 // pixels from top to consider element "visible"
-
-    // Find the first visible diff block
-    for (let i = 0; i < modifiedBlockIndices.length; i++) {
-      const element = diffBlockRefs.current[modifiedBlockIndices[i]]
-      if (!element) continue
-
-      const rect = element.getBoundingClientRect()
-      const relativeTop = rect.top - scrollerTop
-
-      // If element is visible (slightly below the top of the viewport)
-      if (relativeTop >= -visibleThreshold) {
-        setCurrentDiffIndex(i)
-        break
-      }
-    }
-  }, [modifiedBlockIndices])
-
-  useEffect(() => {
-    const scroller = scrollerRef.current
-    if (!scroller) return
-
-    const handleScroll = () => {
-      updateCurrentDiffFromScroll()
+  const renderDiffContent = (block: DiffBlock, index: number) => {
+    if (block.type === 'unchanged') {
+      return (
+        <div
+          className="markdown-next-ai-diff-unchanged"
+          style={{
+            whiteSpace: 'pre-wrap',
+            fontFamily: 'var(--font-monospace)',
+            opacity: 0.6,
+            padding: '4px 8px',
+          }}
+        >
+          {block.value}
+        </div>
+      )
     }
 
-    scroller.addEventListener('scroll', handleScroll)
-    return () => scroller.removeEventListener('scroll', handleScroll)
-  }, [updateCurrentDiffFromScroll])
+    const decision = decisions.get(index) || 'pending'
+    const isCurrent = currentDiffIndex === modifiedBlockIndices.indexOf(index)
+    const charDiffs = computeCharDiff(
+      block.originalValue || '',
+      block.modifiedValue || '',
+    )
+
+    return (
+      <div
+        ref={(el) => {
+          diffBlockRefs.current[index] = el
+        }}
+        className={`markdown-next-ai-diff-block ${decision} ${isCurrent ? 'focused' : ''}`}
+        style={{
+          display: 'flex',
+          border: '1px solid var(--background-modifier-border)',
+          borderRadius: '6px',
+          margin: '12px 0',
+          overflow: 'hidden',
+          backgroundColor: 'var(--background-primary)',
+          boxShadow: isCurrent ? '0 0 0 2px var(--interactive-accent)' : 'none',
+        }}
+        onClick={() => setCurrentDiffIndex(modifiedBlockIndices.indexOf(index))}
+      >
+        <div
+          className="markdown-next-ai-diff-content"
+          style={{
+            flex: 1,
+            padding: '12px',
+            overflowX: 'auto',
+            fontFamily: 'var(--font-monospace)',
+          }}
+        >
+          {block.originalValue !== undefined &&
+            (decision === 'pending' || decision === 'current') && (
+              <div
+                className="markdown-next-ai-diff-line original"
+                style={{
+                  whiteSpace: 'pre-wrap',
+                  color: 'var(--text-muted)',
+                  textDecoration:
+                    decision === 'current' ? 'none' : 'line-through',
+                  opacity: decision === 'current' ? 1 : 0.7,
+                  marginBottom: block.modifiedValue ? '4px' : '0',
+                }}
+              >
+                {charDiffs.map((part, i) => (
+                  <span
+                    key={i}
+                    className={`diff-char ${part.type === 'removed' ? 'removed' : ''} ${part.type === 'added' ? 'hidden' : ''}`}
+                    style={{
+                      backgroundColor:
+                        part.type === 'removed'
+                          ? 'rgba(var(--color-red-rgb), 0.2)'
+                          : 'transparent',
+                      display: part.type === 'added' ? 'none' : 'inline',
+                    }}
+                  >
+                    {part.value}
+                  </span>
+                ))}
+              </div>
+            )}
+          {block.modifiedValue !== undefined &&
+            (decision === 'pending' || decision === 'incoming') && (
+              <div
+                className="markdown-next-ai-diff-line modified"
+                style={{
+                  whiteSpace: 'pre-wrap',
+                  color: 'var(--text-normal)',
+                }}
+              >
+                {charDiffs.map((part, i) => (
+                  <span
+                    key={i}
+                    className={`diff-char ${part.type === 'added' ? 'added' : ''} ${part.type === 'removed' ? 'hidden' : ''}`}
+                    style={{
+                      backgroundColor:
+                        part.type === 'added'
+                          ? 'rgba(var(--color-green-rgb), 0.2)'
+                          : 'transparent',
+                      display: part.type === 'removed' ? 'none' : 'inline',
+                    }}
+                  >
+                    {part.value}
+                  </span>
+                ))}
+              </div>
+            )}
+        </div>
+        <div
+          className="markdown-next-ai-diff-rail"
+          style={{
+            width: '40px',
+            borderLeft: '1px solid var(--background-modifier-border)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            background: 'var(--background-secondary)',
+            padding: '4px',
+          }}
+        >
+          {decision === 'pending' ? (
+            <>
+              <button
+                className="diff-action accept"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  makeDecision(index, 'incoming')
+                }}
+                title={t('applyView.acceptIncoming', 'Accept')}
+                style={{
+                  padding: '4px',
+                  cursor: 'pointer',
+                  borderRadius: '4px',
+                  border: 'none',
+                  background: 'transparent',
+                  color: 'var(--text-success)',
+                }}
+              >
+                <Check size={18} />
+              </button>
+              <button
+                className="diff-action reject"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  makeDecision(index, 'current')
+                }}
+                title={t('applyView.keepCurrent', 'Reject')}
+                style={{
+                  padding: '4px',
+                  cursor: 'pointer',
+                  borderRadius: '4px',
+                  border: 'none',
+                  background: 'transparent',
+                  color: 'var(--text-error)',
+                }}
+              >
+                <X size={18} />
+              </button>
+            </>
+          ) : (
+            <button
+              className="diff-action undo"
+              onClick={(e) => {
+                e.stopPropagation()
+                undoDecision(index)
+              }}
+              title={t('applyView.undo', 'Undo')}
+              style={{
+                padding: '4px',
+                cursor: 'pointer',
+                borderRadius: '4px',
+                border: 'none',
+                background: 'transparent',
+                color: 'var(--text-muted)',
+              }}
+            >
+              <Undo2 size={18} />
+            </button>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   useEffect(() => {
     if (modifiedBlockIndices.length > 0) {
@@ -276,215 +348,113 @@ export default function ApplyViewRoot({
   }, [modifiedBlockIndices, scrollToDiffBlock])
 
   return (
-    <div id="markdown-next-ai-apply-view">
-      <div className="view-header">
+    <div
+      id="markdown-next-ai-apply-view"
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        position: 'relative',
+      }}
+    >
+      <div
+        className="view-header"
+        style={{
+          padding: '10px 20px',
+          borderBottom: '1px solid var(--background-modifier-border)',
+        }}
+      >
         <div className="view-header-title-container mod-at-start">
           <div className="view-header-title">
-            {t('applyView.applying', 'Applying')}: {state?.file?.name ?? ''}
+            {t('applyView.applying', 'Review Changes')}: {state?.file?.name ?? ''}
           </div>
         </div>
       </div>
 
-      {/* Global actions toolbar */}
-      <div className="markdown-next-ai-apply-toolbar">
-        <div className="markdown-next-ai-apply-toolbar-left">
-          <span className="markdown-next-ai-apply-progress">
-            {decidedCount} / {totalModifiedBlocks}{' '}
-            {t('applyView.changesResolved', 'changes resolved')}
-          </span>
-        </div>
-        <div className="markdown-next-ai-apply-toolbar-right">
-          <button
-            onClick={acceptAllIncoming}
-            className="markdown-next-ai-toolbar-btn markdown-next-ai-accept"
-            title={t(
-              'applyView.acceptAllIncoming',
-              'Accept all incoming changes',
-            )}
-          >
-            {t('applyView.acceptAllIncoming', 'Accept All Incoming')}
-          </button>
-          <button
-            onClick={acceptAllCurrent}
-            className="markdown-next-ai-toolbar-btn markdown-next-ai-exclude"
-            title={t(
-              'applyView.rejectAll',
-              'Reject all changes (keep original)',
-            )}
-          >
-            {t('applyView.rejectAll', 'Reject All')}
-          </button>
-          {decidedCount > 0 && (
-            <button
-              onClick={resetAllDecisions}
-              className="markdown-next-ai-toolbar-btn"
-              title={t('applyView.reset', 'Reset all decisions')}
-            >
-              {t('applyView.reset', 'Reset')}
-            </button>
-          )}
-          <button
-            onClick={() => void applyAndClose()}
-            className="markdown-next-ai-toolbar-btn markdown-next-ai-apply-btn"
-            title={t('applyView.applyAndClose', 'Apply changes and close')}
-          >
-            {t('applyView.applyAndClose', 'Apply & Close')}
-          </button>
-        </div>
-      </div>
-
-      <div className="view-content">
+      <div
+        className="view-content"
+        ref={scrollerRef}
+        style={{ flex: 1, overflowY: 'auto', padding: '20px' }}
+      >
         <div className="markdown-source-view cm-s-obsidian mod-cm6 node-insert-event is-readable-line-width is-live-preview is-folding show-properties">
           <div className="cm-editor">
-            <div className="cm-scroller" ref={scrollerRef}>
+            <div className="cm-scroller">
               <div className="cm-sizer">
                 <div className="markdown-next-ai-inline-title">
                   {state?.file?.name
                     ? state.file.name.replace(/\.[^/.]+$/, '')
                     : ''}
                 </div>
-
-                {diff.map((block, index) => (
-                  <DiffBlockView
-                    key={index}
-                    block={block}
-                    decision={decisions.get(index)}
-                    onAcceptIncoming={() => acceptIncomingBlock(index)}
-                    onAcceptCurrent={() => acceptCurrentBlock(index)}
-                    onAcceptBoth={() => acceptBothBlocks(index)}
-                    onUndo={() => undoDecision(index)}
-                    t={t}
-                    ref={(el) => {
-                      diffBlockRefs.current[index] = el
-                    }}
-                  />
-                ))}
+                {diff.map((block, index) => renderDiffContent(block, index))}
+                <div style={{ height: '80px' }}></div>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      <div
+        className="markdown-next-ai-apply-toolbar-floating"
+        style={{
+          position: 'absolute',
+          bottom: '24px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          backgroundColor: 'var(--background-secondary)',
+          border: '1px solid var(--background-modifier-border)',
+          borderRadius: '100px',
+          padding: '8px 16px',
+          display: 'flex',
+          gap: '12px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.2)',
+          zIndex: 100,
+          alignItems: 'center',
+        }}
+      >
+        <span
+          className="markdown-next-ai-apply-progress"
+          style={{
+            fontSize: '0.9em',
+            color: 'var(--text-muted)',
+            marginRight: '8px',
+          }}
+        >
+          {decidedCount} / {modifiedBlockIndices.length}
+        </span>
+        <div
+          style={{
+            width: '1px',
+            height: '16px',
+            backgroundColor: 'var(--background-modifier-border)',
+          }}
+        ></div>
+        <button
+          onClick={() => close(false)}
+          className="markdown-next-ai-toolbar-btn"
+          style={{
+            border: 'none',
+            background: 'transparent',
+            color: 'var(--text-normal)',
+            cursor: 'pointer',
+          }}
+        >
+          {t('applyView.cancel', 'Cancel')}
+        </button>
+        <button
+          onClick={() => void applyAndClose()}
+          className="markdown-next-ai-toolbar-btn mod-cta"
+          style={{
+            backgroundColor: 'var(--interactive-accent)',
+            color: 'var(--text-on-accent)',
+            border: 'none',
+            borderRadius: '20px',
+            padding: '4px 12px',
+            cursor: 'pointer',
+          }}
+        >
+          {t('applyView.applyAndClose', 'Apply Changes')}
+        </button>
+      </div>
     </div>
   )
 }
-
-const DiffBlockView = forwardRef<
-  HTMLDivElement,
-  {
-    block: DiffBlock
-    decision?: BlockDecision
-    onAcceptIncoming: () => void
-    onAcceptCurrent: () => void
-    onAcceptBoth: () => void
-    onUndo: () => void
-    t: (keyPath: string, fallback: string) => string
-  }
->(
-  (
-    {
-      block: part,
-      decision,
-      onAcceptIncoming,
-      onAcceptCurrent,
-      onAcceptBoth,
-      onUndo,
-      t,
-    },
-    ref,
-  ) => {
-    if (part.type === 'unchanged') {
-      return (
-        <div className="markdown-next-ai-diff-block">
-          <div className="markdown-next-ai-diff-block-content">{part.value}</div>
-        </div>
-      )
-    } else if (part.type === 'modified') {
-      const isDecided = decision && decision !== 'pending'
-
-      // Show preview of the decision result
-      const getDecisionPreview = () => {
-        if (!isDecided) return null
-        const original = part.originalValue ?? ''
-        const incoming = part.modifiedValue ?? ''
-
-        switch (decision) {
-          case 'incoming':
-            return incoming || original
-          case 'current':
-            return original
-          case 'both':
-            return [original, incoming].filter(Boolean).join('\n')
-          default:
-            return null
-        }
-      }
-
-      const decisionLabel: Record<string, string> = {
-        incoming: t('applyView.acceptedIncoming', 'Accepted incoming'),
-        current: t('applyView.keptCurrent', 'Kept current'),
-        both: t('applyView.mergedBoth', 'Merged both'),
-      }
-
-      return (
-        <div
-          className={`markdown-next-ai-diff-block-container ${isDecided ? 'decided' : ''}`}
-          ref={ref}
-        >
-          {isDecided ? (
-            // Show decided state with preview
-            <>
-              <div className="markdown-next-ai-diff-block decided-preview">
-                <div className="markdown-next-ai-decided-header">
-                  <span className="markdown-next-ai-decided-label">
-                    ✓ {decisionLabel[decision]}
-                  </span>
-                  <button
-                    onClick={onUndo}
-                    className="markdown-next-ai-undo-btn"
-                    title={t('applyView.undo', 'Undo this decision')}
-                  >
-                    {t('applyView.undo', 'Undo')}
-                  </button>
-                </div>
-                <div className="markdown-next-ai-diff-block-content">
-                  {getDecisionPreview()}
-                </div>
-              </div>
-            </>
-          ) : (
-            // Show original diff view with actions
-            <>
-              {part.originalValue && part.originalValue.length > 0 && (
-                <div className="markdown-next-ai-diff-block removed">
-                  <div className="markdown-next-ai-diff-block-content">
-                    {part.originalValue}
-                  </div>
-                </div>
-              )}
-              {part.modifiedValue && part.modifiedValue.length > 0 && (
-                <div className="markdown-next-ai-diff-block added">
-                  <div className="markdown-next-ai-diff-block-content">
-                    {part.modifiedValue}
-                  </div>
-                </div>
-              )}
-              <div className="markdown-next-ai-diff-block-actions">
-                <button onClick={onAcceptIncoming} className="markdown-next-ai-accept">
-                  {t('applyView.acceptIncoming', 'Accept incoming')}
-                </button>
-                <button onClick={onAcceptCurrent} className="markdown-next-ai-exclude">
-                  {t('applyView.acceptCurrent', 'Accept current')}
-                </button>
-                <button onClick={onAcceptBoth}>
-                  {t('applyView.acceptBoth', 'Accept both')}
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      )
-    }
-  },
-)
-
-DiffBlockView.displayName = 'DiffBlockView'
