@@ -27,16 +27,29 @@ export class PromptSelectorPopup {
     /**
      * 打开弹窗
      */
-    open(inputEl: HTMLElement): void {
-        if (this.isOpen) return;
+    open(inputEl: HTMLElement, query: string = ""): void {
+        if (this.isOpen) {
+            // 如果已经打开，更新列表即可（简单处理：先关闭再打开，或者只更新DOM。为了简单，这里先假设关闭再打开，或者我们可以只更新内容）
+            // 考虑到目前的实现是每次open都重建DOM，我们先关闭旧的
+            this.close();
+        }
         this.isOpen = true;
 
         try {
             this.modalEl = document.createElement("div");
             this.modalEl.className = "markdown-next-ai-context-suggestions"; // 复用上下文选择器的样式类
 
-            const prompts = this.plugin.settings.commonPrompts || [];
-            this.commonPrompts = prompts;
+            const allPrompts = this.plugin.settings.commonPrompts || [];
+            if (query) {
+                const lowerQuery = query.toLowerCase();
+                this.commonPrompts = allPrompts.filter((p: CommonPrompt) =>
+                    p.name.toLowerCase().includes(lowerQuery) ||
+                    p.content.toLowerCase().includes(lowerQuery)
+                );
+            } else {
+                this.commonPrompts = allPrompts;
+            }
+
             this.selectedIndex = 0;
 
             // 添加标题头
@@ -93,7 +106,7 @@ export class PromptSelectorPopup {
                 if (this.modalEl && this.modalEl.contains(e.target as Node)) return;
                 this.close();
             };
-            document.addEventListener("click", outsideClickHandler as EventListener);
+            document.addEventListener("click", outsideClickHandler as EventListener, true);
             this.eventListeners.push({ element: document, event: "click", handler: outsideClickHandler as EventListener });
 
             const keydownHandler = (e: KeyboardEvent) => {
@@ -164,7 +177,14 @@ export class PromptSelectorPopup {
 
         this.eventListeners.forEach(({ element, event, handler }) => {
             if (element && typeof element.removeEventListener === "function") {
-                element.removeEventListener(event, handler);
+                // Check if it's one of the capture listeners
+                if (event === "click" && element === document) {
+                    element.removeEventListener(event, handler, true);
+                } else if (event === "scroll" || event === "wheel" || event === "touchmove") {
+                    element.removeEventListener(event, handler, true);
+                } else {
+                    element.removeEventListener(event, handler);
+                }
             }
         });
         this.eventListeners = [];

@@ -208,7 +208,7 @@ export class InputController {
         if (hashIndex !== -1) {
             const query = textBefore.substring(hashIndex + 1);
             if (!query.includes(" ") && !query.includes("\n")) {
-                this.promptSelector.open(this.inputEl as HTMLElement);
+                this.promptSelector.open(this.inputEl as HTMLElement, query);
             } else {
                 this.promptSelector.close();
             }
