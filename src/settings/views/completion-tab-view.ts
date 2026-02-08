@@ -10,6 +10,13 @@ export class CompletionTabView extends AbstractTabView {
         containerEl.empty();
         containerEl.createEl("h3", { text: "Tab 补全设置" });
         const s = this.settings.settings;
+        const models = Object.values(s.models ?? {});
+        const enabledModels = models.filter((model) => model && (model.enabled ?? true));
+        const modelEntries = enabledModels.map((model) => {
+            const name = (model.name || "").trim();
+            const label = name ? name : (model.model || model.id);
+            return { id: model.id, label };
+        });
         const tc: TabCompletionOptions = s.tabCompletion ?? (s.tabCompletion = {
             enabled: false,
             modelId: s.currentModel ?? "",
@@ -49,6 +56,45 @@ export class CompletionTabView extends AbstractTabView {
                     tc.enabled = value;
                     await this.settings.save();
                     if (this.lastContainerEl) this.render(this.lastContainerEl);
+                }));
+
+        new Setting(containerEl)
+            .setName("补全模型")
+            .setDesc("选择 Tab 补全使用的模型")
+            .addDropdown(dropdown => {
+                modelEntries.forEach((entry) => dropdown.addOption(entry.id, entry.label));
+                const current = tc.modelId ?? s.currentModel ?? (modelEntries[0]?.id ?? "");
+                if (current) dropdown.setValue(current);
+                if (!modelEntries.length) dropdown.setDisabled(true);
+                dropdown.onChange(async (value) => {
+                    tc.modelId = value;
+                    await this.settings.save();
+                });
+            });
+
+        new Setting(containerEl)
+            .setName("补全长度")
+            .setDesc("设置期望的补全内容长度")
+            .addDropdown(dropdown => dropdown
+                .addOption("short")
+                .addOption("medium")
+                .addOption("long")
+                .setValue(tc.lengthPreset ?? "medium")
+                .onChange(async (value) => {
+                    tc.lengthPreset = value as any;
+                    switch (tc.lengthPreset) {
+                        case "short":
+                            tc.maxSuggestionLength = 500;
+                            break;
+                        case "long":
+                            tc.maxSuggestionLength = 4000;
+                            break;
+                        case "medium":
+                        default:
+                            tc.maxSuggestionLength = 2000;
+                            break;
+                    }
+                    await this.settings.save();
                 }));
 
         if (!tc.enabled) return;
@@ -252,7 +298,7 @@ export class CompletionTabView extends AbstractTabView {
                 .setName("请求超时 (ms)")
                 .setDesc("Tab 补全的单次请求超时时间")
                 .addText(text => text
-                    .setValue(String(tc.requestTimeoutMs ?? 10000))
+                    .setValue(String(tc.requestTimeoutMs ?? 12000))
                     .onChange(async (value) => {
                         const val = parseInt(value);
                         if (!isNaN(val) && val >= 0) {
@@ -308,6 +354,7 @@ export class CompletionTabView extends AbstractTabView {
             input.onchange = async () => {
                 (tc as any)[row.keyPath] = input.value;
                 await this.settings.save();
+                this.plugin.inlineSuggestionController?.refreshKeymap?.();
             };
             const recCell = tr.createEl("td");
             const recBtn = recCell.createEl("button", { text: "录制按键" });
@@ -331,12 +378,13 @@ export class CompletionTabView extends AbstractTabView {
 
                 const confirmBtn = btnContainer.createEl("button", { text: "确认", cls: "mod-cta" });
                 confirmBtn.disabled = true;
-                confirmBtn.onclick = () => {
+                confirmBtn.onclick = async () => {
                     if (currentPattern) {
                         const val = currentPattern.replace(/\+/g, "-");
                         input.value = val;
                         (tc as any)[row.keyPath] = val;
-                        this.settings.save();
+                        await this.settings.save();
+                        this.plugin.inlineSuggestionController?.refreshKeymap?.();
                         recorded = true;
                         modal.close();
                     } else {
@@ -437,7 +485,39 @@ export class CompletionTabView extends AbstractTabView {
             }
 
             const s = this.settings.settings;
-            const tab: TabCompletionOptions = (s.tabCompletion = s.tabCompletion ?? ({ enabled: false, modelId: s.currentModel, systemPrompt: "", maxSuggestionLength: 2000, contextRange: 4000, idleTriggerEnabled: false, autoTriggerDelayMs: 3000, triggerDelayMs: 3000, autoTriggerCooldownMs: 15000, triggers: [] } as any));
+            const tab: TabCompletionOptions = (s.tabCompletion = s.tabCompletion ?? ({
+                enabled: false,
+                modelId: s.currentModel ?? "",
+                systemPrompt:
+                    'Your job is to predict the most logical text that should be written at the location of the <mask/>. Your answer can be either code, a single word, or multiple sentences. Your answer must be in the same language as the text that is already there.' +
+                    '\n\nAdditional constraints:\n{{tab_completion_constraints}}' +
+                    '\n\nOutput only the text that should appear at the <mask/>. Do not include explanations, labels, or formatting.',
+                maxSuggestionLength: 2000,
+                contextRange: 4000,
+                minContextLength: 20,
+                idleTriggerEnabled: false,
+                autoTriggerDelayMs: 3000,
+                triggerDelayMs: 3000,
+                autoTriggerCooldownMs: 15000,
+                requestTimeoutMs: 12000,
+                maxRetries: 1,
+                lengthPreset: "medium",
+                constraints: "",
+                temperature: 0.5,
+                topP: 1,
+                acceptKey: "Tab",
+                rejectKey: "Shift-Tab",
+                cancelKey: "Escape",
+                triggerKey: "Alt-/",
+                triggers: [
+                    { id: 'sentence-end-comma', type: 'string', pattern: ', ', enabled: true },
+                    { id: 'sentence-end-chinese-comma', type: 'string', pattern: '，', enabled: true },
+                    { id: 'sentence-end-colon', type: 'string', pattern: ': ', enabled: true },
+                    { id: 'sentence-end-chinese-colon', type: 'string', pattern: '：', enabled: true },
+                    { id: 'newline', type: 'regex', pattern: '\\n$', enabled: true },
+                    { id: 'list-item', type: 'regex', pattern: '(?:^|\\n)[-*+]\\s$', enabled: true }
+                ]
+            } as any));
             if (!tab.triggers) tab.triggers = [];
 
             tab.triggers.push({

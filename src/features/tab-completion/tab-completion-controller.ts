@@ -53,19 +53,37 @@ type TabCompletionDeps = {
 };
 
 const DEFAULT_TAB_COMPLETION_OPTIONS: TabCompletionOptions = {
-    enabled: true,
+    enabled: false,
     modelId: "",
     systemPrompt:
         'Your job is to predict the most logical text that should be written at the location of the <mask/>. Your answer can be either code, a single word, or multiple sentences. Your answer must be in the same language as the text that is already there.' +
         '\n\nAdditional constraints:\n{{tab_completion_constraints}}' +
         '\n\nOutput only the text that should appear at the <mask/>. Do not include explanations, labels, or formatting.',
-    maxSuggestionLength: 100,
-    contextRange: 2000,
-    idleTriggerEnabled: true,
-    autoTriggerDelayMs: 500,
-    triggerDelayMs: 2000,
-    autoTriggerCooldownMs: 0,
-    triggers: []
+    maxSuggestionLength: 2000,
+    contextRange: 4000,
+    minContextLength: 20,
+    idleTriggerEnabled: false,
+    autoTriggerDelayMs: 3000,
+    triggerDelayMs: 3000,
+    autoTriggerCooldownMs: 15000,
+    requestTimeoutMs: 12000,
+    maxRetries: 1,
+    lengthPreset: "medium",
+    constraints: "",
+    temperature: 0.5,
+    topP: 1,
+    acceptKey: "Tab",
+    rejectKey: "Shift-Tab",
+    cancelKey: "Escape",
+    triggerKey: "Alt-/",
+    triggers: [
+        { id: 'sentence-end-comma', type: 'string', pattern: ', ', enabled: true },
+        { id: 'sentence-end-chinese-comma', type: 'string', pattern: '，', enabled: true },
+        { id: 'sentence-end-colon', type: 'string', pattern: ': ', enabled: true },
+        { id: 'sentence-end-chinese-colon', type: 'string', pattern: '：', enabled: true },
+        { id: 'newline', type: 'regex', pattern: '\\n$', enabled: true },
+        { id: 'list-item', type: 'regex', pattern: '(?:^|\\n)[-*+]\\s$', enabled: true }
+    ]
 };
 
 const MASK_TAG = '<mask/>';
