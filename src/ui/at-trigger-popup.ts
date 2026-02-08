@@ -328,7 +328,6 @@ export class AtTriggerPopup {
             if (titleTextEl && iconSlot) {
                 titleTextEl.textContent = isImageModel ? "AI图片生成" : "Markdown-Next-AI";
                 setIcon(iconSlot, isImageModel ? "image" : "atom");
-                (iconSlot as HTMLElement).style.color = "#863097";
             }
             const uploadBtn = this.popupEl.querySelector(".markdown-next-ai-upload-btn") as HTMLElement;
             if (uploadBtn) {

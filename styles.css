@@ -1240,7 +1240,7 @@
 .markdown-next-ai-selected-text-section {
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
-  border-left: 3px solid #FFB74D;
+  border-left: 3px solid var(--interactive-accent);
   border-radius: 6px;
   padding: 10px 12px;
   margin-bottom: 8px;
@@ -1255,7 +1255,7 @@
 .markdown-next-ai-selected-text-label {
   font-size: 12px;
   font-weight: 600;
-  color: #FFB74D;
+  color: var(--interactive-accent);
 }
 
 .markdown-next-ai-selected-text-preview {
@@ -1533,7 +1533,7 @@
 .markdown-next-ai-title-icon {
   width: 16px;
   height: 16px;
-  color: #863097;
+  color: var(--text-accent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2712,19 +2712,19 @@
 }
 
 :root {
-  --mn-accent-600: #7C6BF5;
-  --mn-accent-500: #8A7BFF;
-  --mn-accent-100: #F5F2FF;
-  --mn-fg-900: #1F2233;
-  --mn-fg-700: #3E4157;
-  --mn-fg-600: #5D6075;
-  --mn-bg: #FFFFFF;
-  --mn-bg-soft: #FAFAFF;
-  --mn-border: #E8E6F6;
+  --mn-accent-600: var(--interactive-accent);
+  --mn-accent-500: var(--interactive-accent-hover);
+  --mn-accent-100: var(--background-modifier-hover);
+  --mn-fg-900: var(--text-normal);
+  --mn-fg-700: var(--text-normal);
+  --mn-fg-600: var(--text-muted);
+  --mn-bg: var(--background-primary);
+  --mn-bg-soft: var(--background-secondary);
+  --mn-border: var(--background-modifier-border);
   --mn-radius-lg: 14px;
   --mn-radius-sm: 10px;
-  --mn-shadow: 0 12px 28px rgba(24, 20, 60, 0.08), 0 2px 8px rgba(24, 20, 60, 0.06);
-  --mn-focus-ring: 0 0 0 2px rgba(138, 123, 255, 0.45);
+  --mn-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  --mn-focus-ring: 0 0 0 2px var(--interactive-accent);
   --mn-space-1: 4px;
   --mn-space-2: 8px;
   --mn-space-3: 12px;
