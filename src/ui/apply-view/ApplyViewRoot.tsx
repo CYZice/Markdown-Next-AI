@@ -1,4 +1,5 @@
 import { App, MarkdownView, TFile } from 'obsidian'
+import * as React from 'react'
 import {
   forwardRef,
   useCallback,
