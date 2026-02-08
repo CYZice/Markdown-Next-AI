@@ -603,15 +603,17 @@ export default class MarkdownNextAIPlugin extends Plugin {
                         if (!p) continue;
                         if (tr.type === "string") {
                             if (textBefore.endsWith(p)) {
-                                this.showAtTriggerModal();
+                                this.showAtTriggerModal("", "chat", p);
                                 this.atTriggerTimeout = null;
                                 return;
                             }
                         } else if (tr.type === "regex") {
                             try {
                                 const re = new RegExp(p);
-                                if (re.test(textBefore)) {
-                                    this.showAtTriggerModal();
+                                const match = textBefore.match(re);
+                                if (match) {
+                                    // Use the full matched string as the trigger pattern to remove
+                                    this.showAtTriggerModal("", "chat", match[0]);
                                     this.atTriggerTimeout = null;
                                     return;
                                 }
@@ -652,7 +654,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
         }
     }
 
-    showAtTriggerModal(selectedText: string = "", mode: string = "chat"): void {
+    showAtTriggerModal(selectedText: string = "", mode: string = "chat", triggerPattern: string = ""): void {
 
         // 防多开：打开新弹窗前先关闭旧弹窗
         this.closeLastAtTriggerPopup();
@@ -672,6 +674,23 @@ export default class MarkdownNextAIPlugin extends Plugin {
                 await this.handleContinueWriting(prompt, images, modelId, context, selectedText, md, onStatusUpdate);
             }
         );
+
+        if (triggerPattern) {
+            popup.onCancel = () => {
+                if (view && view.editor) {
+                    const cursor = view.editor.getCursor();
+                    const line = view.editor.getLine(cursor.line);
+                    const textBefore = line.substring(0, cursor.ch);
+                    if (textBefore.endsWith(triggerPattern)) {
+                        view.editor.replaceRange("",
+                            { line: cursor.line, ch: cursor.ch - triggerPattern.length },
+                            { line: cursor.line, ch: cursor.ch }
+                        );
+                    }
+                }
+            };
+        }
+
         this.lastAtTriggerPopup = popup;
         popup.open(cursorPos, selectedText, view);
     }

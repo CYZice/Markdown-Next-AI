@@ -57,6 +57,8 @@ export class AtTriggerPopup {
     private modelDropdownKeydownHandler: EventListener | null = null;
 
     private onSubmitCallback: ((prompt: string, images: ImageData[], modelId: string, context: string, selectedText: string, mode: string, onStatusUpdate?: (status: string) => void) => Promise<void> | void) | null = null;
+    public onCancel: (() => void) | null = null;
+    private isSubmitted: boolean = false;
 
     constructor(app: App, plugin: MarkdownNextAIPlugin, onSubmit?: (prompt: string, images: ImageData[], modelId: string, context: string, selectedText: string, mode: string, onStatusUpdate?: (status: string) => void) => Promise<void> | void) {
         this.app = app;
@@ -72,6 +74,7 @@ export class AtTriggerPopup {
         this.view = view;
         if (this.isOpen) return;
         this.isOpen = true;
+        this.isSubmitted = false;
         this.windowManager.isPinned = false;
 
         this.createPopupShell();
@@ -367,6 +370,10 @@ export class AtTriggerPopup {
         if (!this.isOpen) return;
         this.isOpen = false;
 
+        if (!this.isSubmitted && this.onCancel) {
+            this.onCancel();
+        }
+
         this.windowManager.dispose();
         this.inputController?.dispose();
 
@@ -460,6 +467,7 @@ export class AtTriggerPopup {
                 const blocks = parseSearchReplaceBlocks(generatedContent);
 
                 // Close popup before showing results/notices
+                this.isSubmitted = true;
                 this.close();
 
                 if (blocks.length === 0) {
@@ -537,6 +545,7 @@ export class AtTriggerPopup {
 
             try {
                 await this.onSubmitCallback(content, imagesToSend, this.plugin.settings.currentModel, context, this.selectedText, this.mode, updateStatus);
+                this.isSubmitted = true;
                 this.close();
             } catch (error) {
                 // Restore UI on error

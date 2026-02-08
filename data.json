@@ -51,19 +51,19 @@
   "enableAtTrigger": true,
   "dialogTextTriggers": [
     {
-      "id": "17705438550650.397192606676083",
+      "id": "17705452573890.7986151891622263",
       "type": "string",
       "pattern": "@",
       "enabled": true
     },
     {
-      "id": "17705438550650.32301661379935365",
+      "id": "17705452573890.6246518960580097",
       "type": "string",
       "pattern": "&",
       "enabled": true
     },
     {
-      "id": "17705438550650.04497828921913272",
+      "id": "17705452573890.45646275917843515",
       "type": "string",
       "pattern": "!",
       "enabled": true
