@@ -217,6 +217,7 @@ export class AtTriggerPopup {
             if (this.inputController) {
                 this.inputController.inputEl.focus();
                 document.execCommand('insertText', false, '@');
+                this.inputController.inputEl.dispatchEvent(new Event('input', { bubbles: true }));
             }
         };
         hashBtn.onclick = (e) => {
@@ -224,6 +225,7 @@ export class AtTriggerPopup {
             if (this.inputController) {
                 this.inputController.inputEl.focus();
                 document.execCommand('insertText', false, '#');
+                this.inputController.inputEl.dispatchEvent(new Event('input', { bubbles: true }));
             }
         };
 

@@ -6,7 +6,7 @@ import { GlobalRuleManager } from "./services/rule-manager";
 // Use the refactored settings tab entry
 import { MarkdownNextAISettingTab } from "./settings/index";
 import type { CursorPosition, ImageData, PluginSettings } from "./types";
-import { AIPreviewPopup, AtTriggerPopup, PromptSelectorPopup, SelectionManager, SelectionToolbar } from "./ui";
+import { AtTriggerPopup, PromptSelectorPopup, SelectionManager, SelectionToolbar } from "./ui";
 import { APPLY_VIEW_TYPE, ApplyView } from "./ui/apply-view/ApplyView";
 import { InlineSuggestionController } from "./ui/inline-suggestion/inline-suggestion-controller";
 
@@ -865,23 +865,10 @@ export default class MarkdownNextAIPlugin extends Plugin {
         const insertPos = isModification ? editor.getCursor("from") : { line: cursor.line, ch: cursor.ch };
         let finalContent = "";
 
-        let previewPopup: AIPreviewPopup | null = null;
-
-        if (!onStatusUpdate) {
-            // 恢复“正在思考中”状态框，仅显示状态，不显示确认按钮
-            const cursorPos = this.getCursorPosition(view) || this.lastMouseUpPosition || this.getFallbackPosition(view);
-            previewPopup = new AIPreviewPopup(
-                this.app,
-                editor,
-                view,
-                () => { },
-                () => { },
-                null
-            );
-            previewPopup.open(cursorPos);
-            previewPopup.updateStatus("正在思考中");
-        } else {
+        if (onStatusUpdate) {
             onStatusUpdate("正在思考中");
+        } else {
+            new Notice("正在思考中...");
         }
 
         let controller: AbortController | null = null;
@@ -904,9 +891,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
                     if (streamData.content != null) {
                         finalContent = streamData.content;
                         const statusText = `正在生成中(${streamData.content.length}字)`;
-                        if (previewPopup) {
-                            previewPopup.updateStatus(statusText);
-                        } else if (onStatusUpdate) {
+                        if (onStatusUpdate) {
                             onStatusUpdate(statusText);
                         }
                     }
@@ -943,7 +928,6 @@ export default class MarkdownNextAIPlugin extends Plugin {
 
             // Logic Branching based on mode
             if (mode === 'edit-direct') {
-                if (previewPopup) previewPopup.close();
                 // Direct Apply without confirmation
                 editor.operation(() => {
                     if (isModification) {
@@ -955,11 +939,9 @@ export default class MarkdownNextAIPlugin extends Plugin {
                 new Notice("已直接应用修改");
             } else {
                 // Default / Edit / Ask: Open Apply View for confirmation
-                if (previewPopup) previewPopup.close();
                 this.openApplyView(view.file!, originalDoc, newDoc);
             }
         } catch (error: any) {
-            if (previewPopup) previewPopup.close();
             new Notice("续写失败: " + error.message);
             // Re-throw error so AtTriggerPopup knows it failed and can restore its UI
             throw error;

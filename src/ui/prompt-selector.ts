@@ -192,35 +192,27 @@ export class PromptSelectorPopup {
      * 定位弹窗
      */
     positionPopup(inputEl: HTMLElement): void {
-        if (this.modalEl && inputEl) {
-            try {
-                const inputRect = inputEl.getBoundingClientRect();
-                const modalRect = this.modalEl.getBoundingClientRect();
-                const windowWidth = window.innerWidth;
-                const windowHeight = window.innerHeight;
+        if (!this.modalEl || !inputEl) return;
 
-                let left = inputRect.left;
-                let top = inputRect.bottom + 5;
+        const inputRect = inputEl.getBoundingClientRect();
+        const selection = window.getSelection();
 
-                if (left + modalRect.width > windowWidth) {
-                    left = windowWidth - modalRect.width - 10;
-                }
+        if (selection && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            const rect = range.getBoundingClientRect();
 
-                if (top + modalRect.height > windowHeight) {
-                    top = inputRect.top - modalRect.height - 5;
-                }
-
-                left = Math.max(10, left);
-                top = Math.max(10, top);
-
-                this.modalEl.style.position = "fixed";
-                this.modalEl.style.left = left + "px";
-                this.modalEl.style.top = top + "px";
-                this.modalEl.style.zIndex = "10002";
-            } catch (e) {
-                console.error("Failed to position prompt selector:", e);
-            }
+            this.modalEl.style.position = "fixed";
+            this.modalEl.style.left = rect.left + "px";
+            this.modalEl.style.top = (rect.bottom + 5) + "px";
+        } else {
+            this.modalEl.style.position = "fixed";
+            this.modalEl.style.left = inputRect.left + "px";
+            this.modalEl.style.top = (inputRect.bottom + 5) + "px";
         }
+
+        this.modalEl.style.maxHeight = "300px";
+        this.modalEl.style.overflowY = "auto";
+        this.modalEl.style.zIndex = "10002";
     }
 
     /**
