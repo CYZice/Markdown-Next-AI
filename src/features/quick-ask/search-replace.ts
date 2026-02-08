@@ -85,17 +85,22 @@ export function parseSearchReplaceBlocks(content: string): SearchReplaceBlock[] 
     return blocks;
 }
 
-const findLineRange = (content: string, search: string): { start: number; end: number } | null => {
-    const contentLines = content.split("\n");
-    const searchLines = search.split("\n");
-    if (searchLines.length === 0) return null;
-    const normalize = (s: string) => s.trim();
+const getLineInfos = (content: string) => {
+    const lines = content.split("\n");
     const lineStarts: number[] = [];
     let offset = 0;
-    for (const line of contentLines) {
+    for (const line of lines) {
         lineStarts.push(offset);
         offset += line.length + 1;
     }
+    return { lines, lineStarts };
+};
+
+const findLineRange = (content: string, search: string): { start: number; end: number } | null => {
+    const { lines: contentLines, lineStarts } = getLineInfos(content);
+    const searchLines = search.split("\n");
+    if (searchLines.length === 0) return null;
+    const normalize = (s: string) => s.trim();
     for (let i = 0; i <= contentLines.length - searchLines.length; i += 1) {
         if (normalize(contentLines[i]) !== normalize(searchLines[0])) continue;
         let matched = true;
@@ -108,6 +113,42 @@ const findLineRange = (content: string, search: string): { start: number; end: n
         if (matched) {
             const start = lineStarts[i];
             const end = lineStarts[i + searchLines.length - 1] + contentLines[i + searchLines.length - 1].length;
+            return { start, end };
+        }
+    }
+    return null;
+};
+
+const findLineRangeFlexible = (content: string, search: string): { start: number; end: number } | null => {
+    const { lines: contentLines, lineStarts } = getLineInfos(content);
+    const normalize = (s: string) => s.replace(/\s+/g, " ").trim();
+    const searchLines = search
+        .split("\n")
+        .map((line) => normalize(line))
+        .filter((line) => line.length > 0);
+    if (searchLines.length === 0) return null;
+    const contentNormLines = contentLines.map((line) => normalize(line));
+    for (let i = 0; i < contentNormLines.length; i += 1) {
+        if (contentNormLines[i] !== searchLines[0]) continue;
+        let searchIndex = 0;
+        let contentIndex = i;
+        let lastMatchIndex = i;
+        while (searchIndex < searchLines.length && contentIndex < contentNormLines.length) {
+            if (contentNormLines[contentIndex].length === 0) {
+                contentIndex += 1;
+                continue;
+            }
+            if (contentNormLines[contentIndex] === searchLines[searchIndex]) {
+                lastMatchIndex = contentIndex;
+                searchIndex += 1;
+                contentIndex += 1;
+                continue;
+            }
+            break;
+        }
+        if (searchIndex === searchLines.length) {
+            const start = lineStarts[i];
+            const end = lineStarts[lastMatchIndex] + contentLines[lastMatchIndex].length;
             return { start, end };
         }
     }
@@ -143,7 +184,10 @@ export function applySearchReplaceBlocks(originalContent: string, blocks: Search
             appliedCount += 1;
             continue;
         }
-        const range = findLineRange(content, search);
+        let range = findLineRange(content, search);
+        if (!range) {
+            range = findLineRangeFlexible(content, search);
+        }
         if (!range) {
             errors.push(`未找到匹配块: ${search.slice(0, 60)}`);
             continue;

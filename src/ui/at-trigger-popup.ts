@@ -12,6 +12,8 @@ import { ChatStreamRenderer } from "./popup/components/chat-renderer";
 import { InputController } from "./popup/components/input-controller";
 import { WindowManager } from "./popup/components/window-manager";
 
+import { SelectedTextDisplay } from "./popup/components/SelectedTextDisplay";
+
 export interface EventListenerEntry {
     element: EventTarget;
     event: string;
@@ -42,6 +44,7 @@ export class AtTriggerPopup {
     private popupEl: HTMLElement | null = null;
     private chatHistoryContainer: HTMLElement | null = null;
     private reactRoot: Root | null = null;
+    private selectedTextRoot: Root | null = null;
     private modelSelectEl: HTMLSelectElement | null = null;
     private scrollContainer: HTMLElement | null = null;
 
@@ -54,6 +57,8 @@ export class AtTriggerPopup {
     private modelDropdownKeydownHandler: EventListener | null = null;
 
     private onSubmitCallback: ((prompt: string, images: ImageData[], modelId: string, context: string, selectedText: string, mode: string, onStatusUpdate?: (status: string) => void) => Promise<void> | void) | null = null;
+    public onCancel: (() => void) | null = null;
+    private isSubmitted: boolean = false;
 
     constructor(app: App, plugin: MarkdownNextAIPlugin, onSubmit?: (prompt: string, images: ImageData[], modelId: string, context: string, selectedText: string, mode: string, onStatusUpdate?: (status: string) => void) => Promise<void> | void) {
         this.app = app;
@@ -69,6 +74,7 @@ export class AtTriggerPopup {
         this.view = view;
         if (this.isOpen) return;
         this.isOpen = true;
+        this.isSubmitted = false;
         this.windowManager.isPinned = false;
 
         this.createPopupShell();
@@ -173,14 +179,7 @@ export class AtTriggerPopup {
             </div>
             <div class="markdown-next-ai-popup-content">
                 <div class="markdown-next-ai-chat-history" style="display: ${this.mode === 'ask' ? 'flex' : 'none'}; flex-direction: column; overflow-y: auto; max-height: 300px; gap: 8px;"></div>
-                ${this.selectedText ? `
-                <div class="markdown-next-ai-selected-text-section">
-                    <div class="markdown-next-ai-selected-text-header">
-                        <span class="markdown-next-ai-selected-text-label">${isRewriteMode ? "待修改内容:" : "已选中文本:"}</span>
-                    </div>
-                    <div class="markdown-next-ai-selected-text-preview">${selectedTextPreview}</div>
-                </div>
-                ` : ''}
+                <div class="markdown-next-ai-selected-text-root"></div>
                 <div class="markdown-next-ai-image-previews"></div>
                 <div class="markdown-next-ai-selected-context" style="display:none;"><div class="markdown-next-ai-context-list"></div></div>
                 <textarea class="markdown-next-ai-continue-input" placeholder="${placeholderText}" rows="3"></textarea>
@@ -218,6 +217,7 @@ export class AtTriggerPopup {
             if (this.inputController) {
                 this.inputController.inputEl.focus();
                 document.execCommand('insertText', false, '@');
+                this.inputController.inputEl.dispatchEvent(new Event('input', { bubbles: true }));
             }
         };
         hashBtn.onclick = (e) => {
@@ -225,6 +225,7 @@ export class AtTriggerPopup {
             if (this.inputController) {
                 this.inputController.inputEl.focus();
                 document.execCommand('insertText', false, '#');
+                this.inputController.inputEl.dispatchEvent(new Event('input', { bubbles: true }));
             }
         };
 
@@ -248,6 +249,18 @@ export class AtTriggerPopup {
             }
         };
         this.modelSelectEl.addEventListener("mousedown", onModelMouseDown as EventListener);
+
+        const selectedTextContainer = this.popupEl.querySelector(".markdown-next-ai-selected-text-root");
+        if (selectedTextContainer && this.selectedText) {
+            this.selectedTextRoot = createRoot(selectedTextContainer);
+            this.selectedTextRoot.render(
+                React.createElement(SelectedTextDisplay, {
+                    app: this.app,
+                    selectedText: this.selectedText,
+                    isRewriteMode: isRewriteMode
+                })
+            );
+        }
 
         const modeSelectorContainer = this.popupEl.querySelector(".markdown-next-ai-mode-selector");
         if (modeSelectorContainer) {
@@ -315,7 +328,6 @@ export class AtTriggerPopup {
             if (titleTextEl && iconSlot) {
                 titleTextEl.textContent = isImageModel ? "AI图片生成" : "Markdown-Next-AI";
                 setIcon(iconSlot, isImageModel ? "image" : "atom");
-                (iconSlot as HTMLElement).style.color = "#863097";
             }
             const uploadBtn = this.popupEl.querySelector(".markdown-next-ai-upload-btn") as HTMLElement;
             if (uploadBtn) {
@@ -359,12 +371,21 @@ export class AtTriggerPopup {
         if (!this.isOpen) return;
         this.isOpen = false;
 
+        if (!this.isSubmitted && this.onCancel) {
+            this.onCancel();
+        }
+
         this.windowManager.dispose();
         this.inputController?.dispose();
 
         if (this.reactRoot) {
             this.reactRoot.unmount();
             this.reactRoot = null;
+        }
+
+        if (this.selectedTextRoot) {
+            this.selectedTextRoot.unmount();
+            this.selectedTextRoot = null;
         }
 
         this.dropdownEventListeners.forEach(l => l.element.removeEventListener(l.event, l.handler));
@@ -440,12 +461,15 @@ export class AtTriggerPopup {
                     instruction: content,
                     currentFile: file,
                     currentFileContent: editorContent,
+                    selectedText: this.selectedText,
                     aiService: this.plugin.aiService,
-                    modelId: this.plugin.settings.currentModel
+                    modelId: this.plugin.settings.currentModel,
+                    mode: "edit-direct"
                 });
                 const blocks = parseSearchReplaceBlocks(generatedContent);
 
                 // Close popup before showing results/notices
+                this.isSubmitted = true;
                 this.close();
 
                 if (blocks.length === 0) {
@@ -523,6 +547,7 @@ export class AtTriggerPopup {
 
             try {
                 await this.onSubmitCallback(content, imagesToSend, this.plugin.settings.currentModel, context, this.selectedText, this.mode, updateStatus);
+                this.isSubmitted = true;
                 this.close();
             } catch (error) {
                 // Restore UI on error
@@ -565,7 +590,7 @@ export class AtTriggerPopup {
             await this.plugin.aiService.sendRequest(
                 "chat",
                 {
-                    selectedText: "",
+                    selectedText: this.selectedText,
                     beforeText: "",
                     afterText: "",
                     cursorPosition: { line: 0, ch: 0 },

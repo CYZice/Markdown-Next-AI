@@ -4,11 +4,19 @@ import { AbstractTabView } from "./abstract-tab-view";
 
 export class CompletionTabView extends AbstractTabView {
     private lastContainerEl: HTMLElement | null = null;
+    private showAdvancedCompletion = false;
     render(containerEl: HTMLElement): void {
         this.lastContainerEl = containerEl;
         containerEl.empty();
         containerEl.createEl("h3", { text: "Tab 补全设置" });
         const s = this.settings.settings;
+        const models = Object.values(s.models ?? {});
+        const enabledModels = models.filter((model) => model && (model.enabled ?? true));
+        const modelEntries = enabledModels.map((model) => {
+            const name = (model.name || "").trim();
+            const label = name ? name : (model.model || model.id);
+            return { id: model.id, label };
+        });
         const tc: TabCompletionOptions = s.tabCompletion ?? (s.tabCompletion = {
             enabled: false,
             modelId: s.currentModel ?? "",
@@ -48,6 +56,45 @@ export class CompletionTabView extends AbstractTabView {
                     tc.enabled = value;
                     await this.settings.save();
                     if (this.lastContainerEl) this.render(this.lastContainerEl);
+                }));
+
+        new Setting(containerEl)
+            .setName("补全模型")
+            .setDesc("选择 Tab 补全使用的模型")
+            .addDropdown(dropdown => {
+                modelEntries.forEach((entry) => dropdown.addOption(entry.id, entry.label));
+                const current = tc.modelId ?? s.currentModel ?? (modelEntries[0]?.id ?? "");
+                if (current) dropdown.setValue(current);
+                if (!modelEntries.length) dropdown.setDisabled(true);
+                dropdown.onChange(async (value) => {
+                    tc.modelId = value;
+                    await this.settings.save();
+                });
+            });
+
+        new Setting(containerEl)
+            .setName("补全长度")
+            .setDesc("设置期望的补全内容长度")
+            .addDropdown(dropdown => dropdown
+                .addOption("short")
+                .addOption("medium")
+                .addOption("long")
+                .setValue(tc.lengthPreset ?? "medium")
+                .onChange(async (value) => {
+                    tc.lengthPreset = value as any;
+                    switch (tc.lengthPreset) {
+                        case "short":
+                            tc.maxSuggestionLength = 500;
+                            break;
+                        case "long":
+                            tc.maxSuggestionLength = 4000;
+                            break;
+                        case "medium":
+                        default:
+                            tc.maxSuggestionLength = 2000;
+                            break;
+                    }
+                    await this.settings.save();
                 }));
 
         if (!tc.enabled) return;
@@ -113,6 +160,178 @@ export class CompletionTabView extends AbstractTabView {
             };
         });
 
+        new Setting(containerEl)
+            .setName("触发延迟 (ms)")
+            .setDesc("输入结束后等待多久再尝试触发")
+            .addText(text => text
+                .setValue(String(tc.triggerDelayMs ?? 3000))
+                .onChange(async (value) => {
+                    const val = parseInt(value);
+                    if (!isNaN(val) && val >= 0) {
+                        tc.triggerDelayMs = val;
+                        await this.settings.save();
+                    }
+                }));
+
+        new Setting(containerEl)
+            .setName("启用空闲触发")
+            .setDesc("光标停留一段时间后自动触发")
+            .addToggle(toggle => toggle
+                .setValue(!!tc.idleTriggerEnabled)
+                .onChange(async (value) => {
+                    tc.idleTriggerEnabled = value;
+                    await this.settings.save();
+                    if (this.lastContainerEl) this.render(this.lastContainerEl);
+                }));
+
+        if (tc.idleTriggerEnabled) {
+            new Setting(containerEl)
+                .setName("自动触发延迟 (ms)")
+                .setDesc("光标停止多久后触发自动补全")
+                .addText(text => text
+                    .setValue(String(tc.autoTriggerDelayMs ?? 3000))
+                    .onChange(async (value) => {
+                        const val = parseInt(value);
+                        if (!isNaN(val) && val >= 0) {
+                            tc.autoTriggerDelayMs = val;
+                            await this.settings.save();
+                        }
+                    }));
+            new Setting(containerEl)
+                .setName("自动触发冷却 (ms)")
+                .setDesc("自动触发后冷却多久不再触发")
+                .addText(text => text
+                    .setValue(String(tc.autoTriggerCooldownMs ?? 15000))
+                    .onChange(async (value) => {
+                        const val = parseInt(value);
+                        if (!isNaN(val) && val >= 0) {
+                            tc.autoTriggerCooldownMs = val;
+                            await this.settings.save();
+                        }
+                    }));
+        }
+
+        const advToggle = containerEl.createEl("div", { attr: { style: "margin-top: 12px; cursor: pointer; user-select: none; display: inline-flex; align-items: center; gap: 6px; font-weight: 600;" } });
+        const icon = advToggle.createEl("span", { text: this.showAdvancedCompletion ? "▼" : "▶" });
+        advToggle.createEl("span", { text: "高级设置" });
+        advToggle.onclick = () => {
+            this.showAdvancedCompletion = !this.showAdvancedCompletion;
+            if (this.lastContainerEl) this.render(this.lastContainerEl);
+        };
+
+        if (this.showAdvancedCompletion) {
+            new Setting(containerEl)
+                .setName("系统提示词")
+                .setDesc("用于补全任务的系统提示词")
+                .addTextArea(text => text
+                    .setPlaceholder("System prompt...")
+                    .setValue(tc.systemPrompt ?? "")
+                    .onChange(async (value) => {
+                        tc.systemPrompt = value;
+                        await this.settings.save();
+                    }));
+
+            new Setting(containerEl)
+                .setName("基础模型特殊提示词")
+                .setDesc("当模型不支持 system role 时，作为前导提示")
+                .addTextArea(text => text
+                    .setPlaceholder("Base model special prompt...")
+                    .setValue(s.baseModelSpecialPrompt ?? "")
+                    .onChange(async (value) => {
+                        s.baseModelSpecialPrompt = value;
+                        await this.settings.save();
+                    }));
+
+            new Setting(containerEl)
+                .setName("上下文范围")
+                .setDesc("发送给模型的上下文长度（字符数）")
+                .addText(text => text
+                    .setValue(String(tc.contextRange ?? 4000))
+                    .onChange(async (value) => {
+                        const val = parseInt(value);
+                        if (!isNaN(val) && val > 0) {
+                            tc.contextRange = val;
+                            await this.settings.save();
+                        }
+                    }));
+
+            new Setting(containerEl)
+                .setName("最小上下文长度")
+                .setDesc("触发补全所需的最小前文长度（字符数）")
+                .addText(text => text
+                    .setValue(String(tc.minContextLength ?? 20))
+                    .onChange(async (value) => {
+                        const val = parseInt(value);
+                        if (!isNaN(val) && val >= 0) {
+                            tc.minContextLength = val;
+                            await this.settings.save();
+                        }
+                    }));
+
+            new Setting(containerEl)
+                .setName("温度 (Temperature)")
+                .setDesc("采样温度，范围 0~2")
+                .addText(text => text
+                    .setValue(String(tc.temperature ?? 0.5))
+                    .onChange(async (value) => {
+                        const val = parseFloat(value);
+                        if (!isNaN(val) && val >= 0 && val <= 2) {
+                            tc.temperature = val;
+                            await this.settings.save();
+                        }
+                    }));
+
+            new Setting(containerEl)
+                .setName("Top P")
+                .setDesc("核采样阈值，范围 0~1")
+                .addText(text => text
+                    .setValue(String(tc.topP ?? 1))
+                    .onChange(async (value) => {
+                        const val = parseFloat(value);
+                        if (!isNaN(val) && val >= 0 && val <= 1) {
+                            tc.topP = val;
+                            await this.settings.save();
+                        }
+                    }));
+
+            new Setting(containerEl)
+                .setName("请求超时 (ms)")
+                .setDesc("Tab 补全的单次请求超时时间")
+                .addText(text => text
+                    .setValue(String(tc.requestTimeoutMs ?? 12000))
+                    .onChange(async (value) => {
+                        const val = parseInt(value);
+                        if (!isNaN(val) && val >= 0) {
+                            tc.requestTimeoutMs = val;
+                            await this.settings.save();
+                        }
+                    }));
+
+            new Setting(containerEl)
+                .setName("补全额外约束")
+                .setDesc("为补全添加额外的行为约束")
+                .addTextArea(text => text
+                    .setPlaceholder("例如：避免换段、保持当前语气等")
+                    .setValue(tc.constraints ?? "")
+                    .onChange(async (value) => {
+                        tc.constraints = value;
+                        await this.settings.save();
+                    }));
+
+            new Setting(containerEl)
+                .setName("最大重试次数")
+                .setDesc("遇到可恢复错误时的重试次数")
+                .addText(text => text
+                    .setValue(String(tc.maxRetries ?? 1))
+                    .onChange(async (value) => {
+                        const val = parseInt(value);
+                        if (!isNaN(val) && val >= 0) {
+                            tc.maxRetries = val;
+                            await this.settings.save();
+                        }
+                    }));
+        }
+
         containerEl.createEl("h3", { text: "Tab 补全快捷键" });
         const kbTable = containerEl.createEl("table", { cls: "markdown-next-ai-config-table" });
         const kbHead = kbTable.createEl("thead").createEl("tr");
@@ -135,6 +354,7 @@ export class CompletionTabView extends AbstractTabView {
             input.onchange = async () => {
                 (tc as any)[row.keyPath] = input.value;
                 await this.settings.save();
+                this.plugin.inlineSuggestionController?.refreshKeymap?.();
             };
             const recCell = tr.createEl("td");
             const recBtn = recCell.createEl("button", { text: "录制按键" });
@@ -158,12 +378,13 @@ export class CompletionTabView extends AbstractTabView {
 
                 const confirmBtn = btnContainer.createEl("button", { text: "确认", cls: "mod-cta" });
                 confirmBtn.disabled = true;
-                confirmBtn.onclick = () => {
+                confirmBtn.onclick = async () => {
                     if (currentPattern) {
                         const val = currentPattern.replace(/\+/g, "-");
                         input.value = val;
                         (tc as any)[row.keyPath] = val;
-                        this.settings.save();
+                        await this.settings.save();
+                        this.plugin.inlineSuggestionController?.refreshKeymap?.();
                         recorded = true;
                         modal.close();
                     } else {
@@ -264,7 +485,39 @@ export class CompletionTabView extends AbstractTabView {
             }
 
             const s = this.settings.settings;
-            const tab: TabCompletionOptions = (s.tabCompletion = s.tabCompletion ?? ({ enabled: false, modelId: s.currentModel, systemPrompt: "", maxSuggestionLength: 2000, contextRange: 4000, idleTriggerEnabled: false, autoTriggerDelayMs: 3000, triggerDelayMs: 3000, autoTriggerCooldownMs: 15000, triggers: [] } as any));
+            const tab: TabCompletionOptions = (s.tabCompletion = s.tabCompletion ?? ({
+                enabled: false,
+                modelId: s.currentModel ?? "",
+                systemPrompt:
+                    'Your job is to predict the most logical text that should be written at the location of the <mask/>. Your answer can be either code, a single word, or multiple sentences. Your answer must be in the same language as the text that is already there.' +
+                    '\n\nAdditional constraints:\n{{tab_completion_constraints}}' +
+                    '\n\nOutput only the text that should appear at the <mask/>. Do not include explanations, labels, or formatting.',
+                maxSuggestionLength: 2000,
+                contextRange: 4000,
+                minContextLength: 20,
+                idleTriggerEnabled: false,
+                autoTriggerDelayMs: 3000,
+                triggerDelayMs: 3000,
+                autoTriggerCooldownMs: 15000,
+                requestTimeoutMs: 12000,
+                maxRetries: 1,
+                lengthPreset: "medium",
+                constraints: "",
+                temperature: 0.5,
+                topP: 1,
+                acceptKey: "Tab",
+                rejectKey: "Shift-Tab",
+                cancelKey: "Escape",
+                triggerKey: "Alt-/",
+                triggers: [
+                    { id: 'sentence-end-comma', type: 'string', pattern: ', ', enabled: true },
+                    { id: 'sentence-end-chinese-comma', type: 'string', pattern: '，', enabled: true },
+                    { id: 'sentence-end-colon', type: 'string', pattern: ': ', enabled: true },
+                    { id: 'sentence-end-chinese-colon', type: 'string', pattern: '：', enabled: true },
+                    { id: 'newline', type: 'regex', pattern: '\\n$', enabled: true },
+                    { id: 'list-item', type: 'regex', pattern: '(?:^|\\n)[-*+]\\s$', enabled: true }
+                ]
+            } as any));
             if (!tab.triggers) tab.triggers = [];
 
             tab.triggers.push({

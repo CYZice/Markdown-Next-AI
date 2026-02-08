@@ -33,38 +33,55 @@ CRITICAL RULES:
 - Prefer minimal changes. Do not replace the entire file unless necessary.
 `;
 
-export function generateEditPrompt(instruction: string, currentFile: TFile, fileContent: string): string {
-    return `
+export function generateEditPrompt(instruction: string, currentFile: TFile, fileContent: string, selectedText?: string): string {
+    let prompt = `
 Here is the file content of ${currentFile.path}:
 
 \`\`\`markdown
 ${fileContent}
 \`\`\`
+`;
 
+    if (selectedText && selectedText.trim()) {
+        prompt += `
+The user has selected the following text:
+\`\`\`markdown
+${selectedText}
+\`\`\`
+`;
+    }
+
+    prompt += `
 User Instruction: ${instruction}
 
 Please generate the necessary SEARCH/REPLACE blocks to modify the file according to the instruction.
 `;
+    return prompt;
 }
 
 export async function generateEditContent({
     instruction,
     currentFile,
     currentFileContent,
+    selectedText,
     aiService,
-    modelId
+    modelId,
+    mode
 }: {
     instruction: string;
     currentFile: TFile;
     currentFileContent: string;
+    selectedText?: string;
     aiService: AIService;
     modelId: string | undefined;
+    mode?: string;
 }): Promise<string> {
     const messages: ChatMessage[] = [
         { role: "system", content: EDIT_MODE_SYSTEM_PROMPT },
-        { role: "user", content: generateEditPrompt(instruction, currentFile, currentFileContent) }
+        { role: "user", content: generateEditPrompt(instruction, currentFile, currentFileContent, selectedText) }
     ];
-    const maxTokens = aiService.getMaxTokens("edit") || 2048;
+    const configuredMaxTokens = aiService.getMaxTokens("edit") || 2048;
+    const maxTokens = mode === "edit-direct" ? Math.max(16384, configuredMaxTokens) : configuredMaxTokens;
     const text = await aiService.generateCompletion(messages, modelId, {
         temperature: 0.2,
         max_tokens: maxTokens

@@ -208,19 +208,7 @@ export class InputController {
         if (hashIndex !== -1) {
             const query = textBefore.substring(hashIndex + 1);
             if (!query.includes(" ") && !query.includes("\n")) {
-                this.promptSelector.open(this.inputEl as HTMLElement);
-
-                const selection = window.getSelection();
-                if (selection && selection.rangeCount > 0) {
-                    const range = selection.getRangeAt(0);
-                    const rect = range.getBoundingClientRect();
-                    const modalEl = document.querySelector(".markdown-next-ai-context-suggestions") as HTMLElement;
-                    if (modalEl) {
-                        modalEl.style.position = "fixed";
-                        modalEl.style.left = rect.left + "px";
-                        modalEl.style.top = (rect.bottom + 5) + "px";
-                    }
-                }
+                this.promptSelector.open(this.inputEl as HTMLElement, query);
             } else {
                 this.promptSelector.close();
             }

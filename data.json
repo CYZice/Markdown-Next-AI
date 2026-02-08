@@ -51,19 +51,19 @@
   "enableAtTrigger": true,
   "dialogTextTriggers": [
     {
-      "id": "17705403970880.007971558015689606",
+      "id": "17705553923090.7008090706401823",
       "type": "string",
       "pattern": "@",
       "enabled": true
     },
     {
-      "id": "17705403970880.43022727168556774",
+      "id": "17705553923090.28593150746813245",
       "type": "string",
       "pattern": "&",
       "enabled": true
     },
     {
-      "id": "17705403970880.6207690177319785",
+      "id": "17705553923090.7742538733565054",
       "type": "string",
       "pattern": "!",
       "enabled": true
@@ -104,7 +104,7 @@
   ],
   "lastInsertAction": "insert",
   "baseModelSpecialPrompt": "",
-  "quickAskMode": "edit",
+  "quickAskMode": "edit-direct",
   "tabCompletion": {
     "enabled": true,
     "modelId": "deepseek-chat",
@@ -118,7 +118,7 @@
     "autoTriggerCooldownMs": 15000,
     "requestTimeoutMs": 12000,
     "maxRetries": 1,
-    "lengthPreset": "medium",
+    "lengthPreset": "short",
     "constraints": "",
     "temperature": 0.5,
     "topP": 1,

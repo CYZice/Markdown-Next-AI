@@ -27,16 +27,29 @@ export class PromptSelectorPopup {
     /**
      * 打开弹窗
      */
-    open(inputEl: HTMLElement): void {
-        if (this.isOpen) return;
+    open(inputEl: HTMLElement, query: string = ""): void {
+        if (this.isOpen) {
+            // 如果已经打开，更新列表即可（简单处理：先关闭再打开，或者只更新DOM。为了简单，这里先假设关闭再打开，或者我们可以只更新内容）
+            // 考虑到目前的实现是每次open都重建DOM，我们先关闭旧的
+            this.close();
+        }
         this.isOpen = true;
 
         try {
             this.modalEl = document.createElement("div");
             this.modalEl.className = "markdown-next-ai-context-suggestions"; // 复用上下文选择器的样式类
 
-            const prompts = this.plugin.settings.commonPrompts || [];
-            this.commonPrompts = prompts;
+            const allPrompts = this.plugin.settings.commonPrompts || [];
+            if (query) {
+                const lowerQuery = query.toLowerCase();
+                this.commonPrompts = allPrompts.filter((p: CommonPrompt) =>
+                    p.name.toLowerCase().includes(lowerQuery) ||
+                    p.content.toLowerCase().includes(lowerQuery)
+                );
+            } else {
+                this.commonPrompts = allPrompts;
+            }
+
             this.selectedIndex = 0;
 
             // 添加标题头
@@ -93,7 +106,7 @@ export class PromptSelectorPopup {
                 if (this.modalEl && this.modalEl.contains(e.target as Node)) return;
                 this.close();
             };
-            document.addEventListener("click", outsideClickHandler as EventListener);
+            document.addEventListener("click", outsideClickHandler as EventListener, true);
             this.eventListeners.push({ element: document, event: "click", handler: outsideClickHandler as EventListener });
 
             const keydownHandler = (e: KeyboardEvent) => {
@@ -164,7 +177,14 @@ export class PromptSelectorPopup {
 
         this.eventListeners.forEach(({ element, event, handler }) => {
             if (element && typeof element.removeEventListener === "function") {
-                element.removeEventListener(event, handler);
+                // Check if it's one of the capture listeners
+                if (event === "click" && element === document) {
+                    element.removeEventListener(event, handler, true);
+                } else if (event === "scroll" || event === "wheel" || event === "touchmove") {
+                    element.removeEventListener(event, handler, true);
+                } else {
+                    element.removeEventListener(event, handler);
+                }
             }
         });
         this.eventListeners = [];
@@ -192,35 +212,27 @@ export class PromptSelectorPopup {
      * 定位弹窗
      */
     positionPopup(inputEl: HTMLElement): void {
-        if (this.modalEl && inputEl) {
-            try {
-                const inputRect = inputEl.getBoundingClientRect();
-                const modalRect = this.modalEl.getBoundingClientRect();
-                const windowWidth = window.innerWidth;
-                const windowHeight = window.innerHeight;
+        if (!this.modalEl || !inputEl) return;
 
-                let left = inputRect.left;
-                let top = inputRect.bottom + 5;
+        const inputRect = inputEl.getBoundingClientRect();
+        const selection = window.getSelection();
 
-                if (left + modalRect.width > windowWidth) {
-                    left = windowWidth - modalRect.width - 10;
-                }
+        if (selection && selection.rangeCount > 0) {
+            const range = selection.getRangeAt(0);
+            const rect = range.getBoundingClientRect();
 
-                if (top + modalRect.height > windowHeight) {
-                    top = inputRect.top - modalRect.height - 5;
-                }
-
-                left = Math.max(10, left);
-                top = Math.max(10, top);
-
-                this.modalEl.style.position = "fixed";
-                this.modalEl.style.left = left + "px";
-                this.modalEl.style.top = top + "px";
-                this.modalEl.style.zIndex = "10002";
-            } catch (e) {
-                console.error("Failed to position prompt selector:", e);
-            }
+            this.modalEl.style.position = "fixed";
+            this.modalEl.style.left = rect.left + "px";
+            this.modalEl.style.top = (rect.bottom + 5) + "px";
+        } else {
+            this.modalEl.style.position = "fixed";
+            this.modalEl.style.left = inputRect.left + "px";
+            this.modalEl.style.top = (inputRect.bottom + 5) + "px";
         }
+
+        this.modalEl.style.maxHeight = "300px";
+        this.modalEl.style.overflowY = "auto";
+        this.modalEl.style.zIndex = "10002";
     }
 
     /**
