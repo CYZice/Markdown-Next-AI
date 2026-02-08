@@ -668,8 +668,8 @@ export default class MarkdownNextAIPlugin extends Plugin {
         const popup = new AtTriggerPopup(
             this.app,
             this,
-            (prompt: string, images: ImageData[], modelId: string, context: string, selectedText: string, md: string) => {
-                this.handleContinueWriting(prompt, images, modelId, context, selectedText, md);
+            async (prompt: string, images: ImageData[], modelId: string, context: string, selectedText: string, md: string, onStatusUpdate?: (status: string) => void) => {
+                await this.handleContinueWriting(prompt, images, modelId, context, selectedText, md, onStatusUpdate);
             }
         );
         this.lastAtTriggerPopup = popup;
@@ -685,9 +685,9 @@ export default class MarkdownNextAIPlugin extends Plugin {
         const popup = new AtTriggerPopup(
             this.app,
             this,
-            (prompt: string, images: ImageData[], modelId: string, context: string, sel: string, md: string) => {
+            async (prompt: string, images: ImageData[], modelId: string, context: string, sel: string, md: string, onStatusUpdate?: (status: string) => void) => {
                 const finalSel = sel || selectedText;
-                this.handleContinueWriting(prompt, images, modelId, context, finalSel, md);
+                await this.handleContinueWriting(prompt, images, modelId, context, finalSel, md, onStatusUpdate);
             }
         );
         this.lastAtTriggerPopup = popup;
@@ -812,7 +812,8 @@ export default class MarkdownNextAIPlugin extends Plugin {
         modelId: string | null = null,
         context: string | null = null,
         selectedText: string = "",
-        mode: string = "chat"
+        mode: string = "chat",
+        onStatusUpdate?: (status: string) => void
     ): Promise<void> {
         // 编辑器模式：不使用浮窗确认，按预览+差异视图流程处理
 
@@ -844,18 +845,26 @@ export default class MarkdownNextAIPlugin extends Plugin {
         const isModification = selectedText.length > 0;
         const insertPos = isModification ? editor.getCursor("from") : { line: cursor.line, ch: cursor.ch };
         let finalContent = "";
-        // 恢复“正在思考中”状态框，仅显示状态，不显示确认按钮
-        const cursorPos = this.getCursorPosition(view) || this.lastMouseUpPosition || this.getFallbackPosition(view);
-        const previewPopup = new AIPreviewPopup(
-            this.app,
-            editor,
-            view,
-            () => { },
-            () => { },
-            null
-        );
-        previewPopup.open(cursorPos);
-        previewPopup.updateStatus("正在思考中");
+
+        let previewPopup: AIPreviewPopup | null = null;
+
+        if (!onStatusUpdate) {
+            // 恢复“正在思考中”状态框，仅显示状态，不显示确认按钮
+            const cursorPos = this.getCursorPosition(view) || this.lastMouseUpPosition || this.getFallbackPosition(view);
+            previewPopup = new AIPreviewPopup(
+                this.app,
+                editor,
+                view,
+                () => { },
+                () => { },
+                null
+            );
+            previewPopup.open(cursorPos);
+            previewPopup.updateStatus("正在思考中");
+        } else {
+            onStatusUpdate("正在思考中");
+        }
+
         let controller: AbortController | null = null;
         try {
             controller = new AbortController();
@@ -875,7 +884,12 @@ export default class MarkdownNextAIPlugin extends Plugin {
                 (streamData) => {
                     if (streamData.content != null) {
                         finalContent = streamData.content;
-                        previewPopup.updateStatus(`正在生成中(${streamData.content.length}字)`);
+                        const statusText = `正在生成中(${streamData.content.length}字)`;
+                        if (previewPopup) {
+                            previewPopup.updateStatus(statusText);
+                        } else if (onStatusUpdate) {
+                            onStatusUpdate(statusText);
+                        }
                     }
                 },
                 controller ? controller.signal : undefined
@@ -889,7 +903,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
             }
             // 生成内容为空时，避免打开空的 Apply View
             if (!finalContent || finalContent.trim().length === 0) {
-                previewPopup.close();
+                if (previewPopup) previewPopup.close();
                 new Notice("生成结果为空，已取消打开差异视图");
                 return;
             }
@@ -910,7 +924,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
 
             // Logic Branching based on mode
             if (mode === 'edit-direct') {
-                previewPopup.close();
+                if (previewPopup) previewPopup.close();
                 // Direct Apply without confirmation
                 editor.operation(() => {
                     if (isModification) {
@@ -922,12 +936,14 @@ export default class MarkdownNextAIPlugin extends Plugin {
                 new Notice("已直接应用修改");
             } else {
                 // Default / Edit / Ask: Open Apply View for confirmation
-                previewPopup.close();
+                if (previewPopup) previewPopup.close();
                 this.openApplyView(view.file!, originalDoc, newDoc);
             }
         } catch (error: any) {
-            previewPopup.close();
+            if (previewPopup) previewPopup.close();
             new Notice("续写失败: " + error.message);
+            // Re-throw error so AtTriggerPopup knows it failed and can restore its UI
+            throw error;
         } finally {
             if (controller) this.activeAbortControllers.delete(controller);
         }

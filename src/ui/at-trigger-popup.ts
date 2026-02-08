@@ -4,7 +4,7 @@ import { createRoot, Root } from "react-dom/client";
 import { MODE_OPTIONS, ModeSelect } from "../components/panels/quick-ask";
 import { MODEL_CATEGORIES } from "../constants";
 import { generateEditContent } from "../features/quick-ask/edit-mode";
-import { parseSearchReplaceBlocks, applySearchReplaceBlocks } from "../features/quick-ask/search-replace";
+import { applySearchReplaceBlocks, parseSearchReplaceBlocks } from "../features/quick-ask/search-replace";
 import MarkdownNextAIPlugin from "../main";
 import { ImageHandler } from "../services/image-handler";
 import { ChatMessage, CursorPosition, ImageData, QuickAskMode } from "../types";
@@ -53,9 +53,9 @@ export class AtTriggerPopup {
     private modelDropdownTouchHandler: EventListener | null = null;
     private modelDropdownKeydownHandler: EventListener | null = null;
 
-    private onSubmitCallback: ((prompt: string, images: ImageData[], modelId: string, context: string, selectedText: string, mode: string) => void) | null = null;
+    private onSubmitCallback: ((prompt: string, images: ImageData[], modelId: string, context: string, selectedText: string, mode: string, onStatusUpdate?: (status: string) => void) => Promise<void> | void) | null = null;
 
-    constructor(app: App, plugin: MarkdownNextAIPlugin, onSubmit?: (prompt: string, images: ImageData[], modelId: string, context: string, selectedText: string, mode: string) => void) {
+    constructor(app: App, plugin: MarkdownNextAIPlugin, onSubmit?: (prompt: string, images: ImageData[], modelId: string, context: string, selectedText: string, mode: string, onStatusUpdate?: (status: string) => void) => Promise<void> | void) {
         this.app = app;
         this.plugin = plugin;
         this.windowManager = new WindowManager(app);
@@ -399,8 +399,42 @@ export class AtTriggerPopup {
             const editor = this.view.editor;
             const file = this.view.file;
             const editorContent = editor.getValue();
-            this.close();
-            new Notice("正在生成修改建议...");
+
+            // Set UI to loading state
+            const submitBtn = this.popupEl?.querySelector(".markdown-next-ai-submit-btn") as HTMLElement;
+            const inputEl = this.inputController?.inputEl;
+            const originalBtnContent = submitBtn ? submitBtn.innerHTML : "";
+
+            if (submitBtn) {
+                submitBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation: spin 1s linear infinite;"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>`;
+                // Add inline style for spin animation if not present globally
+                if (!document.getElementById("markdown-next-ai-spin-keyframes")) {
+                    const style = document.createElement("style");
+                    style.id = "markdown-next-ai-spin-keyframes";
+                    style.textContent = `@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`;
+                    document.head.appendChild(style);
+                }
+                submitBtn.style.pointerEvents = "none";
+                submitBtn.style.opacity = "0.7";
+            }
+            if (inputEl) {
+                inputEl.disabled = true;
+                inputEl.style.opacity = "0.7";
+            }
+
+            // Add status message
+            let statusEl = this.popupEl?.querySelector(".markdown-next-ai-status-message");
+            if (!statusEl && this.popupEl) {
+                statusEl = document.createElement("div");
+                statusEl.className = "markdown-next-ai-status-message";
+                statusEl.style.cssText = "padding: 0 12px 8px; color: var(--text-muted); font-size: 0.8em;";
+                const inputSection = this.popupEl.querySelector(".markdown-next-ai-continue-input");
+                if (inputSection && inputSection.parentElement) {
+                    inputSection.parentElement.insertBefore(statusEl, inputSection.nextSibling);
+                }
+            }
+            if (statusEl) statusEl.textContent = "正在思考并修改文档...";
+
             try {
                 const generatedContent = await generateEditContent({
                     instruction: content,
@@ -410,6 +444,10 @@ export class AtTriggerPopup {
                     modelId: this.plugin.settings.currentModel
                 });
                 const blocks = parseSearchReplaceBlocks(generatedContent);
+
+                // Close popup before showing results/notices
+                this.close();
+
                 if (blocks.length === 0) {
                     new Notice("未能生成有效的修改建议");
                     return;
@@ -425,6 +463,18 @@ export class AtTriggerPopup {
                     new Notice(`部分修改未应用：${result.errors[0]}`);
                 }
             } catch (error) {
+                // Restore UI on error
+                if (submitBtn) {
+                    submitBtn.innerHTML = originalBtnContent;
+                    submitBtn.style.pointerEvents = "";
+                    submitBtn.style.opacity = "";
+                }
+                if (inputEl) {
+                    inputEl.disabled = false;
+                    inputEl.style.opacity = "";
+                }
+                if (statusEl) statusEl.textContent = "";
+
                 new Notice("修改失败: " + (error instanceof Error ? error.message : String(error)));
             }
             return;
@@ -432,8 +482,62 @@ export class AtTriggerPopup {
 
         if (this.mode !== 'ask' && this.onSubmitCallback) {
             const context = await this.inputController.getSelectedContext();
-            this.onSubmitCallback(content, imagesToSend, this.plugin.settings.currentModel, context, this.selectedText, this.mode);
-            this.close();
+
+            // Set UI to loading state
+            const submitBtn = this.popupEl?.querySelector(".markdown-next-ai-submit-btn") as HTMLElement;
+            const inputEl = this.inputController?.inputEl;
+            const originalBtnContent = submitBtn ? submitBtn.innerHTML : "";
+
+            if (submitBtn) {
+                submitBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="animation: spin 1s linear infinite;"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>`;
+                if (!document.getElementById("markdown-next-ai-spin-keyframes")) {
+                    const style = document.createElement("style");
+                    style.id = "markdown-next-ai-spin-keyframes";
+                    style.textContent = `@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`;
+                    document.head.appendChild(style);
+                }
+                submitBtn.style.pointerEvents = "none";
+                submitBtn.style.opacity = "0.7";
+            }
+            if (inputEl) {
+                inputEl.disabled = true;
+                inputEl.style.opacity = "0.7";
+            }
+
+            // Add status message
+            let statusEl = this.popupEl?.querySelector(".markdown-next-ai-status-message");
+            if (!statusEl && this.popupEl) {
+                statusEl = document.createElement("div");
+                statusEl.className = "markdown-next-ai-status-message";
+                statusEl.style.cssText = "padding: 0 12px 8px; color: var(--text-muted); font-size: 0.8em;";
+                const inputSection = this.popupEl.querySelector(".markdown-next-ai-continue-input");
+                if (inputSection && inputSection.parentElement) {
+                    inputSection.parentElement.insertBefore(statusEl, inputSection.nextSibling);
+                }
+            }
+            if (statusEl) statusEl.textContent = "正在思考中...";
+
+            const updateStatus = (status: string) => {
+                if (statusEl) statusEl.textContent = status;
+            };
+
+            try {
+                await this.onSubmitCallback(content, imagesToSend, this.plugin.settings.currentModel, context, this.selectedText, this.mode, updateStatus);
+                this.close();
+            } catch (error) {
+                // Restore UI on error
+                if (submitBtn) {
+                    submitBtn.innerHTML = originalBtnContent;
+                    submitBtn.style.pointerEvents = "";
+                    submitBtn.style.opacity = "";
+                }
+                if (inputEl) {
+                    inputEl.disabled = false;
+                    inputEl.style.opacity = "";
+                }
+                if (statusEl) statusEl.textContent = "";
+                new Notice("Request failed: " + (error instanceof Error ? error.message : String(error)));
+            }
             return;
         }
 
