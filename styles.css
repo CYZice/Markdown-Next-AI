@@ -306,6 +306,72 @@
   background: rgba(243, 156, 18, 0.5);
 }
 
+/* Selected Text Display */
+.markdown-next-ai-selected-text-wrapper {
+  margin-bottom: 8px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  overflow: hidden;
+  background-color: var(--background-primary);
+}
+
+.markdown-next-ai-selected-text-badges {
+  padding: 4px 8px;
+  background-color: var(--background-secondary);
+  border-bottom: 1px solid var(--background-modifier-border);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.markdown-next-ai-mentionable-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background-color: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+}
+
+.markdown-next-ai-mentionable-badge:hover {
+  filter: brightness(1.1);
+}
+
+.markdown-next-ai-mentionable-badge.is-expanded {
+  background-color: var(--interactive-accent-hover);
+}
+
+.markdown-next-ai-badge-icon {
+  display: flex;
+  align-items: center;
+}
+
+.markdown-next-ai-badge-text {
+  font-weight: 500;
+}
+
+.markdown-next-ai-selected-text-preview-container {
+  padding: 8px 12px;
+  max-height: 200px;
+  overflow-y: auto;
+  font-size: 0.9em;
+  background-color: var(--background-primary);
+}
+
+.markdown-next-ai-markdown-preview p {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.markdown-next-ai-markdown-preview p:last-child {
+  margin-bottom: 0;
+}
+
 /* SVG图标样式 */
 .markdown-next-ai-popup-title svg,
 .markdown-next-ai-modal-title svg {

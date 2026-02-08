@@ -12,6 +12,8 @@ import { ChatStreamRenderer } from "./popup/components/chat-renderer";
 import { InputController } from "./popup/components/input-controller";
 import { WindowManager } from "./popup/components/window-manager";
 
+import { SelectedTextDisplay } from "./popup/components/SelectedTextDisplay";
+
 export interface EventListenerEntry {
     element: EventTarget;
     event: string;
@@ -42,6 +44,7 @@ export class AtTriggerPopup {
     private popupEl: HTMLElement | null = null;
     private chatHistoryContainer: HTMLElement | null = null;
     private reactRoot: Root | null = null;
+    private selectedTextRoot: Root | null = null;
     private modelSelectEl: HTMLSelectElement | null = null;
     private scrollContainer: HTMLElement | null = null;
 
@@ -173,14 +176,7 @@ export class AtTriggerPopup {
             </div>
             <div class="markdown-next-ai-popup-content">
                 <div class="markdown-next-ai-chat-history" style="display: ${this.mode === 'ask' ? 'flex' : 'none'}; flex-direction: column; overflow-y: auto; max-height: 300px; gap: 8px;"></div>
-                ${this.selectedText ? `
-                <div class="markdown-next-ai-selected-text-section">
-                    <div class="markdown-next-ai-selected-text-header">
-                        <span class="markdown-next-ai-selected-text-label">${isRewriteMode ? "待修改内容:" : "已选中文本:"}</span>
-                    </div>
-                    <div class="markdown-next-ai-selected-text-preview">${selectedTextPreview}</div>
-                </div>
-                ` : ''}
+                <div class="markdown-next-ai-selected-text-root"></div>
                 <div class="markdown-next-ai-image-previews"></div>
                 <div class="markdown-next-ai-selected-context" style="display:none;"><div class="markdown-next-ai-context-list"></div></div>
                 <textarea class="markdown-next-ai-continue-input" placeholder="${placeholderText}" rows="3"></textarea>
@@ -248,6 +244,18 @@ export class AtTriggerPopup {
             }
         };
         this.modelSelectEl.addEventListener("mousedown", onModelMouseDown as EventListener);
+
+        const selectedTextContainer = this.popupEl.querySelector(".markdown-next-ai-selected-text-root");
+        if (selectedTextContainer && this.selectedText) {
+            this.selectedTextRoot = createRoot(selectedTextContainer);
+            this.selectedTextRoot.render(
+                React.createElement(SelectedTextDisplay, {
+                    app: this.app,
+                    selectedText: this.selectedText,
+                    isRewriteMode: isRewriteMode
+                })
+            );
+        }
 
         const modeSelectorContainer = this.popupEl.querySelector(".markdown-next-ai-mode-selector");
         if (modeSelectorContainer) {
@@ -367,6 +375,11 @@ export class AtTriggerPopup {
             this.reactRoot = null;
         }
 
+        if (this.selectedTextRoot) {
+            this.selectedTextRoot.unmount();
+            this.selectedTextRoot = null;
+        }
+
         this.dropdownEventListeners.forEach(l => l.element.removeEventListener(l.event, l.handler));
         this.dropdownEventListeners = [];
 
@@ -440,6 +453,7 @@ export class AtTriggerPopup {
                     instruction: content,
                     currentFile: file,
                     currentFileContent: editorContent,
+                    selectedText: this.selectedText,
                     aiService: this.plugin.aiService,
                     modelId: this.plugin.settings.currentModel
                 });
@@ -565,7 +579,7 @@ export class AtTriggerPopup {
             await this.plugin.aiService.sendRequest(
                 "chat",
                 {
-                    selectedText: "",
+                    selectedText: this.selectedText,
                     beforeText: "",
                     afterText: "",
                     cursorPosition: { line: 0, ch: 0 },
