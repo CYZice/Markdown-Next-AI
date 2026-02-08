@@ -3,6 +3,8 @@ import * as React from "react";
 import { createRoot, Root } from "react-dom/client";
 import { MODE_OPTIONS, ModeSelect } from "../components/panels/quick-ask";
 import { MODEL_CATEGORIES } from "../constants";
+import { generateEditContent } from "../features/quick-ask/edit-mode";
+import { parseSearchReplaceBlocks, applySearchReplaceBlocks } from "../features/quick-ask/search-replace";
 import MarkdownNextAIPlugin from "../main";
 import { ImageHandler } from "../services/image-handler";
 import { ChatMessage, CursorPosition, ImageData, QuickAskMode } from "../types";
@@ -284,17 +286,17 @@ export class AtTriggerPopup {
                     }
                     new Notice(`已切换至 ${opt?.labelFallback || newMode}`);
                     this.renderModeSelect();
-                    
+
                     // Constrain popup to viewport in case size change pushed it off screen
                     // AND update position if it's not pinned (to adapt to new size near cursor)
                     // If it IS pinned, constrainToViewport will fix edges.
                     // If it is NOT pinned, we might want to re-run positionPopup logic to flip if needed.
                     if (this.windowManager.isPinned) {
-                         this.windowManager.constrainToViewport();
+                        this.windowManager.constrainToViewport();
                     } else {
-                         // If not pinned, re-calculate cursor relative position with new size
-                         // We need slight delay for DOM update
-                         setTimeout(() => this.positionPopup(), 0);
+                        // If not pinned, re-calculate cursor relative position with new size
+                        // We need slight delay for DOM update
+                        setTimeout(() => this.positionPopup(), 0);
                     }
                 }
             })
@@ -386,6 +388,45 @@ export class AtTriggerPopup {
         const imagesToSend = [...this.images];
         if (!content.trim() && imagesToSend.length === 0) {
             new Notice("请输入内容");
+            return;
+        }
+
+        if (this.mode === "edit-direct") {
+            if (!this.view || !this.view.editor || !this.view.file) {
+                new Notice("请在Markdown编辑器中使用直改模式");
+                return;
+            }
+            const editor = this.view.editor;
+            const file = this.view.file;
+            const editorContent = editor.getValue();
+            this.close();
+            new Notice("正在生成修改建议...");
+            try {
+                const generatedContent = await generateEditContent({
+                    instruction: content,
+                    currentFile: file,
+                    currentFileContent: editorContent,
+                    aiService: this.plugin.aiService,
+                    modelId: this.plugin.settings.currentModel
+                });
+                const blocks = parseSearchReplaceBlocks(generatedContent);
+                if (blocks.length === 0) {
+                    new Notice("未能生成有效的修改建议");
+                    return;
+                }
+                const result = applySearchReplaceBlocks(editorContent, blocks);
+                if (result.appliedCount > 0) {
+                    editor.setValue(result.newContent);
+                    new Notice(`已应用 ${result.appliedCount} 处修改`);
+                } else {
+                    new Notice("未应用任何修改");
+                }
+                if (result.errors.length > 0) {
+                    new Notice(`部分修改未应用：${result.errors[0]}`);
+                }
+            } catch (error) {
+                new Notice("修改失败: " + (error instanceof Error ? error.message : String(error)));
+            }
             return;
         }
 
