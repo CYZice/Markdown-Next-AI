@@ -65,7 +65,8 @@ export async function generateEditContent({
     currentFileContent,
     selectedText,
     aiService,
-    modelId
+    modelId,
+    mode
 }: {
     instruction: string;
     currentFile: TFile;
@@ -73,12 +74,14 @@ export async function generateEditContent({
     selectedText?: string;
     aiService: AIService;
     modelId: string | undefined;
+    mode?: string;
 }): Promise<string> {
     const messages: ChatMessage[] = [
         { role: "system", content: EDIT_MODE_SYSTEM_PROMPT },
         { role: "user", content: generateEditPrompt(instruction, currentFile, currentFileContent, selectedText) }
     ];
-    const maxTokens = aiService.getMaxTokens("edit") || 2048;
+    const configuredMaxTokens = aiService.getMaxTokens("edit") || 2048;
+    const maxTokens = mode === "edit-direct" ? Math.max(16384, configuredMaxTokens) : configuredMaxTokens;
     const text = await aiService.generateCompletion(messages, modelId, {
         temperature: 0.2,
         max_tokens: maxTokens

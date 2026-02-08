@@ -463,7 +463,8 @@ export class AtTriggerPopup {
                     currentFileContent: editorContent,
                     selectedText: this.selectedText,
                     aiService: this.plugin.aiService,
-                    modelId: this.plugin.settings.currentModel
+                    modelId: this.plugin.settings.currentModel,
+                    mode: "edit-direct"
                 });
                 const blocks = parseSearchReplaceBlocks(generatedContent);
 
