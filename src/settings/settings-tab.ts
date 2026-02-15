@@ -23,7 +23,7 @@ export class MarkdownNextAISettingTab extends PluginSettingTab {
     display(): void {
         const { containerEl } = this;
         containerEl.empty();
-        const title = containerEl.createEl("h2", { text: "MarkdownNext AI 设置 (重构中)" });
+        const title = containerEl.createEl("h2", { text: "Markdown-Next-AI 设置" });
 
         const tabsContainer = containerEl.createEl("div", { attr: { style: "margin-top: 8px;" } });
         const nav = tabsContainer.createEl("div", { attr: { style: "display:flex;gap:8px;align-items:center;border-bottom:1px solid var(--background-modifier-border);padding-bottom:8px;position:sticky;top:0;background:var(--background-primary);" } });

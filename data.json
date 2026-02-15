@@ -51,19 +51,19 @@
   "enableAtTrigger": true,
   "dialogTextTriggers": [
     {
-      "id": "17711355128670.01801568083790739",
+      "id": "17711459614660.7688869623409742",
       "type": "string",
       "pattern": "@",
       "enabled": true
     },
     {
-      "id": "17711355128670.25408643088337335",
+      "id": "17711459614660.16602322720270035",
       "type": "string",
       "pattern": "&",
       "enabled": true
     },
     {
-      "id": "17711355128670.720583914748994",
+      "id": "17711459614660.9993096671661034",
       "type": "string",
       "pattern": "!",
       "enabled": true
@@ -118,7 +118,7 @@
     "autoTriggerCooldownMs": 15000,
     "requestTimeoutMs": 12000,
     "maxRetries": 1,
-    "lengthPreset": "short",
+    "lengthPreset": "medium",
     "constraints": "",
     "temperature": 0.5,
     "topP": 1,

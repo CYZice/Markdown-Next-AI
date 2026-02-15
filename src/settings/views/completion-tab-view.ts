@@ -76,9 +76,9 @@ export class CompletionTabView extends AbstractTabView {
             .setName("补全长度")
             .setDesc("设置期望的补全内容长度")
             .addDropdown(dropdown => dropdown
-                .addOption("short")
-                .addOption("medium")
-                .addOption("long")
+                .addOption("short", "短（500）")
+                .addOption("medium", "中（2000）")
+                .addOption("long", "长（4000）")
                 .setValue(tc.lengthPreset ?? "medium")
                 .onChange(async (value) => {
                     tc.lengthPreset = value as any;
