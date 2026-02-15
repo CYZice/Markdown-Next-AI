@@ -35,3 +35,12 @@ export const IMAGE_CONSTANTS = {
     MAX_FILE_SIZE: 10485760, // 10MB
     ALLOWED_TYPES: ["image/jpeg", "image/png", "image/gif", "image/webp"]
 } as const;
+
+export const PROVIDER_TYPES = [
+    { id: "openai", name: "OpenAI", defaultBaseUrl: "https://api.openai.com/v1" },
+    { id: "anthropic", name: "Anthropic", defaultBaseUrl: "https://api.anthropic.com/v1" },
+    { id: "gemini", name: "Google Gemini", defaultBaseUrl: "https://generativelanguage.googleapis.com/v1beta" },
+    { id: "deepseek", name: "DeepSeek", defaultBaseUrl: "https://api.deepseek.com/v1" },
+    { id: "ollama", name: "Ollama (Local)", defaultBaseUrl: "http://localhost:11434" },
+    { id: "custom", name: "Custom (OpenAI Compatible)", defaultBaseUrl: "" }
+];

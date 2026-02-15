@@ -1,7 +1,110 @@
-import { Modal, Notice, Setting } from "obsidian";
+import { Modal, Notice, Setting, SuggestModal } from "obsidian";
 import { MODEL_CATEGORIES } from "../../constants";
 import type { ModelCategory, ModelConfig, PluginSettings, ProviderConfig } from "../../types";
 import { AbstractTabView } from "./abstract-tab-view";
+
+class ModelSuggestModal extends SuggestModal<{ id: string; name: string }> {
+    private models: { id: string; name: string }[];
+    private onChoose: (item: { id: string; name: string }) => void;
+
+    constructor(app: any, models: { id: string; name: string }[], onChoose: (item: { id: string; name: string }) => void) {
+        super(app);
+        this.models = models;
+        this.onChoose = onChoose;
+    }
+
+    getSuggestions(query: string): { id: string; name: string }[] {
+        const lowerQuery = query.toLowerCase();
+        return this.models.filter(m =>
+            m.name.toLowerCase().includes(lowerQuery) ||
+            m.id.toLowerCase().includes(lowerQuery)
+        );
+    }
+
+    renderSuggestion(item: { id: string; name: string }, el: HTMLElement) {
+        // Only show ID as it is the primary identifier for the field
+        // If name is significantly different, maybe append it, but user requested "keep only one"
+        el.createEl("div", { text: item.id });
+    }
+
+    onChooseSuggestion(item: { id: string; name: string }, evt: MouseEvent | KeyboardEvent) {
+        this.onChoose(item);
+    }
+}
+
+class ModelInputSuggest {
+    private inputEl: HTMLInputElement;
+    private popup: HTMLElement | null = null;
+    private items: { id: string; name: string }[] = [];
+    private onSelect: (item: { id: string; name: string }) => void;
+
+    constructor(inputEl: HTMLInputElement, items: { id: string; name: string }[], onSelect: (item: { id: string; name: string }) => void) {
+        this.inputEl = inputEl;
+        this.items = items;
+        this.onSelect = onSelect;
+
+        this.inputEl.addEventListener("input", this.onInput.bind(this));
+        this.inputEl.addEventListener("focus", this.onInput.bind(this));
+        this.inputEl.addEventListener("blur", () => setTimeout(() => this.close(), 200));
+    }
+
+    private onInput() {
+        const value = this.inputEl.value.toLowerCase();
+        const matches = this.items.filter(i =>
+            i.id.toLowerCase().includes(value) ||
+            i.name.toLowerCase().includes(value)
+        );
+
+        this.close();
+        if (matches.length > 0) {
+            this.showSuggestions(matches);
+        }
+    }
+
+    private showSuggestions(matches: { id: string; name: string }[]) {
+        const rect = this.inputEl.getBoundingClientRect();
+        this.popup = document.body.createEl("div");
+
+        // Use standard Obsidian menu styles
+        this.popup.className = "menu";
+        Object.assign(this.popup.style, {
+            position: "fixed",
+            top: `${rect.bottom + 5}px`,
+            left: `${rect.left}px`,
+            width: `${rect.width}px`,
+            maxHeight: "300px",
+            overflowY: "auto",
+            zIndex: "var(--layer-menu)",
+            display: "block" // Force show
+        });
+
+        matches.forEach(item => {
+            const el = this.popup!.createEl("div", { cls: "menu-item" });
+            el.createEl("div", { cls: "menu-item-title", text: item.id });
+
+            el.addEventListener("mousedown", (e) => {
+                e.preventDefault(); // Prevent blur
+                e.stopPropagation();
+                this.onSelect(item);
+                this.close();
+            });
+
+            el.addEventListener("mouseenter", () => {
+                el.addClass("selected");
+            });
+            el.addEventListener("mouseleave", () => {
+                el.removeClass("selected");
+            });
+        });
+    }
+
+    close() {
+        if (this.popup) {
+            this.popup.remove();
+            this.popup = null;
+        }
+    }
+}
 
 export class ModelsTabView extends AbstractTabView {
     private lastContainerEl: HTMLElement | null = null;
@@ -290,21 +393,54 @@ export class ModelsTabView extends AbstractTabView {
 
     private showAddProviderModal(): void {
         const modal = new Modal(this.app);
-        modal.titleEl.setText("添加供应商");
+        modal.titleEl.setText("添加供应商 (Add Provider)");
         const { contentEl } = modal;
-        const idInput = contentEl.createEl("input", { type: "text", attr: { placeholder: "供应商ID" } }) as HTMLInputElement;
-        const nameInput = contentEl.createEl("input", { type: "text", attr: { placeholder: "显示名称(可选)" } }) as HTMLInputElement;
-        const typeInput = contentEl.createEl("input", { type: "text", attr: { placeholder: "类型(openai/anthropic/gemini/ollama/...)" } }) as HTMLInputElement;
-        const btns = contentEl.createEl("div", { attr: { style: "display:flex;gap:8px;margin-top:10px;justify-content:flex-end;" } });
+
+        let id = "";
+        let name = "";
+        let type = "openai";
+
+        new Setting(contentEl)
+            .setName("供应商 ID (Provider ID)")
+            .setDesc("唯一标识符 (Unique Identifier)")
+            .addText(text => text
+                .setPlaceholder("e.g. openai")
+                .onChange(v => id = v.trim()));
+
+        new Setting(contentEl)
+            .setName("显示名称 (Display Name)")
+            .setDesc("可选：友好的显示名称")
+            .addText(text => text
+                .setPlaceholder("e.g. OpenAI Official")
+                .onChange(v => name = v.trim()));
+
+        new Setting(contentEl)
+            .setName("类型 (Type)")
+            .setDesc("API 协议类型")
+            .addDropdown(dropdown => {
+                PROVIDER_TYPES.forEach(t =>
+                    dropdown.addOption(t.id, t.name)
+                );
+                dropdown.setValue(type)
+                    .onChange(v => type = v);
+            });
+
+        const btns = contentEl.createEl("div", { attr: { style: "display:flex;gap:10px;margin-top:20px;justify-content:flex-end;" } });
         btns.createEl("button", { text: "取消" }).onclick = () => modal.close();
         const save = btns.createEl("button", { text: "添加", cls: "mod-cta" });
+
         save.onclick = async () => {
-            const id = idInput.value.trim();
-            const name = nameInput.value.trim();
-            const type = typeInput.value.trim() || "openai";
-            if (!id || !name) { new Notice("请填写ID与名称"); return; }
+            if (!id) { new Notice("请填写ID"); return; }
             if (this.settings.settings.providers[id]) { new Notice("供应商ID已存在"); return; }
-            this.settings.settings.providers[id] = { apiKey: "", baseUrl: "", enabled: true, name, type } as ProviderConfig;
+
+            this.settings.settings.providers[id] = {
+                apiKey: "",
+                baseUrl: "",
+                enabled: true,
+                name: name || id,
+                type
+            } as ProviderConfig;
+
             await this.settings.save();
             modal.close();
             this.plugin.updateEventListeners?.();
@@ -315,26 +451,45 @@ export class ModelsTabView extends AbstractTabView {
 
     private showEditProviderModal(providerId: string): void {
         const modal = new Modal(this.app);
-        modal.titleEl.setText("编辑供应商");
-        const p = this.settings.settings.providers[providerId];
+        modal.titleEl.setText("编辑供应商 (Edit Provider)");
         const { contentEl } = modal;
-        const nameInput = contentEl.createEl("input", { type: "text", attr: { placeholder: "显示名称" } }) as HTMLInputElement;
-        nameInput.value = p?.name || providerId;
-        const typeSelect = contentEl.createEl("select") as HTMLSelectElement;
-        ["openai", "anthropic", "gemini", "ollama", "deepseek", "custom"].forEach(t => {
-            const o = typeSelect.createEl("option", { value: t, text: t });
-            if ((p?.type || "openai") === t) o.selected = true;
-        });
-        const btns = contentEl.createEl("div", { attr: { style: "display:flex;gap:8px;margin-top:10px;justify-content:flex-end;" } });
+
+        const p = this.settings.settings.providers[providerId];
+        let name = p?.name || providerId;
+        let type = p?.type || "openai";
+
+        new Setting(contentEl)
+            .setName("显示名称 (Display Name)")
+            .setDesc("友好的显示名称")
+            .addText(text => text
+                .setPlaceholder("e.g. OpenAI Official")
+                .setValue(name)
+                .onChange(v => name = v.trim()));
+
+        new Setting(contentEl)
+            .setName("类型 (Type)")
+            .setDesc("API 协议类型")
+            .addDropdown(dropdown => {
+                PROVIDER_TYPES.forEach(t =>
+                    dropdown.addOption(t.id, t.name)
+                );
+                dropdown.setValue(type)
+                    .onChange(v => type = v);
+            });
+
+        const btns = contentEl.createEl("div", { attr: { style: "display:flex;gap:10px;margin-top:20px;justify-content:flex-end;" } });
         btns.createEl("button", { text: "取消" }).onclick = () => modal.close();
         const save = btns.createEl("button", { text: "保存", cls: "mod-cta" });
+
         save.onclick = async () => {
-            if (!nameInput.value.trim()) { new Notice("名称不能为空"); return; }
+            if (!name) { new Notice("名称不能为空"); return; }
+
             this.settings.settings.providers[providerId] = {
                 ...(this.settings.settings.providers[providerId] || { apiKey: "", baseUrl: "", enabled: true }),
-                name: nameInput.value.trim(),
-                type: typeSelect.value
+                name,
+                type
             } as ProviderConfig;
+
             await this.settings.save();
             modal.close();
             if (this.lastContainerEl) this.render(this.lastContainerEl);
@@ -342,61 +497,326 @@ export class ModelsTabView extends AbstractTabView {
         modal.open();
     }
 
+    private async fetchModels(providerId: string): Promise<{ id: string; name: string }[] | null> {
+        const provider = this.settings.settings.providers[providerId];
+        if (!provider) {
+            new Notice("Provider not found");
+            return null;
+        }
+
+        const type = provider.type || "openai";
+        let url = "";
+        let headers: Record<string, string> = {};
+
+        // Resolve API Key using shared logic from AIService
+        // This ensures consistency with testConnection and other API calls
+        const tempConfig: APIModelConfig = {
+            apiKey: provider.apiKey || "",
+            baseUrl: provider.baseUrl || "",
+            model: "fetch-models-temp"
+        };
+
+        let apiKey = "";
+        try {
+            const resolvedConfig = await this.plugin.aiService.resolveConfig(tempConfig);
+            apiKey = resolvedConfig.apiKey;
+        } catch (e) {
+            console.error("Failed to resolve config for fetchModels:", e);
+            new Notice("Failed to resolve API Key");
+            return null;
+        }
+
+        // 1. Determine URL and Headers based on provider type
+        if (type === "ollama") {
+            // Ollama: GET /api/tags
+            let baseUrl = provider.baseUrl || "http://localhost:11434";
+            if (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
+            url = `${baseUrl}/api/tags`;
+        } else if (type === "anthropic") {
+            // Anthropic: GET https://api.anthropic.com/v1/models
+            url = "https://api.anthropic.com/v1/models";
+            if (apiKey) headers["x-api-key"] = apiKey;
+            headers["anthropic-version"] = "2023-06-01";
+        } else if (type === "gemini") {
+            // Gemini: GET https://generativelanguage.googleapis.com/v1beta/models?key=API_KEY
+            url = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+        } else {
+            // OpenAI Compatible (default): GET /v1/models
+            let baseUrl = provider.baseUrl || "https://api.openai.com/v1";
+            if (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
+            if (!baseUrl.endsWith("/v1")) baseUrl += "/v1";
+            url = `${baseUrl}/models`;
+            if (apiKey) {
+                headers["Authorization"] = `Bearer ${apiKey}`;
+            }
+        }
+
+        try {
+            new Notice(`Fetching models from ${url}...`);
+            const req: RequestUrlParam = {
+                url,
+                method: "GET",
+                headers,
+                throw: false
+            };
+
+            const resp = await requestUrl(req);
+
+            if (resp.status >= 400) {
+                new Notice(`Error fetching models: ${resp.status} ${resp.text.slice(0, 100)}`);
+                console.error("Fetch models error:", resp);
+                return null;
+            }
+
+            const data = resp.json;
+            const models: { id: string; name: string }[] = [];
+
+            // 2. Parse Response
+            if (type === "ollama") {
+                // { models: [ { name: "llama3:latest", ... } ] }
+                if (data.models && Array.isArray(data.models)) {
+                    data.models.forEach((m: any) => {
+                        models.push({ id: m.name, name: m.name });
+                    });
+                }
+            } else if (type === "gemini") {
+                // { models: [ { name: "models/gemini-pro", displayName: "Gemini Pro", ... } ] }
+                if (data.models && Array.isArray(data.models)) {
+                    data.models.forEach((m: any) => {
+                        let id = m.name;
+                        if (id.startsWith("models/")) id = id.replace("models/", "");
+                        models.push({ id, name: m.displayName || id });
+                    });
+                }
+            } else {
+                // OpenAI / Anthropic format: { data: [ { id: "gpt-4", ... } ] }
+                const list = data.data || data.models || [];
+                if (Array.isArray(list)) {
+                    list.forEach((m: any) => {
+                        models.push({ id: m.id, name: m.id });
+                    });
+                }
+            }
+
+            if (models.length === 0) {
+                new Notice("No models found in response.");
+                return null;
+            }
+
+            new Notice(`Successfully fetched ${models.length} models.`);
+            return models;
+
+        } catch (e) {
+            new Notice(`Request failed: ${e.message}`);
+            console.error(e);
+            return null;
+        }
+    }
+
     private showAddModelModal(category: ModelCategory = MODEL_CATEGORIES.MULTIMODAL): void {
         const modal = new Modal(this.app);
-        modal.titleEl.setText("添加模型");
+        modal.titleEl.setText("添加模型 (Add Model)");
         const { contentEl } = modal;
-        const idInput = contentEl.createEl("input", { type: "text", attr: { placeholder: "模型ID" } }) as HTMLInputElement;
-        const nameInput = contentEl.createEl("input", { type: "text", attr: { placeholder: "模型名称" } }) as HTMLInputElement;
-        const providerSelect = contentEl.createEl("select") as HTMLSelectElement;
-        Object.keys(this.settings.settings.providers).forEach(pId => providerSelect.createEl("option", { value: pId, text: pId }));
-        const modelInput = contentEl.createEl("input", { type: "text", attr: { placeholder: "Provider原始模型名 (可选)" } }) as HTMLInputElement;
-        const btns = contentEl.createEl("div", { attr: { style: "display:flex;gap:8px;margin-top:10px;justify-content:flex-end;" } });
-        btns.createEl("button", { text: "取消" }).onclick = () => modal.close();
-        const save = btns.createEl("button", { text: "添加", cls: "mod-cta" });
-        save.onclick = async () => {
-            const id = idInput.value.trim();
-            const name = nameInput.value.trim();
-            const provider = providerSelect.value;
-            const actualModel = modelInput.value.trim();
-            if (!id || !name) { new Notice("请填写ID与名称"); return; }
-            if (this.settings.settings.models[id]) { new Notice("模型ID已存在"); return; }
-            const cfg: ModelConfig = { id, name, provider, model: actualModel || name, enabled: true, category };
-            this.settings.settings.models[id] = cfg;
-            await this.settings.save();
-            modal.close();
-            if (this.lastContainerEl) this.render(this.lastContainerEl);
+
+        let providerId = Object.keys(this.settings.settings.providers)[0] || "";
+        let apiModelId = "";
+        let displayName = "";
+        let internalId = "";
+        let fetchedModels: { id: string; name: string }[] | null = null;
+
+        let apiModelIdInput: any;
+        let displayNameInput: any;
+        let internalIdInput: any;
+
+        const renderContent = () => {
+            contentEl.empty();
+
+            const providerConfig = this.settings.settings.providers[providerId];
+            const providerBaseUrl = providerConfig?.baseUrl || "(默认/Default)";
+
+            new Setting(contentEl)
+                .setName("供应商 (Provider)")
+                .setDesc(`选择调用该模型使用的服务商账户。当前 Base URL: ${providerBaseUrl}`)
+                .addDropdown(dropdown => {
+                    Object.keys(this.settings.settings.providers).forEach(pId => {
+                        const p = this.settings.settings.providers[pId];
+                        dropdown.addOption(pId, `${p.name || pId} (${p.type || "openai"})`);
+                    });
+                    dropdown.setValue(providerId);
+                    dropdown.onChange((value) => {
+                        providerId = value;
+                        fetchedModels = null;
+                        renderContent();
+                    });
+                });
+
+            const providerType = this.settings.settings.providers[providerId]?.type || "openai";
+
+            // Prepare presets for auto-completion
+            // Since MODEL_PRESETS is removed, we only rely on fetchedModels
+            const presets = fetchedModels || [];
+
+            contentEl.createEl("hr", { attr: { style: "margin: 20px 0; border-color: var(--background-modifier-border);" } });
+
+            new Setting(contentEl)
+                .setName("模型 API ID (Model ID)")
+                .setDesc("点击 Fetch 获取模型列表")
+                .addText(text => {
+                    apiModelIdInput = text;
+                    text.setPlaceholder("e.g. gpt-4o")
+                        .setValue(apiModelId)
+                        .onChange(v => {
+                            apiModelId = v.trim();
+                            // If user manually types, we still try to autofill if it matches known presets
+                            // But mainly we rely on selection
+                            if (!displayName && apiModelId) {
+                                displayName = apiModelId;
+                                if (displayNameInput) displayNameInput.setValue(displayName);
+                            }
+
+                            if (!internalId && apiModelId) {
+                                internalId = `${providerId}-${apiModelId}`.replace(/[^a-zA-Z0-9-_]/g, "-").toLowerCase();
+                                if (internalIdInput) internalIdInput.setValue(internalId);
+                            }
+                        });
+
+                    // Attach inline suggester
+                    new ModelInputSuggest(text.inputEl, presets, (item) => {
+                        apiModelId = item.id;
+                        displayName = item.name;
+                        if (apiModelIdInput) apiModelIdInput.setValue(apiModelId);
+                        if (displayNameInput) displayNameInput.setValue(displayName);
+
+                        if (!internalId) {
+                            internalId = `${providerId}-${apiModelId}`.replace(/[^a-zA-Z0-9-_]/g, "-").toLowerCase();
+                            if (internalIdInput) internalIdInput.setValue(internalId);
+                        }
+                    });
+                })
+                .addButton(btn => btn
+                    .setButtonText("获取 / Fetch")
+                    .setIcon("refresh-ccw")
+                    .setTooltip("从 API 获取可用模型列表")
+                    .onClick(async () => {
+                        const models = await this.fetchModels(providerId);
+                        if (models) {
+                            fetchedModels = models;
+                            renderContent();
+                            // Automatically open suggest modal after fetch
+                            new ModelSuggestModal(this.app, models, (item) => {
+                                apiModelId = item.id;
+                                displayName = item.name;
+                                if (apiModelIdInput) apiModelIdInput.setValue(apiModelId);
+                                if (displayNameInput) displayNameInput.setValue(displayName);
+
+                                if (!internalId) {
+                                    internalId = `${providerId}-${apiModelId}`.replace(/[^a-zA-Z0-9-_]/g, "-").toLowerCase();
+                                    if (internalIdInput) internalIdInput.setValue(internalId);
+                                }
+                            }).open();
+                        }
+                    }));
+
+            new Setting(contentEl)
+                .setName("显示名称 (Display Name)")
+                .setDesc("在插件菜单中显示的友好名称")
+                .addText(text => {
+                    displayNameInput = text;
+                    text.setPlaceholder("e.g. GPT-4o Official")
+                        .setValue(displayName)
+                        .onChange(v => displayName = v.trim());
+                });
+
+            const advancedDetails = contentEl.createEl("details");
+            advancedDetails.createEl("summary", { text: "高级设置 (Advanced: Internal ID)", attr: { style: "color: var(--text-muted); cursor: pointer; margin-bottom: 10px;" } });
+
+            new Setting(advancedDetails)
+                .setName("插件内部 ID")
+                .setDesc("插件配置中使用的唯一键值，通常无需修改")
+                .addText(text => {
+                    internalIdInput = text;
+                    text.setValue(internalId)
+                        .onChange(v => internalId = v.trim());
+                });
+
+            const btns = contentEl.createEl("div", { attr: { style: "display:flex;gap:10px;margin-top:20px;justify-content:flex-end;" } });
+            btns.createEl("button", { text: "取消" }).onclick = () => modal.close();
+            const save = btns.createEl("button", { text: "添加模型", cls: "mod-cta" });
+            save.onclick = async () => {
+                if (!apiModelId || !displayName || !internalId) {
+                    new Notice("请填写完整信息 (API ID, Name)");
+                    return;
+                }
+                if (this.settings.settings.models[internalId]) {
+                    new Notice("该内部 ID 已存在，请在高级设置中修改 ID");
+                    return;
+                }
+                const cfg: ModelConfig = {
+                    id: internalId,
+                    name: displayName,
+                    provider: providerId,
+                    model: apiModelId,
+                    enabled: true,
+                    category
+                };
+                this.settings.settings.models[internalId] = cfg;
+                await this.settings.save();
+                modal.close();
+                if (this.lastContainerEl) this.render(this.lastContainerEl);
+                new Notice(`已添加模型: ${displayName}`);
+            };
         };
+
+        renderContent();
         modal.open();
     }
 
     private showEditModelModal(modelId: string): void {
         const modal = new Modal(this.app);
-        modal.titleEl.setText("编辑模型");
         const m = this.settings.settings.models[modelId];
+        modal.titleEl.setText(`编辑模型: ${m.name}`);
         const { contentEl } = modal;
-        const nameInput = contentEl.createEl("input", { type: "text", attr: { placeholder: "模型名称" } }) as HTMLInputElement;
-        nameInput.value = m?.name || modelId;
-        const providerSelect = contentEl.createEl("select") as HTMLSelectElement;
-        Object.keys(this.settings.settings.providers).forEach(pId => {
-            const opt = providerSelect.createEl("option", { value: pId, text: pId });
-            if (pId === m.provider) opt.selected = true;
-        });
-        const modelInput = contentEl.createEl("input", { type: "text", attr: { placeholder: "Provider原始模型名" } }) as HTMLInputElement;
-        modelInput.value = m?.model || "";
-        const btns = contentEl.createEl("div", { attr: { style: "display:flex;gap:8px;margin-top:10px;justify-content:flex-end;" } });
+
+        let providerId = m.provider;
+        let apiModelId = m.model || "";
+        let displayName = m.name;
+
+        new Setting(contentEl)
+            .setName("供应商 (Provider)")
+            .setDesc("更改该模型所属的服务商")
+            .addDropdown(dropdown => {
+                Object.keys(this.settings.settings.providers).forEach(pId => {
+                    dropdown.addOption(pId, pId);
+                });
+                dropdown.setValue(providerId);
+                dropdown.onChange(v => providerId = v);
+            });
+
+        new Setting(contentEl)
+            .setName("模型 API ID")
+            .setDesc("发送给 API 的实际模型参数 (例如: gpt-4o)")
+            .addText(text => text
+                .setValue(apiModelId)
+                .onChange(v => apiModelId = v.trim()));
+
+        new Setting(contentEl)
+            .setName("显示名称")
+            .setDesc("菜单中显示的名称")
+            .addText(text => text
+                .setValue(displayName)
+                .onChange(v => displayName = v.trim()));
+
+        const btns = contentEl.createEl("div", { attr: { style: "display:flex;gap:10px;margin-top:20px;justify-content:flex-end;" } });
         btns.createEl("button", { text: "取消" }).onclick = () => modal.close();
-        const save = btns.createEl("button", { text: "保存", cls: "mod-cta" });
+        const save = btns.createEl("button", { text: "保存更改", cls: "mod-cta" });
         save.onclick = async () => {
-            const name = nameInput.value.trim();
-            if (!name) { new Notice("名称不能为空"); return; }
+            if (!displayName || !apiModelId) { new Notice("信息不能为空"); return; }
             this.settings.settings.models[modelId] = {
-                ...(this.settings.settings.models[modelId] || { id: modelId, enabled: true, category: MODEL_CATEGORIES.MULTIMODAL }),
-                id: modelId,
-                name,
-                provider: providerSelect.value,
-                model: modelInput.value.trim() || name
-            } as ModelConfig;
+                ...m,
+                provider: providerId,
+                model: apiModelId,
+                name: displayName
+            };
             await this.settings.save();
             modal.close();
             if (this.lastContainerEl) this.render(this.lastContainerEl);
