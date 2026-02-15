@@ -45,25 +45,25 @@
       "category": "text"
     }
   },
-  "currentModel": "gemini-3-pro-preview",
+  "currentModel": "gemini-3-flash-preview",
   "timeout": 30000,
   "enableRightClick": true,
   "enableAtTrigger": true,
   "dialogTextTriggers": [
     {
-      "id": "17706413033420.5186671302525954",
+      "id": "17711355128670.01801568083790739",
       "type": "string",
       "pattern": "@",
       "enabled": true
     },
     {
-      "id": "17706413033420.6624679461012456",
+      "id": "17711355128670.25408643088337335",
       "type": "string",
       "pattern": "&",
       "enabled": true
     },
     {
-      "id": "17706413033420.3544149957211272",
+      "id": "17711355128670.720583914748994",
       "type": "string",
       "pattern": "!",
       "enabled": true

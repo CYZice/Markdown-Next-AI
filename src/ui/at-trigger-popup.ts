@@ -182,7 +182,6 @@ export class AtTriggerPopup {
                 <div class="markdown-next-ai-chat-history" style="display: ${this.mode === 'ask' ? 'flex' : 'none'}; flex-direction: column; overflow-y: auto; max-height: 300px; gap: 8px;"></div>
                 <div class="markdown-next-ai-selected-text-root"></div>
                 <div class="markdown-next-ai-image-previews"></div>
-                <div class="markdown-next-ai-selected-context" style="display:none;"><div class="markdown-next-ai-context-list"></div></div>
                 <textarea class="markdown-next-ai-continue-input" placeholder="${placeholderText}" rows="3"></textarea>
                 <div class="markdown-next-ai-upload-section">
                      <div class="markdown-next-ai-left-section">
@@ -662,46 +661,7 @@ export class AtTriggerPopup {
     }
 
     private updateContextDisplay() {
-        if (!this.popupEl || !this.inputController?.inputEl) return;
-        const container = this.popupEl.querySelector(".markdown-next-ai-selected-context") as HTMLElement;
-        const list = this.popupEl.querySelector(".markdown-next-ai-context-list") as HTMLElement;
-        if (!container || !list) return;
-
-        // Use standard inputEl query logic if inputController manages the actual DOM tags (contentEditable)
-        const tags = Array.from(this.inputController.inputEl.querySelectorAll(".markdown-next-ai-inline-tag")) as HTMLElement[];
-        if (tags.length === 0) {
-            container.style.display = "none";
-            list.innerHTML = "";
-            return;
-        }
-        container.style.display = "block";
-        list.innerHTML = "";
-        tags.forEach(tag => {
-            const type = tag.getAttribute("data-type") || "file";
-            const path = tag.getAttribute("data-path") || "";
-            const nameEl = tag.querySelector(".markdown-next-ai-inline-tag-name") as HTMLElement | null;
-            const name = nameEl ? nameEl.textContent || "" : "";
-            const item = document.createElement("div");
-            item.className = "markdown-next-ai-context-item";
-            item.innerHTML = `
-                <span class="markdown-next-ai-context-name">${name}</span>
-                <button class="markdown-next-ai-remove-context" data-type="${type}" data-path="${path}">×</button>
-            `;
-            list.appendChild(item);
-        });
-        list.querySelectorAll(".markdown-next-ai-remove-context").forEach(btn => {
-            (btn as HTMLButtonElement).onclick = (e) => {
-                e.stopPropagation();
-                const type = btn.getAttribute("data-type")!;
-                const path = btn.getAttribute("data-path")!;
-                // Remove logic via DOM matching
-                const toRemove = tags.find(t => t.getAttribute("data-type") === type && t.getAttribute("data-path") === path);
-                if (toRemove && toRemove.parentNode) {
-                    toRemove.parentNode.removeChild(toRemove);
-                }
-                this.updateContextDisplay();
-            };
-        });
+        return;
     }
 
     private openModelDropdown(anchorEl: HTMLElement): void {
