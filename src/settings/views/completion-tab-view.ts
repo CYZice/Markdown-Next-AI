@@ -152,11 +152,18 @@ export class CompletionTabView extends AbstractTabView {
             };
             const delCell = row.createEl("td");
             delCell.createEl("button", { text: "删除" }).onclick = async () => {
-                if (confirm(`确定要删除此触发器 "${trigger.pattern}" ？`)) {
+                const modal = new Modal(this.app);
+                modal.titleEl.setText("确认删除");
+                modal.contentEl.createEl("p", { text: `确定要删除此触发器 "${trigger.pattern}" ？` });
+                const btns = modal.contentEl.createDiv({ attr: { style: "display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px;" } });
+                btns.createEl("button", { text: "取消" }).onclick = () => modal.close();
+                btns.createEl("button", { text: "删除", cls: "mod-warning" }).onclick = async () => {
                     tc.triggers.splice(index, 1);
                     await this.settings.save();
                     if (this.lastContainerEl) this.render(this.lastContainerEl);
-                }
+                    modal.close();
+                };
+                modal.open();
             };
         });
 

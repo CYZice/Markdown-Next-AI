@@ -1,6 +1,6 @@
 import { Modal, Notice, Setting, SuggestModal } from "obsidian";
 import { MODEL_CATEGORIES } from "../../constants";
-import type { ModelCategory, ModelConfig, PluginSettings, ProviderConfig } from "../../types";
+import type { ModelCategory, ModelConfig, PluginSettings } from "../../types";
 import { AbstractTabView } from "./abstract-tab-view";
 
 class ModelSuggestModal extends SuggestModal<{ id: string; name: string }> {
@@ -48,6 +48,10 @@ class ModelInputSuggest {
         this.inputEl.addEventListener("blur", () => setTimeout(() => this.close(), 200));
     }
 
+    setItems(items: { id: string; name: string }[]) {
+        this.items = items;
+    }
+
     private onInput() {
         const value = this.inputEl.value.toLowerCase();
         const matches = this.items.filter(i =>
@@ -59,6 +63,10 @@ class ModelInputSuggest {
         if (matches.length > 0) {
             this.showSuggestions(matches);
         }
+    }
+
+    open() {
+        this.onInput();
     }
 
     private showSuggestions(matches: { id: string; name: string }[]) {
@@ -138,33 +146,35 @@ export class ModelsTabView extends AbstractTabView {
         const pHead = providerTable.createEl("thead").createEl("tr");
         pHead.createEl("th", { text: "ID" });
         pHead.createEl("th", { text: "Type" });
-        pHead.createEl("th", { text: "API Key" });
-        pHead.createEl("th", { text: "Get API keys" });
         pHead.createEl("th", { text: "Actions" });
         const pBody = providerTable.createEl("tbody");
 
-        const links: Record<string, string> = { openai: "https://platform.openai.com/api-keys", anthropic: "https://console.anthropic.com/", gemini: "https://aistudio.google.com/app/apikey", ollama: "https://ollama.com/" };
         Object.keys(s.providers || {}).forEach(providerId => {
             const provider = s.providers[providerId];
             const row = pBody.createEl("tr");
             row.createEl("td", { text: providerId });
             row.createEl("td", { text: provider.type || "openai" });
-            const apiKeyCell = row.createEl("td", { cls: "markdown-next-ai-api-key-cell" });
-            if (provider.apiKey && provider.apiKey.trim()) {
-                apiKeyCell.createEl("span", { text: "••••••••", attr: { style: "color: var(--text-muted); margin-right: 8px;" } });
-            }
-            const settingsBtn = apiKeyCell.createEl("button", { text: "设置", attr: { style: "padding:4px 8px;" } });
-            settingsBtn.onclick = () => this.showApiKeyModal(providerId);
-            const linkCell = row.createEl("td", { attr: { style: "text-align: left;" } });
-            const link = links[providerId] || (s.apiKeyLinks && s.apiKeyLinks[providerId]);
-            if (link) {
-                linkCell.createEl("a", { text: "获取API Key", attr: { href: link, target: "_blank", style: "color: var(--text-accent); text-decoration: underline; font-size: 0.9em;" } });
-            } else {
-                linkCell.createEl("span", { text: "-", attr: { style: "color: var(--text-muted);" } });
-            }
+
             const actionsCell = row.createEl("td", { cls: "markdown-next-ai-actions-cell" });
             if (["openai", "anthropic", "gemini", "deepseek", "ollama"].includes(providerId)) {
-                actionsCell.createEl("span", { text: "-", attr: { style: "color: var(--text-muted);" } });
+                // For built-in providers, we still allow editing now because we unified the logic?
+                // Wait, if it's built-in (e.g. key "openai" in s.providers), user might want to edit key.
+                // The original code prevented deleting them, but allowed editing?
+                // Original:
+                // if (["openai"...].includes(providerId)) {
+                //    actionsCell.createEl("span", { text: "-", attr: { style: "color: var(--text-muted);" } });
+                // } else { ... edit/delete ... }
+
+                // WAIT! The original code disabled "Edit/Delete" for built-in providers!
+                // But it allowed "Settings" (via the API Key column button).
+                // Now that I merged Settings into Edit, I MUST enable "Edit" for built-in providers!
+                // Otherwise users cannot change the API Key for default providers.
+
+                const editBtn = actionsCell.createEl("button", { text: "编辑" });
+                editBtn.onclick = () => this.showEditProviderModal(providerId);
+
+                // But maybe disable Delete?
+                actionsCell.createEl("span", { text: " (内置)", attr: { style: "color: var(--text-muted); margin-left: 5px;" } });
             } else {
                 const editBtn = actionsCell.createEl("button", { text: "编辑" });
                 editBtn.onclick = () => this.showEditProviderModal(providerId);
@@ -262,133 +272,27 @@ export class ModelsTabView extends AbstractTabView {
             });
     }
 
-    private showApiKeyModal(providerId: string): void {
-        const modal = new Modal(this.app);
-        modal.titleEl.setText(`设置 ${providerId.toUpperCase()} 配置`);
-        const { contentEl } = modal;
-        const provider = this.settings.settings.providers[providerId];
 
-        let tempApiKey = provider?.apiKey || "";
-        let tempBaseUrl = provider?.baseUrl || "";
+    private updateApiKeyDesc(setting: Setting, type: string) {
+        const descEl = setting.descEl;
+        descEl.empty();
+        descEl.createSpan({ text: "请输入 API Key " });
 
-        let secretStorage = (this.app as any).secretStorage || (this.app as any).keychain || (window as any).secretStorage || (this.app as any).vault?.secretStorage;
-        const hasSecretStorage = secretStorage && (typeof secretStorage.save === "function" || typeof secretStorage.setSecret === "function");
-
-        let useKeychain = tempApiKey.startsWith("secret:");
-        if (!tempApiKey && (this.settings.settings.useKeychain ?? true) && hasSecretStorage) {
-            useKeychain = true;
-        }
-
-        let apiKeyTextComp: any;
-
-        const otherProvidersWithSecrets = Object.entries(this.settings.settings.providers)
-            .filter(([id, p]: [string, any]) => id !== providerId && p.apiKey && p.apiKey.startsWith("secret:"))
-            .map(([id, p]: [string, any]) => ({ id, name: p.name || id, secretRef: p.apiKey }));
-
-        if (otherProvidersWithSecrets.length > 0) {
-            new Setting(contentEl)
-                .setName("复用已有 Key")
-                .setDesc("选择复用其他供应商已配置的 Keychain 密钥")
-                .addDropdown(dropdown => {
-                    dropdown.addOption("", "不复用 (默认)");
-                    otherProvidersWithSecrets.forEach(p => dropdown.addOption(p.secretRef, `${p.name} (${p.id})`));
-                    if (tempApiKey && tempApiKey.startsWith("secret:") && otherProvidersWithSecrets.some(p => p.secretRef === tempApiKey)) {
-                        dropdown.setValue(tempApiKey);
-                    }
-                    dropdown.onChange(value => {
-                        if (value) {
-                            tempApiKey = value;
-                            useKeychain = true;
-                            if (apiKeyTextComp) {
-                                apiKeyTextComp.setValue("");
-                                apiKeyTextComp.setPlaceholder(`已复用 ${otherProvidersWithSecrets.find(p => p.secretRef === value)?.name} 的 Key`);
-                                apiKeyTextComp.setDisabled(true);
-                            }
-                        } else {
-                            tempApiKey = "";
-                            useKeychain = false;
-                            if (apiKeyTextComp) {
-                                apiKeyTextComp.setDisabled(false);
-                                apiKeyTextComp.setPlaceholder("请输入 API Key");
-                            }
-                        }
-                    });
-                });
-        }
-
-        new Setting(contentEl)
-            .setName("API Key")
-            .setDesc("请输入 API Key")
-            .addText(text => {
-                apiKeyTextComp = text;
-                (text.inputEl as HTMLInputElement).type = "password";
-                const isReusing = tempApiKey.startsWith("secret:") && otherProvidersWithSecrets.some(p => p.secretRef === tempApiKey);
-                if (isReusing) {
-                    text.setPlaceholder(`已复用 ${otherProvidersWithSecrets.find(p => p.secretRef === tempApiKey)?.name} 的 Key`);
-                    text.setDisabled(true);
-                } else {
-                    text.setPlaceholder(useKeychain ? "已存储在 Keychain 中" : "请输入 API Key");
-                }
-                text.setValue(useKeychain ? "" : tempApiKey).onChange(value => { tempApiKey = value; });
-            });
-
-        new Setting(contentEl)
-            .setName("Base URL")
-            .setDesc("可选：设置自定义 Base URL")
-            .addText(text => text
-                .setPlaceholder("https://api.example.com/v1")
-                .setValue(tempBaseUrl)
-                .onChange(value => { tempBaseUrl = value; }));
-
-        const btns = contentEl.createEl("div", { attr: { style: "display:flex;justify-content:flex-end;gap:10px;margin-top:15px;" } });
-        const cancelBtn = btns.createEl("button", { text: "取消" });
-        cancelBtn.onclick = () => modal.close();
-        const saveBtn = btns.createEl("button", { text: "保存", cls: "mod-cta" });
-        saveBtn.onclick = async () => {
-            if (!this.settings.settings.providers[providerId]) {
-                this.settings.settings.providers[providerId] = { apiKey: "", baseUrl: "", enabled: true } as ProviderConfig;
-            }
-            if (tempApiKey.startsWith("secret:")) {
-                if (useKeychain) {
-                    this.settings.settings.providers[providerId].apiKey = tempApiKey;
-                } else {
-                    new Notice("请重新输入 API Key 以切换回普通存储");
-                    return;
-                }
-            } else {
-                if (tempApiKey) {
-                    const shouldSaveToKeychain = (this.settings.settings.useKeychain ?? true) && hasSecretStorage;
-                    if (shouldSaveToKeychain) {
-                        const secretId = `markdown-next-ai-api-key-${providerId}`;
-                        const keyToSave = tempApiKey.trim();
-                        try {
-                            if (typeof secretStorage.save === "function") {
-                                await secretStorage.save(secretId, keyToSave);
-                            } else {
-                                await secretStorage.setSecret(secretId, keyToSave);
-                            }
-                            this.settings.settings.providers[providerId].apiKey = `secret:${secretId}`;
-                        } catch (e) {
-                            new Notice("Keychain 保存失败，已使用普通存储");
-                            console.error("Keychain save failed:", e);
-                            this.settings.settings.providers[providerId].apiKey = tempApiKey;
-                        }
-                    } else {
-                        this.settings.settings.providers[providerId].apiKey = tempApiKey;
-                    }
-                } else {
-                    this.settings.settings.providers[providerId].apiKey = "";
-                }
-            }
-
-            this.settings.settings.providers[providerId].baseUrl = tempBaseUrl || "";
-            await this.settings.save();
-            new Notice("供应商配置已保存");
-            modal.close();
-            this.plugin.updateEventListeners?.();
+        const links: Record<string, string> = {
+            openai: "https://platform.openai.com/api-keys",
+            anthropic: "https://console.anthropic.com/",
+            gemini: "https://aistudio.google.com/app/apikey",
+            deepseek: "https://platform.deepseek.com/api_keys",
+            ollama: "https://ollama.com/"
         };
 
-        modal.open();
+        const link = links[type];
+        if (link) {
+            descEl.createEl("a", {
+                text: "(获取 Key)",
+                attr: { href: link, target: "_blank", style: "color: var(--text-accent);" }
+            });
+        }
     }
 
     private showAddProviderModal(): void {
@@ -399,22 +303,30 @@ export class ModelsTabView extends AbstractTabView {
         let id = "";
         let name = "";
         let type = "openai";
+        let apiKey = "";
+        let baseUrl = "";
+        let useKeychain = this.settings.settings.useKeychain ?? true;
+
+        // Check for secret storage
+        const secretStorage = (this.app as any).secretStorage || (this.app as any).keychain || (window as any).secretStorage || (this.app as any).vault?.secretStorage;
+        const hasSecretStorage = secretStorage && (typeof secretStorage.save === "function" || typeof secretStorage.setSecret === "function");
+        if (!hasSecretStorage) useKeychain = false;
 
         new Setting(contentEl)
-            .setName("供应商 ID (Provider ID)")
-            .setDesc("唯一标识符 (Unique Identifier)")
+            .setName("ID")
+            .setDesc("唯一的供应商标识符 (例如: my-openai)")
             .addText(text => text
-                .setPlaceholder("e.g. openai")
+                .setPlaceholder("openai-1")
                 .onChange(v => id = v.trim()));
 
         new Setting(contentEl)
-            .setName("显示名称 (Display Name)")
-            .setDesc("可选：友好的显示名称")
+            .setName("名称 (Name)")
+            .setDesc("显示的名称")
             .addText(text => text
-                .setPlaceholder("e.g. OpenAI Official")
+                .setPlaceholder("My OpenAI")
                 .onChange(v => name = v.trim()));
 
-        new Setting(contentEl)
+        const typeSetting = new Setting(contentEl)
             .setName("类型 (Type)")
             .setDesc("API 协议类型")
             .addDropdown(dropdown => {
@@ -422,49 +334,137 @@ export class ModelsTabView extends AbstractTabView {
                     dropdown.addOption(t.id, t.name)
                 );
                 dropdown.setValue(type)
-                    .onChange(v => type = v);
+                    .onChange(v => {
+                        type = v;
+                        this.updateApiKeyDesc(apiKeySetting, type);
+                        // Auto-fill Base URL if empty and default exists
+                        const defaultUrl = PROVIDER_TYPES.find(p => p.id === v)?.defaultBaseUrl;
+                        if (defaultUrl && !baseUrl && baseUrlComp) {
+                            baseUrl = defaultUrl;
+                            baseUrlComp.setValue(defaultUrl);
+                        }
+                    });
             });
 
-        const btns = contentEl.createEl("div", { attr: { style: "display:flex;gap:10px;margin-top:20px;justify-content:flex-end;" } });
-        btns.createEl("button", { text: "取消" }).onclick = () => modal.close();
-        const save = btns.createEl("button", { text: "添加", cls: "mod-cta" });
+        // API Key
+        const apiKeySetting = new Setting(contentEl)
+            .setName("API Key")
+            .setDesc("请输入 API Key");
 
-        save.onclick = async () => {
-            if (!id) { new Notice("请填写ID"); return; }
-            if (this.settings.settings.providers[id]) { new Notice("供应商ID已存在"); return; }
+        let apiKeyComp: any;
+        apiKeySetting.addText(text => {
+            apiKeyComp = text;
+            text.inputEl.type = "password";
+            text.setPlaceholder(useKeychain ? "将在保存时存储到 Keychain" : "请输入 API Key")
+                .onChange(v => apiKey = v.trim());
+        });
+        this.updateApiKeyDesc(apiKeySetting, type);
 
+        // Base URL
+        let baseUrlComp: any;
+        new Setting(contentEl)
+            .setName("Base URL")
+            .setDesc("可选：设置自定义 Base URL")
+            .addText(text => {
+                baseUrlComp = text;
+                text.setPlaceholder("https://api.example.com/v1")
+                    .setValue(PROVIDER_TYPES.find(p => p.id === type)?.defaultBaseUrl || "")
+                    .onChange(v => baseUrl = v.trim());
+                // Init base url
+                baseUrl = PROVIDER_TYPES.find(p => p.id === type)?.defaultBaseUrl || "";
+            });
+
+        const btns = contentEl.createEl("div", { attr: { style: "display:flex;justify-content:flex-end;gap:10px;margin-top:15px;" } });
+        const cancelBtn = btns.createEl("button", { text: "取消" });
+        cancelBtn.onclick = () => modal.close();
+
+        const saveBtn = btns.createEl("button", { text: "保存", cls: "mod-cta" });
+        saveBtn.onclick = async () => {
+            if (!id || !name) {
+                new Notice("ID 和名称不能为空");
+                return;
+            }
+            if (this.settings.settings.providers[id]) {
+                new Notice("该 ID 已存在");
+                return;
+            }
+
+            // Save Provider
             this.settings.settings.providers[id] = {
+                name,
+                type: type as any,
                 apiKey: "",
-                baseUrl: "",
-                enabled: true,
-                name: name || id,
-                type
-            } as ProviderConfig;
+                baseUrl: baseUrl,
+                enabled: true
+            };
+
+            // Handle API Key Save
+            if (apiKey) {
+                if (useKeychain && hasSecretStorage) {
+                    const secretId = `markdown-next-ai-api-key-${id}`;
+                    try {
+                        if (typeof secretStorage.save === "function") {
+                            await secretStorage.save(secretId, apiKey);
+                        } else {
+                            await secretStorage.setSecret(secretId, apiKey);
+                        }
+                        this.settings.settings.providers[id].apiKey = `secret:${secretId}`;
+                    } catch (e) {
+                        console.error("Keychain save failed", e);
+                        new Notice("Keychain 保存失败，已使用普通存储");
+                        this.settings.settings.providers[id].apiKey = apiKey;
+                    }
+                } else {
+                    this.settings.settings.providers[id].apiKey = apiKey;
+                }
+            }
 
             await this.settings.save();
-            modal.close();
-            this.plugin.updateEventListeners?.();
             if (this.lastContainerEl) this.render(this.lastContainerEl);
+            modal.close();
         };
+
         modal.open();
     }
 
     private showEditProviderModal(providerId: string): void {
         const modal = new Modal(this.app);
-        modal.titleEl.setText("编辑供应商 (Edit Provider)");
+        modal.titleEl.setText(`编辑供应商: ${providerId}`);
         const { contentEl } = modal;
+        const provider = this.settings.settings.providers[providerId];
 
-        const p = this.settings.settings.providers[providerId];
-        let name = p?.name || providerId;
-        let type = p?.type || "openai";
+        let name = provider.name || providerId;
+        let type = provider.type || "openai";
+        let apiKey = provider.apiKey || "";
+        let baseUrl = provider.baseUrl || "";
+
+        // Keychain Logic
+        let useKeychain = this.settings.settings.useKeychain ?? true;
+        const secretStorage = (this.app as any).secretStorage || (this.app as any).keychain || (window as any).secretStorage || (this.app as any).vault?.secretStorage;
+        const hasSecretStorage = secretStorage && (typeof secretStorage.save === "function" || typeof secretStorage.setSecret === "function");
+
+        // Determine initial keychain state
+        if (apiKey.startsWith("secret:")) {
+            useKeychain = true;
+        } else if (!apiKey && (this.settings.settings.useKeychain ?? true) && hasSecretStorage) {
+            useKeychain = true;
+        }
+
+        // Reuse Logic
+        const otherProvidersWithSecrets = Object.entries(this.settings.settings.providers)
+            .filter(([id, p]: [string, any]) => id !== providerId && p.apiKey && p.apiKey.startsWith("secret:"))
+            .map(([id, p]: [string, any]) => ({ id, name: p.name || id, secretRef: p.apiKey }));
 
         new Setting(contentEl)
-            .setName("显示名称 (Display Name)")
-            .setDesc("友好的显示名称")
+            .setName("名称 (Name)")
+            .setDesc("显示的名称")
             .addText(text => text
-                .setPlaceholder("e.g. OpenAI Official")
                 .setValue(name)
                 .onChange(v => name = v.trim()));
+
+        const apiKeySetting = new Setting(contentEl)
+            .setName("API Key")
+            .setDesc("请输入 API Key");
 
         new Setting(contentEl)
             .setName("类型 (Type)")
@@ -474,26 +474,118 @@ export class ModelsTabView extends AbstractTabView {
                     dropdown.addOption(t.id, t.name)
                 );
                 dropdown.setValue(type)
-                    .onChange(v => type = v);
+                    .onChange(v => {
+                        type = v;
+                        this.updateApiKeyDesc(apiKeySetting, type);
+                    });
             });
 
-        const btns = contentEl.createEl("div", { attr: { style: "display:flex;gap:10px;margin-top:20px;justify-content:flex-end;" } });
+        // Reuse Key Dropdown
+        let apiKeyComp: any;
+        if (otherProvidersWithSecrets.length > 0) {
+            new Setting(contentEl)
+                .setName("复用已有 Key")
+                .setDesc("选择复用其他供应商已配置的 Keychain 密钥")
+                .addDropdown(dropdown => {
+                    dropdown.addOption("", "不复用 (默认)");
+                    otherProvidersWithSecrets.forEach(p => dropdown.addOption(p.secretRef, `${p.name} (${p.id})`));
+                    if (apiKey && apiKey.startsWith("secret:") && otherProvidersWithSecrets.some(p => p.secretRef === apiKey)) {
+                        dropdown.setValue(apiKey);
+                    }
+                    dropdown.onChange(value => {
+                        if (value) {
+                            apiKey = value;
+                            useKeychain = true;
+                            if (apiKeyComp) {
+                                apiKeyComp.setValue("");
+                                apiKeyComp.setPlaceholder(`已复用 ${otherProvidersWithSecrets.find(p => p.secretRef === value)?.name} 的 Key`);
+                                apiKeyComp.setDisabled(true);
+                            }
+                        } else {
+                            // Reset if deselected
+                            // Restore original if it was not reused? 
+                            // Easier to just clear and let user re-enter or cancel
+                            apiKey = "";
+                            if (apiKeyComp) {
+                                apiKeyComp.setDisabled(false);
+                                apiKeyComp.setPlaceholder(useKeychain ? "将在保存时存储到 Keychain" : "请输入 API Key");
+                            }
+                        }
+                    });
+                });
+        }
+
+        // API Key Input
+        apiKeySetting.addText(text => {
+            apiKeyComp = text;
+            text.inputEl.type = "password";
+
+            const isReusing = apiKey.startsWith("secret:") && otherProvidersWithSecrets.some(p => p.secretRef === apiKey);
+            if (isReusing) {
+                text.setPlaceholder(`已复用 ${otherProvidersWithSecrets.find(p => p.secretRef === apiKey)?.name} 的 Key`);
+                text.setDisabled(true);
+            } else if (apiKey.startsWith("secret:")) {
+                text.setPlaceholder("已存储在 Keychain 中 (修改以覆盖)");
+            } else {
+                text.setPlaceholder(useKeychain ? "将在保存时存储到 Keychain" : "请输入 API Key");
+                text.setValue(apiKey);
+            }
+
+            text.onChange(v => {
+                apiKey = v.trim();
+            });
+        });
+        this.updateApiKeyDesc(apiKeySetting, type);
+
+        new Setting(contentEl)
+            .setName("Base URL")
+            .setDesc("可选：设置自定义 Base URL")
+            .addText(text => text
+                .setPlaceholder("https://api.example.com/v1")
+                .setValue(baseUrl)
+                .onChange(v => baseUrl = v.trim()));
+
+        const btns = contentEl.createEl("div", { attr: { style: "display:flex;justify-content:flex-end;gap:10px;margin-top:15px;" } });
         btns.createEl("button", { text: "取消" }).onclick = () => modal.close();
-        const save = btns.createEl("button", { text: "保存", cls: "mod-cta" });
 
-        save.onclick = async () => {
-            if (!name) { new Notice("名称不能为空"); return; }
+        const saveBtn = btns.createEl("button", { text: "保存", cls: "mod-cta" });
+        saveBtn.onclick = async () => {
+            this.settings.settings.providers[providerId].name = name;
+            this.settings.settings.providers[providerId].type = type as any;
+            this.settings.settings.providers[providerId].baseUrl = baseUrl;
 
-            this.settings.settings.providers[providerId] = {
-                ...(this.settings.settings.providers[providerId] || { apiKey: "", baseUrl: "", enabled: true }),
-                name,
-                type
-            } as ProviderConfig;
+            const isReusing = apiKey.startsWith("secret:") && otherProvidersWithSecrets.some(p => p.secretRef === apiKey);
+            if (isReusing) {
+                this.settings.settings.providers[providerId].apiKey = apiKey;
+            }
+            else if (apiKey && !apiKey.startsWith("secret:")) {
+                if (useKeychain && hasSecretStorage) {
+                    const secretId = `markdown-next-ai-api-key-${providerId}`;
+                    try {
+                        if (typeof secretStorage.save === "function") {
+                            await secretStorage.save(secretId, apiKey);
+                        } else {
+                            await secretStorage.setSecret(secretId, apiKey);
+                        }
+                        this.settings.settings.providers[providerId].apiKey = `secret:${secretId}`;
+                    } catch (e) {
+                        new Notice("Keychain 保存失败，已使用普通存储");
+                        this.settings.settings.providers[providerId].apiKey = apiKey;
+                    }
+                } else {
+                    this.settings.settings.providers[providerId].apiKey = apiKey;
+                }
+            }
+            else if (apiKey === "") {
+                this.settings.settings.providers[providerId].apiKey = "";
+            }
 
             await this.settings.save();
-            modal.close();
             if (this.lastContainerEl) this.render(this.lastContainerEl);
+            modal.close();
+            this.plugin.updateEventListeners?.();
         };
+
         modal.open();
     }
 
@@ -622,152 +714,127 @@ export class ModelsTabView extends AbstractTabView {
         let apiModelId = "";
         let displayName = "";
         let internalId = "";
-        let fetchedModels: { id: string; name: string }[] | null = null;
 
         let apiModelIdInput: any;
         let displayNameInput: any;
         let internalIdInput: any;
+        let suggest: ModelInputSuggest;
 
-        const renderContent = () => {
-            contentEl.empty();
+        const providerConfig = this.settings.settings.providers[providerId];
+        const providerBaseUrl = providerConfig?.baseUrl || "(默认/Default)";
 
-            const providerConfig = this.settings.settings.providers[providerId];
-            const providerBaseUrl = providerConfig?.baseUrl || "(默认/Default)";
-
-            new Setting(contentEl)
-                .setName("供应商 (Provider)")
-                .setDesc(`选择调用该模型使用的服务商账户。当前 Base URL: ${providerBaseUrl}`)
-                .addDropdown(dropdown => {
-                    Object.keys(this.settings.settings.providers).forEach(pId => {
-                        const p = this.settings.settings.providers[pId];
-                        dropdown.addOption(pId, `${p.name || pId} (${p.type || "openai"})`);
-                    });
-                    dropdown.setValue(providerId);
-                    dropdown.onChange((value) => {
-                        providerId = value;
-                        fetchedModels = null;
-                        renderContent();
-                    });
+        new Setting(contentEl)
+            .setName("供应商 (Provider)")
+            .setDesc(`选择调用该模型使用的服务商账户`)
+            .addDropdown(dropdown => {
+                Object.keys(this.settings.settings.providers).forEach(pId => {
+                    const p = this.settings.settings.providers[pId];
+                    dropdown.addOption(pId, `${p.name || pId} (${p.type || "openai"})`);
                 });
+                dropdown.setValue(providerId);
+                dropdown.onChange((value) => {
+                    providerId = value;
+                    // clear suggest items when provider changes? or just keep them until fetch?
+                    if (suggest) suggest.setItems([]);
+                });
+            });
 
-            const providerType = this.settings.settings.providers[providerId]?.type || "openai";
+        contentEl.createEl("hr", { attr: { style: "margin: 20px 0; border-color: var(--background-modifier-border);" } });
 
-            // Prepare presets for auto-completion
-            // Since MODEL_PRESETS is removed, we only rely on fetchedModels
-            const presets = fetchedModels || [];
+        new Setting(contentEl)
+            .setName("模型 API ID (Model ID)")
+            .setDesc("点击右侧按钮获取模型列表，或手动输入")
+            .addText(text => {
+                apiModelIdInput = text;
+                text.setPlaceholder("e.g. gpt-4o")
+                    .onChange(v => {
+                        apiModelId = v.trim();
+                        if (!displayName && apiModelId) {
+                            displayName = apiModelId;
+                            if (displayNameInput) displayNameInput.setValue(displayName);
+                        }
 
-            contentEl.createEl("hr", { attr: { style: "margin: 20px 0; border-color: var(--background-modifier-border);" } });
-
-            new Setting(contentEl)
-                .setName("模型 API ID (Model ID)")
-                .setDesc("点击 Fetch 获取模型列表")
-                .addText(text => {
-                    apiModelIdInput = text;
-                    text.setPlaceholder("e.g. gpt-4o")
-                        .setValue(apiModelId)
-                        .onChange(v => {
-                            apiModelId = v.trim();
-                            // If user manually types, we still try to autofill if it matches known presets
-                            // But mainly we rely on selection
-                            if (!displayName && apiModelId) {
-                                displayName = apiModelId;
-                                if (displayNameInput) displayNameInput.setValue(displayName);
-                            }
-
-                            if (!internalId && apiModelId) {
-                                internalId = `${providerId}-${apiModelId}`.replace(/[^a-zA-Z0-9-_]/g, "-").toLowerCase();
-                                if (internalIdInput) internalIdInput.setValue(internalId);
-                            }
-                        });
-
-                    // Attach inline suggester
-                    new ModelInputSuggest(text.inputEl, presets, (item) => {
-                        apiModelId = item.id;
-                        displayName = item.name;
-                        if (apiModelIdInput) apiModelIdInput.setValue(apiModelId);
-                        if (displayNameInput) displayNameInput.setValue(displayName);
-
-                        if (!internalId) {
+                        if (!internalId && apiModelId) {
                             internalId = `${providerId}-${apiModelId}`.replace(/[^a-zA-Z0-9-_]/g, "-").toLowerCase();
                             if (internalIdInput) internalIdInput.setValue(internalId);
                         }
                     });
-                })
-                .addButton(btn => btn
-                    .setButtonText("获取 / Fetch")
-                    .setIcon("refresh-ccw")
-                    .setTooltip("从 API 获取可用模型列表")
-                    .onClick(async () => {
-                        const models = await this.fetchModels(providerId);
-                        if (models) {
-                            fetchedModels = models;
-                            renderContent();
-                            // Automatically open suggest modal after fetch
-                            new ModelSuggestModal(this.app, models, (item) => {
-                                apiModelId = item.id;
-                                displayName = item.name;
-                                if (apiModelIdInput) apiModelIdInput.setValue(apiModelId);
-                                if (displayNameInput) displayNameInput.setValue(displayName);
 
-                                if (!internalId) {
-                                    internalId = `${providerId}-${apiModelId}`.replace(/[^a-zA-Z0-9-_]/g, "-").toLowerCase();
-                                    if (internalIdInput) internalIdInput.setValue(internalId);
-                                }
-                            }).open();
-                        }
-                    }));
+                // Attach inline suggester
+                suggest = new ModelInputSuggest(text.inputEl, [], (item) => {
+                    apiModelId = item.id;
+                    displayName = item.name;
+                    if (apiModelIdInput) apiModelIdInput.setValue(apiModelId);
+                    if (displayNameInput) displayNameInput.setValue(displayName);
 
-            new Setting(contentEl)
-                .setName("显示名称 (Display Name)")
-                .setDesc("在插件菜单中显示的友好名称")
-                .addText(text => {
-                    displayNameInput = text;
-                    text.setPlaceholder("e.g. GPT-4o Official")
-                        .setValue(displayName)
-                        .onChange(v => displayName = v.trim());
+                    if (!internalId) {
+                        internalId = `${providerId}-${apiModelId}`.replace(/[^a-zA-Z0-9-_]/g, "-").toLowerCase();
+                        if (internalIdInput) internalIdInput.setValue(internalId);
+                    }
                 });
+            })
+            .addButton(btn => btn
+                .setButtonText("获取 / Fetch")
+                .setIcon("refresh-ccw")
+                .setTooltip("从 API 获取可用模型列表")
+                .onClick(async () => {
+                    const models = await this.fetchModels(providerId);
+                    if (models) {
+                        suggest.setItems(models);
+                        suggest.open();
+                        new Notice(`已获取 ${models.length} 个可用模型`);
+                        // Focus back to input
+                        apiModelIdInput.inputEl.focus();
+                    }
+                }));
 
-            const advancedDetails = contentEl.createEl("details");
-            advancedDetails.createEl("summary", { text: "高级设置 (Advanced: Internal ID)", attr: { style: "color: var(--text-muted); cursor: pointer; margin-bottom: 10px;" } });
+        new Setting(contentEl)
+            .setName("显示名称 (Display Name)")
+            .setDesc("在插件菜单中显示的友好名称")
+            .addText(text => {
+                displayNameInput = text;
+                text.setPlaceholder("e.g. GPT-4o Official")
+                    .onChange(v => displayName = v.trim());
+            });
 
-            new Setting(advancedDetails)
-                .setName("插件内部 ID")
-                .setDesc("插件配置中使用的唯一键值，通常无需修改")
-                .addText(text => {
-                    internalIdInput = text;
-                    text.setValue(internalId)
-                        .onChange(v => internalId = v.trim());
-                });
+        const advancedDetails = contentEl.createEl("details");
+        advancedDetails.createEl("summary", { text: "高级设置 (Advanced: Internal ID)", attr: { style: "color: var(--text-muted); cursor: pointer; margin-bottom: 10px;" } });
 
-            const btns = contentEl.createEl("div", { attr: { style: "display:flex;gap:10px;margin-top:20px;justify-content:flex-end;" } });
-            btns.createEl("button", { text: "取消" }).onclick = () => modal.close();
-            const save = btns.createEl("button", { text: "添加模型", cls: "mod-cta" });
-            save.onclick = async () => {
-                if (!apiModelId || !displayName || !internalId) {
-                    new Notice("请填写完整信息 (API ID, Name)");
-                    return;
-                }
-                if (this.settings.settings.models[internalId]) {
-                    new Notice("该内部 ID 已存在，请在高级设置中修改 ID");
-                    return;
-                }
-                const cfg: ModelConfig = {
-                    id: internalId,
-                    name: displayName,
-                    provider: providerId,
-                    model: apiModelId,
-                    enabled: true,
-                    category
-                };
-                this.settings.settings.models[internalId] = cfg;
-                await this.settings.save();
-                modal.close();
-                if (this.lastContainerEl) this.render(this.lastContainerEl);
-                new Notice(`已添加模型: ${displayName}`);
+        new Setting(advancedDetails)
+            .setName("插件内部 ID")
+            .setDesc("插件配置中使用的唯一键值，通常无需修改")
+            .addText(text => {
+                internalIdInput = text;
+                text.onChange(v => internalId = v.trim());
+            });
+
+        const btns = contentEl.createEl("div", { attr: { style: "display:flex;gap:10px;margin-top:20px;justify-content:flex-end;" } });
+        btns.createEl("button", { text: "取消" }).onclick = () => modal.close();
+        const save = btns.createEl("button", { text: "添加模型", cls: "mod-cta" });
+        save.onclick = async () => {
+            if (!apiModelId || !displayName || !internalId) {
+                new Notice("请填写完整信息 (API ID, Name)");
+                return;
+            }
+            if (this.settings.settings.models[internalId]) {
+                new Notice("该内部 ID 已存在，请在高级设置中修改 ID");
+                return;
+            }
+            const cfg: ModelConfig = {
+                id: internalId,
+                name: displayName,
+                provider: providerId,
+                model: apiModelId,
+                enabled: true,
+                category
             };
+            this.settings.settings.models[internalId] = cfg;
+            await this.settings.save();
+            modal.close();
+            if (this.lastContainerEl) this.render(this.lastContainerEl);
+            new Notice(`已添加模型: ${displayName}`);
         };
 
-        renderContent();
         modal.open();
     }
 
@@ -781,6 +848,10 @@ export class ModelsTabView extends AbstractTabView {
         let apiModelId = m.model || "";
         let displayName = m.name;
 
+        let apiModelIdInput: any;
+        let displayNameInput: any;
+        let suggest: ModelInputSuggest;
+
         new Setting(contentEl)
             .setName("供应商 (Provider)")
             .setDesc("更改该模型所属的服务商")
@@ -789,15 +860,44 @@ export class ModelsTabView extends AbstractTabView {
                     dropdown.addOption(pId, pId);
                 });
                 dropdown.setValue(providerId);
-                dropdown.onChange(v => providerId = v);
+                dropdown.onChange(v => {
+                    providerId = v;
+                    if (suggest) suggest.setItems([]);
+                });
             });
+
+        contentEl.createEl("hr", { attr: { style: "margin: 20px 0; border-color: var(--background-modifier-border);" } });
 
         new Setting(contentEl)
             .setName("模型 API ID")
-            .setDesc("发送给 API 的实际模型参数 (例如: gpt-4o)")
-            .addText(text => text
-                .setValue(apiModelId)
-                .onChange(v => apiModelId = v.trim()));
+            .setDesc("点击右侧按钮获取模型列表，或手动输入")
+            .addText(text => {
+                apiModelIdInput = text;
+                text.setValue(apiModelId)
+                    .onChange(v => apiModelId = v.trim());
+
+                // Attach inline suggester
+                suggest = new ModelInputSuggest(text.inputEl, [], (item) => {
+                    apiModelId = item.id;
+                    if (apiModelIdInput) apiModelIdInput.setValue(apiModelId);
+
+                    // Optional: update display name if it matches the old model ID or is empty
+                    // But for edit mode, we should be careful not to overwrite user's custom name unless they want to
+                });
+            })
+            .addButton(btn => btn
+                .setButtonText("获取 / Fetch")
+                .setIcon("refresh-ccw")
+                .setTooltip("从 API 获取可用模型列表")
+                .onClick(async () => {
+                    const models = await this.fetchModels(providerId);
+                    if (models) {
+                        suggest.setItems(models);
+                        suggest.open();
+                        new Notice(`已获取 ${models.length} 个可用模型`);
+                        apiModelIdInput.inputEl.focus();
+                    }
+                }));
 
         new Setting(contentEl)
             .setName("显示名称")
