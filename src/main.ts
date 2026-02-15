@@ -2,6 +2,7 @@ import { MarkdownView, Notice, Plugin, TFile, setIcon } from "obsidian";
 import { DEFAULT_SETTINGS } from "./defaults";
 import { TabCompletionController } from "./features/tab-completion/tab-completion-controller";
 import { AIService } from "./services";
+import { AIContextProvider, MarkdownNextAIAPI } from "./api";
 import { GlobalRuleManager } from "./services/rule-manager";
 // Use the refactored settings tab entry
 import { MarkdownNextAISettingTab } from "./settings/index";
@@ -9,6 +10,43 @@ import type { CursorPosition, ImageData, PluginSettings } from "./types";
 import { AtTriggerPopup, PromptSelectorPopup, SelectionManager, SelectionToolbar } from "./ui";
 import { APPLY_VIEW_TYPE, ApplyView } from "./ui/apply-view/ApplyView";
 import { InlineSuggestionController } from "./ui/inline-suggestion/inline-suggestion-controller";
+
+// API Implementation
+class MarkdownNextAIAPIImpl implements MarkdownNextAIAPI {
+    private contextProviders: AIContextProvider[] = [];
+
+    registerContextProvider(provider: AIContextProvider) {
+        // Prevent duplicate registration
+        if (this.contextProviders.some(p => p.id === provider.id)) {
+            console.warn(`[Markdown-Next-AI] Context provider with id '${provider.id}' is already registered.`);
+            return;
+        }
+        this.contextProviders.push(provider);
+        console.log(`[Markdown-Next-AI] Registered context provider: ${provider.name}`);
+    }
+
+    unregisterContextProvider(id: string) {
+        this.contextProviders = this.contextProviders.filter(p => p.id !== id);
+        console.log(`[Markdown-Next-AI] Unregistered context provider: ${id}`);
+    }
+
+    async getAggregatedContext(file: TFile): Promise<string> {
+        if (this.contextProviders.length === 0) return "";
+        
+        const contextPromises = this.contextProviders.map(async (provider) => {
+            try {
+                const context = await provider.getContext(file);
+                return context ? context.trim() : "";
+            } catch (error) {
+                console.error(`[Markdown-Next-AI] Error getting context from provider '${provider.name}':`, error);
+                return "";
+            }
+        });
+
+        const contexts = await Promise.all(contextPromises);
+        return contexts.filter(c => c.length > 0).join("\n\n");
+    }
+}
 
 interface EventListenerEntry {
     element: Document | HTMLElement | any;
@@ -24,6 +62,8 @@ export default class MarkdownNextAIPlugin extends Plugin {
     aiService!: AIService;
     ruleManager!: GlobalRuleManager;
     tabCompletionController!: TabCompletionController;
+    // Public API instance
+    api!: MarkdownNextAIAPIImpl;
     inlineSuggestionController!: InlineSuggestionController;
     selectionManager!: SelectionManager;
     selectionToolbar!: SelectionToolbar;
@@ -42,6 +82,9 @@ export default class MarkdownNextAIPlugin extends Plugin {
 
     async onload(): Promise<void> {
         await this.loadSettings();
+
+        // Initialize API
+        this.api = new MarkdownNextAIAPIImpl();
 
         this.aiService = new AIService(this.settings, this.app);
         this.ruleManager = new GlobalRuleManager(this);

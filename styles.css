@@ -2761,70 +2761,71 @@
 }
 
 .markdown-next-ai-context-suggestions {
-  background: var(--mn-bg);
-  border: 1px solid var(--mn-border);
-  border-radius: var(--mn-radius-lg);
-  box-shadow: var(--mn-shadow);
+  background-color: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 4px;
 }
 
 .markdown-next-ai-model-dropdown {
-  background: var(--mn-bg);
-  border: 1px solid var(--mn-border);
-  border-radius: var(--mn-radius-lg);
-  box-shadow: var(--mn-shadow);
+  background-color: var(--background-primary);
+  border-radius: 6px;
 }
 
 .markdown-next-ai-suggestion-item {
-  border-radius: var(--mn-radius-sm);
-  color: var(--mn-fg-700);
+  border-radius: 4px;
+  color: var(--text-normal);
+  padding: 6px 8px;
 }
 
 .markdown-next-ai-suggestion-item:hover {
-  background: var(--mn-accent-100);
-  color: var(--mn-accent-600);
+  background-color: var(--background-modifier-hover);
+  color: var(--text-normal);
 }
 
 .markdown-next-ai-suggestion-item.selected {
-  background: var(--mn-accent-100);
-  color: var(--mn-accent-600);
+  background-color: var(--background-modifier-active-hover);
+  color: var(--text-normal);
 }
 
 .markdown-next-ai-suggestion-item:focus-visible {
   outline: none;
-  box-shadow: var(--mn-focus-ring);
+  box-shadow: 0 0 0 2px var(--interactive-accent);
 }
 
 .markdown-next-ai-model-option {
-  padding: var(--mn-space-3) var(--mn-space-4);
-  border-radius: var(--mn-radius-sm);
-  color: var(--mn-fg-700);
+  padding: 8px 12px;
+  border-radius: 4px;
+  color: var(--text-normal);
 }
 
 .markdown-next-ai-model-option:hover {
-  background: var(--mn-accent-100);
-  color: var(--mn-accent-600);
+  background-color: var(--background-modifier-hover);
+  color: var(--text-normal);
 }
 
 .markdown-next-ai-model-option.is-active {
-  background: var(--mn-accent-100);
-  color: var(--mn-accent-600);
+  background-color: var(--background-modifier-active-hover);
+  color: var(--text-normal);
 }
 
 .markdown-next-ai-icon-btn {
   appearance: none;
   border: none;
   background: transparent;
-  color: var(--mn-fg-600);
+  color: var(--text-muted);
   padding: 0;
+  cursor: pointer;
 }
 
 .markdown-next-ai-icon-btn:hover {
-  color: var(--mn-accent-600);
+  color: var(--text-accent);
 }
 
 .markdown-next-ai-icon-btn:focus-visible {
   outline: none;
-  box-shadow: var(--mn-focus-ring);
+  box-shadow: 0 0 0 2px var(--interactive-accent);
 }
 
 /* --- Inline Suggestion (Ghost Text & Thinking Indicator) --- */

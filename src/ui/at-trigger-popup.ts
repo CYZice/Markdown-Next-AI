@@ -39,6 +39,7 @@ export class AtTriggerPopup {
     private mode: string = 'ask';
     private messages: ChatMessage[] = [];
     private images: ImageData[] = [];
+    private isThinking: boolean = false;
 
     // UI Elements
     private popupEl: HTMLElement | null = null;
@@ -367,9 +368,19 @@ export class AtTriggerPopup {
         this.dropdownEventListeners.push({ element: document, event: "click", handler: outsideClickHandler });
     }
 
+    private setThinking(thinking: boolean): void {
+        this.isThinking = thinking;
+        if (thinking) {
+            this.windowManager.addCloseGuard("thinking");
+        } else {
+            this.windowManager.removeCloseGuard("thinking");
+        }
+    }
+
     public close(): void {
         if (!this.isOpen) return;
         this.isOpen = false;
+        this.setThinking(false);
 
         if (!this.isSubmitted && this.onCancel) {
             this.onCancel();
@@ -456,12 +467,17 @@ export class AtTriggerPopup {
             }
             if (statusEl) statusEl.textContent = "正在思考并修改文档...";
 
+            this.setThinking(true);
             try {
+                // Get additional context from API
+                const apiContext = (this.view && this.view.file) ? await this.plugin.api.getAggregatedContext(this.view.file) : "";
+
                 const generatedContent = await generateEditContent({
                     instruction: content,
                     currentFile: file,
                     currentFileContent: editorContent,
                     selectedText: this.selectedText,
+                    additionalContext: apiContext,
                     aiService: this.plugin.aiService,
                     modelId: this.plugin.settings.currentModel,
                     mode: "edit-direct"
@@ -500,12 +516,16 @@ export class AtTriggerPopup {
                 if (statusEl) statusEl.textContent = "";
 
                 new Notice("修改失败: " + (error instanceof Error ? error.message : String(error)));
+            } finally {
+                this.setThinking(false);
             }
             return;
         }
 
         if (this.mode !== 'ask' && this.onSubmitCallback) {
             const context = await this.inputController.getSelectedContext();
+            const apiContext = (this.view && this.view.file) ? await this.plugin.api.getAggregatedContext(this.view.file) : "";
+            const finalContext = (context || "") + (apiContext ? "\n\n" + apiContext : "");
 
             // Set UI to loading state
             const submitBtn = this.popupEl?.querySelector(".markdown-next-ai-submit-btn") as HTMLElement;
@@ -545,8 +565,9 @@ export class AtTriggerPopup {
                 if (statusEl) statusEl.textContent = status;
             };
 
+            this.setThinking(true);
             try {
-                await this.onSubmitCallback(content, imagesToSend, this.plugin.settings.currentModel, context, this.selectedText, this.mode, updateStatus);
+                await this.onSubmitCallback(content, imagesToSend, this.plugin.settings.currentModel, finalContext, this.selectedText, this.mode, updateStatus);
                 this.isSubmitted = true;
                 this.close();
             } catch (error) {
@@ -562,11 +583,18 @@ export class AtTriggerPopup {
                 }
                 if (statusEl) statusEl.textContent = "";
                 new Notice("Request failed: " + (error instanceof Error ? error.message : String(error)));
+            } finally {
+                this.setThinking(false);
             }
             return;
         }
 
         const context = await this.inputController.getSelectedContext();
+
+        // Get additional context from API
+        const apiContext = (this.view && this.view.file) ? await this.plugin.api.getAggregatedContext(this.view.file) : "";
+        const finalContext = (context || "") + (apiContext ? "\n\n" + apiContext : "");
+
         const userVisiblePrompt = (() => {
             const trimmed = (content || "").trim();
             if (trimmed) return trimmed;
@@ -584,6 +612,7 @@ export class AtTriggerPopup {
         await this.chatRenderer.renderChatMessage("user", userVisiblePrompt);
         this.chatRenderer.createStreamingAssistantMessage();
 
+        this.setThinking(true);
         try {
             let finalContent = "";
             let finalThinking = "";
@@ -594,7 +623,7 @@ export class AtTriggerPopup {
                     beforeText: "",
                     afterText: "",
                     cursorPosition: { line: 0, ch: 0 },
-                    additionalContext: context || undefined
+                    additionalContext: finalContext || undefined
                 },
                 content,
                 imagesToSend,
@@ -619,6 +648,8 @@ export class AtTriggerPopup {
             new Notice("Generation failed: " + (error as any)?.message || String(error));
             this.chatRenderer.updateStreamingMessage("Error: " + ((error as any)?.message || String(error)));
             this.chatRenderer.finalizeStreamingMessage("Error: " + ((error as any)?.message || String(error)));
+        } finally {
+            this.setThinking(false);
         }
     }
 

@@ -45,25 +45,25 @@
       "category": "text"
     }
   },
-  "currentModel": "gemini-3-flash-preview",
+  "currentModel": "gemini-3-pro-preview",
   "timeout": 30000,
   "enableRightClick": true,
   "enableAtTrigger": true,
   "dialogTextTriggers": [
     {
-      "id": "17705553923090.7008090706401823",
+      "id": "17706413033420.5186671302525954",
       "type": "string",
       "pattern": "@",
       "enabled": true
     },
     {
-      "id": "17705553923090.28593150746813245",
+      "id": "17706413033420.6624679461012456",
       "type": "string",
       "pattern": "&",
       "enabled": true
     },
     {
-      "id": "17705553923090.7742538733565054",
+      "id": "17706413033420.3544149957211272",
       "type": "string",
       "pattern": "!",
       "enabled": true
@@ -104,7 +104,7 @@
   ],
   "lastInsertAction": "insert",
   "baseModelSpecialPrompt": "",
-  "quickAskMode": "edit-direct",
+  "quickAskMode": "edit",
   "tabCompletion": {
     "enabled": true,
     "modelId": "deepseek-chat",

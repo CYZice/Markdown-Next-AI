@@ -33,7 +33,7 @@ CRITICAL RULES:
 - Prefer minimal changes. Do not replace the entire file unless necessary.
 `;
 
-export function generateEditPrompt(instruction: string, currentFile: TFile, fileContent: string, selectedText?: string): string {
+export function generateEditPrompt(instruction: string, currentFile: TFile, fileContent: string, selectedText?: string, additionalContext?: string): string {
     let prompt = `
 Here is the file content of ${currentFile.path}:
 
@@ -51,6 +51,13 @@ ${selectedText}
 `;
     }
 
+    if (additionalContext && additionalContext.trim()) {
+        prompt += `
+Additional Context:
+${additionalContext}
+`;
+    }
+
     prompt += `
 User Instruction: ${instruction}
 
@@ -64,6 +71,7 @@ export async function generateEditContent({
     currentFile,
     currentFileContent,
     selectedText,
+    additionalContext,
     aiService,
     modelId,
     mode
@@ -72,13 +80,14 @@ export async function generateEditContent({
     currentFile: TFile;
     currentFileContent: string;
     selectedText?: string;
+    additionalContext?: string;
     aiService: AIService;
     modelId: string | undefined;
     mode?: string;
 }): Promise<string> {
     const messages: ChatMessage[] = [
         { role: "system", content: EDIT_MODE_SYSTEM_PROMPT },
-        { role: "user", content: generateEditPrompt(instruction, currentFile, currentFileContent, selectedText) }
+        { role: "user", content: generateEditPrompt(instruction, currentFile, currentFileContent, selectedText, additionalContext) }
     ];
     const configuredMaxTokens = aiService.getMaxTokens("edit") || 2048;
     const maxTokens = mode === "edit-direct" ? Math.max(16384, configuredMaxTokens) : configuredMaxTokens;
