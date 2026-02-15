@@ -198,6 +198,14 @@ export class AtTriggerPopup {
             </div>
         `;
 
+        if (this.plugin?.api && this.popupEl) {
+            this.plugin.api.applyPopupExtenders?.(this.popupEl, {
+                mode: this.mode,
+                selectedText: this.selectedText,
+                file: this.view?.file
+            });
+        }
+
         const titleIcon = this.popupEl.querySelector(".markdown-next-ai-title-icon") as HTMLElement;
         if (titleIcon) setIcon(titleIcon, "atom");
 
@@ -469,7 +477,9 @@ export class AtTriggerPopup {
             this.setThinking(true);
             try {
                 // Get additional context from API
-                const apiContext = (this.view && this.view.file) ? await this.plugin.api.getAggregatedContext(this.view.file) : "";
+                const apiContext = (this.view && this.view.file)
+                    ? await this.plugin.api.getAggregatedContext(this.view.file, { mode: this.mode, prompt: content, selectedText: this.selectedText })
+                    : "";
 
                 const generatedContent = await generateEditContent({
                     instruction: content,
@@ -523,7 +533,9 @@ export class AtTriggerPopup {
 
         if (this.mode !== 'ask' && this.onSubmitCallback) {
             const context = await this.inputController.getSelectedContext();
-            const apiContext = (this.view && this.view.file) ? await this.plugin.api.getAggregatedContext(this.view.file) : "";
+            const apiContext = (this.view && this.view.file)
+                ? await this.plugin.api.getAggregatedContext(this.view.file, { mode: this.mode, prompt: content, selectedText: this.selectedText })
+                : "";
             const finalContext = (context || "") + (apiContext ? "\n\n" + apiContext : "");
 
             // Set UI to loading state
@@ -591,7 +603,9 @@ export class AtTriggerPopup {
         const context = await this.inputController.getSelectedContext();
 
         // Get additional context from API
-        const apiContext = (this.view && this.view.file) ? await this.plugin.api.getAggregatedContext(this.view.file) : "";
+        const apiContext = (this.view && this.view.file)
+            ? await this.plugin.api.getAggregatedContext(this.view.file, { mode: this.mode, prompt: content, selectedText: this.selectedText })
+            : "";
         const finalContext = (context || "") + (apiContext ? "\n\n" + apiContext : "");
 
         const userVisiblePrompt = (() => {

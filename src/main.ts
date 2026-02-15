@@ -1,8 +1,8 @@
 import { MarkdownView, Notice, Plugin, TFile, setIcon } from "obsidian";
+import { AIContextProvider, AIContextRequest, AIPopupContext, AIPopupExtender, MarkdownNextAIAPI } from "./api";
 import { DEFAULT_SETTINGS } from "./defaults";
 import { TabCompletionController } from "./features/tab-completion/tab-completion-controller";
 import { AIService } from "./services";
-import { AIContextProvider, MarkdownNextAIAPI } from "./api";
 import { GlobalRuleManager } from "./services/rule-manager";
 // Use the refactored settings tab entry
 import { MarkdownNextAISettingTab } from "./settings/index";
@@ -14,6 +14,7 @@ import { InlineSuggestionController } from "./ui/inline-suggestion/inline-sugges
 // API Implementation
 class MarkdownNextAIAPIImpl implements MarkdownNextAIAPI {
     private contextProviders: AIContextProvider[] = [];
+    private popupExtenders: AIPopupExtender[] = [];
 
     registerContextProvider(provider: AIContextProvider) {
         // Prevent duplicate registration
@@ -30,12 +31,26 @@ class MarkdownNextAIAPIImpl implements MarkdownNextAIAPI {
         console.log(`[Markdown-Next-AI] Unregistered context provider: ${id}`);
     }
 
-    async getAggregatedContext(file: TFile): Promise<string> {
+    registerPopupExtender(extender: AIPopupExtender) {
+        if (this.popupExtenders.some(e => e.id === extender.id)) {
+            console.warn(`[Markdown-Next-AI] Popup extender with id '${extender.id}' is already registered.`);
+            return;
+        }
+        this.popupExtenders.push(extender);
+        console.log(`[Markdown-Next-AI] Registered popup extender: ${extender.name}`);
+    }
+
+    unregisterPopupExtender(id: string) {
+        this.popupExtenders = this.popupExtenders.filter(e => e.id !== id);
+        console.log(`[Markdown-Next-AI] Unregistered popup extender: ${id}`);
+    }
+
+    async getAggregatedContext(file: TFile, request?: AIContextRequest): Promise<string> {
         if (this.contextProviders.length === 0) return "";
-        
+
         const contextPromises = this.contextProviders.map(async (provider) => {
             try {
-                const context = await provider.getContext(file);
+                const context = await provider.getContext(file, request);
                 return context ? context.trim() : "";
             } catch (error) {
                 console.error(`[Markdown-Next-AI] Error getting context from provider '${provider.name}':`, error);
@@ -45,6 +60,17 @@ class MarkdownNextAIAPIImpl implements MarkdownNextAIAPI {
 
         const contexts = await Promise.all(contextPromises);
         return contexts.filter(c => c.length > 0).join("\n\n");
+    }
+
+    applyPopupExtenders(popupEl: HTMLElement, context: AIPopupContext): void {
+        if (this.popupExtenders.length === 0) return;
+        for (const extender of this.popupExtenders) {
+            try {
+                extender.extend(popupEl, context);
+            } catch (error) {
+                console.error(`[Markdown-Next-AI] Error applying popup extender '${extender.name}':`, error);
+            }
+        }
     }
 }
 
