@@ -1,19 +1,81 @@
 import { Setting } from "obsidian";
 import { AbstractTabView } from "./abstract-tab-view";
 
+const ensureApplyViewSettings = (s: any) => {
+    if (!s.applyView) {
+        s.applyView = {
+            diff: {
+                decidedBlockViewMode: "result",
+                showDecisionBadge: true,
+                decidedBlockOpacity: 0.6,
+                collapseDecidedBlocks: false
+            },
+            layout: {
+                applyBarPosition: "top",
+                applyBarSticky: false,
+                applyBarAlignment: "center"
+            },
+            header: {
+                visibleButtons: ["prevNext", "bulkAcceptReject", "keepInsert", "progress", "moreMenu"],
+                overflowPolicy: "auto",
+                moreMenuItems: []
+            },
+            behavior: {
+                autoAdvanceAfterDecision: true,
+                autoAdvanceDelayMs: 100,
+                requireAllDecidedBeforeApply: false,
+                pendingDefaultDecisionOnApply: "incoming"
+            }
+        };
+    }
+    if (!s.applyView.diff) {
+        s.applyView.diff = {
+            decidedBlockViewMode: "result",
+            showDecisionBadge: true,
+            decidedBlockOpacity: 0.6,
+            collapseDecidedBlocks: false
+        };
+    }
+    if (!s.applyView.layout) {
+        s.applyView.layout = {
+            applyBarPosition: "top",
+            applyBarSticky: false,
+            applyBarAlignment: "center"
+        };
+    }
+    if (!s.applyView.header) {
+        s.applyView.header = {
+            visibleButtons: ["prevNext", "bulkAcceptReject", "keepInsert", "progress", "moreMenu"],
+            overflowPolicy: "auto",
+            moreMenuItems: []
+        };
+    }
+    if (!Array.isArray(s.applyView.header.visibleButtons)) s.applyView.header.visibleButtons = ["prevNext", "bulkAcceptReject", "keepInsert", "progress", "moreMenu"];
+    if (!Array.isArray(s.applyView.header.moreMenuItems)) s.applyView.header.moreMenuItems = [];
+    if (!s.applyView.behavior) {
+        s.applyView.behavior = {
+            autoAdvanceAfterDecision: true,
+            autoAdvanceDelayMs: 100,
+            requireAllDecidedBeforeApply: false,
+            pendingDefaultDecisionOnApply: "incoming"
+        };
+    }
+};
+
 export class EditorTabView extends AbstractTabView {
     private lastContainerEl: HTMLElement | null = null;
     render(containerEl: HTMLElement): void {
         this.lastContainerEl = containerEl;
         containerEl.empty();
+        const s = this.settings.settings;
         containerEl.createEl("h3", { text: "功能设置" });
         new Setting(containerEl)
             .setName("启用右键菜单")
             .setDesc("在选中文本时显示AI处理选项")
             .addToggle(toggle => toggle
-                .setValue(this.settings.settings.enableRightClick)
+                .setValue(s.enableRightClick)
                 .onChange(async (value) => {
-                    this.settings.settings.enableRightClick = value;
+                    s.enableRightClick = value;
                     await this.settings.save();
                     if (this.plugin && typeof this.plugin.updateEventListeners === "function") {
                         this.plugin.updateEventListeners();
@@ -24,9 +86,9 @@ export class EditorTabView extends AbstractTabView {
             .setName("直改模式需确认")
             .setDesc("开启后，Direct 模式在写入前显示 Diff 确认")
             .addToggle(toggle => toggle
-                .setValue(this.settings.settings.confirmBeforeDirectApply)
+                .setValue(s.confirmBeforeDirectApply)
                 .onChange(async (value) => {
-                    this.settings.settings.confirmBeforeDirectApply = value;
+                    s.confirmBeforeDirectApply = value;
                     await this.settings.save();
                 }));
 
@@ -34,9 +96,9 @@ export class EditorTabView extends AbstractTabView {
             .setName("启用文本触发器系统")
             .setDesc("开启后，下方的“对话弹层文本规则”生效；关闭则全部禁用")
             .addToggle(toggle => toggle
-                .setValue(this.settings.settings.enableAtTrigger)
+                .setValue(s.enableAtTrigger)
                 .onChange(async (value) => {
-                    this.settings.settings.enableAtTrigger = value;
+                    s.enableAtTrigger = value;
                     await this.settings.save();
                     if (this.plugin && typeof this.plugin.updateEventListeners === "function") {
                         this.plugin.updateEventListeners();
@@ -44,7 +106,7 @@ export class EditorTabView extends AbstractTabView {
                     if (this.lastContainerEl) this.render(this.lastContainerEl);
                 }));
 
-        if (!this.settings.settings.enableAtTrigger) return;
+        if (!s.enableAtTrigger) return;
 
         containerEl.createEl("h3", { text: "对话弹层文本规则" });
         containerEl.createEl("div", { text: "提示：默认包含 @ 与 & 两条规则；可自由增删。列表为空或全部禁用时等同于关闭。", attr: { style: "margin: 6px 0 10px; color: var(--text-muted);" } });
@@ -113,7 +175,206 @@ export class EditorTabView extends AbstractTabView {
                 if (this.lastContainerEl) this.render(this.lastContainerEl);
             };
         });
+    }
+}
 
+export class PreviewTabView extends AbstractTabView {
+    private lastContainerEl: HTMLElement | null = null;
+    render(containerEl: HTMLElement): void {
+        this.lastContainerEl = containerEl;
+        containerEl.empty();
+        const s = this.settings.settings;
+        ensureApplyViewSettings(s);
+        const applyView = s.applyView;
+        const toggleKey = (list: string[], key: string, value: boolean) => {
+            const idx = list.indexOf(key);
+            if (value && idx === -1) list.push(key);
+            if (!value && idx > -1) list.splice(idx, 1);
+        };
 
+        containerEl.createEl("h3", { text: "预览视窗" });
+        containerEl.createEl("div", { text: "设置 Diff 预览的展示方式与交互行为", attr: { style: "margin: 6px 0 10px; color: var(--text-muted);" } });
+
+        containerEl.createEl("h4", { text: "展示" });
+        new Setting(containerEl)
+            .setName("展示模式")
+            .setDesc("结果 / 留痕 / 混合")
+            .addDropdown(dropdown => dropdown
+                .addOption("result", "结果导向")
+                .addOption("audit", "留痕审计")
+                .addOption("hybrid", "混合模式")
+                .setValue(applyView.diff.decidedBlockViewMode ?? "result")
+                .onChange(async (value) => {
+                    applyView.diff.decidedBlockViewMode = value as any;
+                    await this.settings.save();
+                }));
+
+        new Setting(containerEl)
+            .setName("显示标签")
+            .setDesc("显示 Accept / Reject / Keep & Insert")
+            .addToggle(toggle => toggle
+                .setValue(!!applyView.diff.showDecisionBadge)
+                .onChange(async (value) => {
+                    applyView.diff.showDecisionBadge = value;
+                    await this.settings.save();
+                }));
+
+        new Setting(containerEl)
+            .setName("透明度")
+            .setDesc("已决策 Diff 透明度 0~1")
+            .addText(text => text
+                .setValue(String(applyView.diff.decidedBlockOpacity ?? 0.6))
+                .onChange(async (value) => {
+                    const num = Number(value);
+                    if (!Number.isNaN(num)) {
+                        applyView.diff.decidedBlockOpacity = Math.max(0, Math.min(1, num));
+                        await this.settings.save();
+                    }
+                }));
+
+        new Setting(containerEl)
+            .setName("折叠已决策")
+            .setDesc("审计/混合模式可折叠 Diff")
+            .addToggle(toggle => toggle
+                .setValue(!!applyView.diff.collapseDecidedBlocks)
+                .onChange(async (value) => {
+                    applyView.diff.collapseDecidedBlocks = value;
+                    await this.settings.save();
+                    if (this.lastContainerEl) this.render(this.lastContainerEl);
+                }));
+
+        containerEl.createEl("h4", { text: "顶栏" });
+        new Setting(containerEl)
+            .setName("溢出策略")
+            .setDesc("自动 / 全部进菜单 / 全部留顶栏")
+            .addDropdown(dropdown => dropdown
+                .addOption("auto", "自动")
+                .addOption("alwaysMenu", "全部进菜单")
+                .addOption("alwaysToolbar", "全部留顶栏")
+                .setValue(applyView.header.overflowPolicy ?? "auto")
+                .onChange(async (value) => {
+                    applyView.header.overflowPolicy = value as any;
+                    await this.settings.save();
+                }));
+
+        const headerButtons = [
+            { key: "prevNext", label: "导航" },
+            { key: "bulkAcceptReject", label: "批量" },
+            { key: "keepInsert", label: "保留插入" },
+            { key: "progress", label: "进度" },
+            { key: "moreMenu", label: "更多" }
+        ];
+        const menuButtons = [
+            { key: "prevNext", label: "导航" },
+            { key: "bulkAcceptReject", label: "批量" },
+            { key: "keepInsert", label: "保留插入" }
+        ];
+
+        containerEl.createEl("div", { text: "按钮显示", attr: { style: "margin: 6px 0 6px; color: var(--text-muted);" } });
+        headerButtons.forEach(btn => {
+            new Setting(containerEl)
+                .setName(btn.label)
+                .addToggle(toggle => toggle
+                    .setValue(applyView.header.visibleButtons.includes(btn.key))
+                    .onChange(async (value) => {
+                        toggleKey(applyView.header.visibleButtons, btn.key, value);
+                        await this.settings.save();
+                        if (this.lastContainerEl) this.render(this.lastContainerEl);
+                    }));
+        });
+
+        containerEl.createEl("div", { text: "收进更多菜单", attr: { style: "margin: 6px 0 6px; color: var(--text-muted);" } });
+        menuButtons.forEach(btn => {
+            new Setting(containerEl)
+                .setName(btn.label)
+                .addToggle(toggle => toggle
+                    .setValue(applyView.header.moreMenuItems.includes(btn.key))
+                    .onChange(async (value) => {
+                        toggleKey(applyView.header.moreMenuItems, btn.key, value);
+                        await this.settings.save();
+                        if (this.lastContainerEl) this.render(this.lastContainerEl);
+                    }));
+        });
+
+        containerEl.createEl("h4", { text: "按钮条" });
+        new Setting(containerEl)
+            .setName("位置")
+            .setDesc("Cancel / Apply 位置")
+            .addDropdown(dropdown => dropdown
+                .addOption("top", "顶部")
+                .addOption("bottom", "底部")
+                .setValue(applyView.layout.applyBarPosition ?? "top")
+                .onChange(async (value) => {
+                    applyView.layout.applyBarPosition = value as any;
+                    await this.settings.save();
+                }));
+
+        new Setting(containerEl)
+            .setName("悬浮")
+            .setDesc("按钮条贴边固定")
+            .addToggle(toggle => toggle
+                .setValue(!!applyView.layout.applyBarSticky)
+                .onChange(async (value) => {
+                    applyView.layout.applyBarSticky = value;
+                    await this.settings.save();
+                }));
+
+        new Setting(containerEl)
+            .setName("对齐")
+            .setDesc("居中 / 靠右")
+            .addDropdown(dropdown => dropdown
+                .addOption("center", "居中")
+                .addOption("right", "靠右")
+                .setValue(applyView.layout.applyBarAlignment ?? "center")
+                .onChange(async (value) => {
+                    applyView.layout.applyBarAlignment = value as any;
+                    await this.settings.save();
+                }));
+
+        containerEl.createEl("h4", { text: "行为" });
+        new Setting(containerEl)
+            .setName("自动跳转")
+            .setDesc("决策后跳到下一处未决策")
+            .addToggle(toggle => toggle
+                .setValue(!!applyView.behavior.autoAdvanceAfterDecision)
+                .onChange(async (value) => {
+                    applyView.behavior.autoAdvanceAfterDecision = value;
+                    await this.settings.save();
+                }));
+
+        new Setting(containerEl)
+            .setName("跳转延迟")
+            .setDesc("毫秒")
+            .addText(text => text
+                .setValue(String(applyView.behavior.autoAdvanceDelayMs ?? 100))
+                .onChange(async (value) => {
+                    const num = Number(value);
+                    if (!Number.isNaN(num) && num >= 0) {
+                        applyView.behavior.autoAdvanceDelayMs = Math.floor(num);
+                        await this.settings.save();
+                    }
+                }));
+
+        new Setting(containerEl)
+            .setName("必须全决策")
+            .setDesc("未决策时禁用 Apply")
+            .addToggle(toggle => toggle
+                .setValue(!!applyView.behavior.requireAllDecidedBeforeApply)
+                .onChange(async (value) => {
+                    applyView.behavior.requireAllDecidedBeforeApply = value;
+                    await this.settings.save();
+                }));
+
+        new Setting(containerEl)
+            .setName("未决策默认")
+            .setDesc("Apply 时的默认选择")
+            .addDropdown(dropdown => dropdown
+                .addOption("incoming", "接受生成")
+                .addOption("current", "保留原文")
+                .setValue(applyView.behavior.pendingDefaultDecisionOnApply ?? "incoming")
+                .onChange(async (value) => {
+                    applyView.behavior.pendingDefaultDecisionOnApply = value as any;
+                    await this.settings.save();
+                }));
     }
 }

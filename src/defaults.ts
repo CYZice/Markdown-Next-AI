@@ -78,6 +78,30 @@ export const DEFAULT_SETTINGS: PluginSettings = {
     baseModelSpecialPrompt: "",
     quickAskMode: "edit",
     confirmBeforeDirectApply: false,
+    applyView: {
+        diff: {
+            decidedBlockViewMode: "result",
+            showDecisionBadge: true,
+            decidedBlockOpacity: 0.6,
+            collapseDecidedBlocks: false
+        },
+        layout: {
+            applyBarPosition: "top",
+            applyBarSticky: false,
+            applyBarAlignment: "center"
+        },
+        header: {
+            visibleButtons: ["prevNext", "bulkAcceptReject", "keepInsert", "progress", "moreMenu"],
+            overflowPolicy: "auto",
+            moreMenuItems: []
+        },
+        behavior: {
+            autoAdvanceAfterDecision: true,
+            autoAdvanceDelayMs: 100,
+            requireAllDecidedBeforeApply: false,
+            pendingDefaultDecisionOnApply: "incoming"
+        }
+    },
     tabCompletion: {
         enabled: false,
         modelId: "deepseek-chat",

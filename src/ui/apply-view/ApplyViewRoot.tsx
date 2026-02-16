@@ -13,12 +13,14 @@ import { App, MarkdownView, Menu, TFile } from 'obsidian'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import type { ApplyViewSettings } from '../../types'
 import { computeCharDiff, createDiffBlocks, DiffBlock } from '../../utils/diff'
 
 export type ApplyViewState = {
   file: TFile
   originalContent: string
   newContent: string
+  ui?: ApplyViewSettings
 }
 
 type BlockDecision = 'pending' | 'incoming' | 'current' | 'both'
@@ -39,6 +41,90 @@ export default function ApplyViewRoot({
   const headerRef = useRef<HTMLDivElement>(null)
 
   const t = (key: string, fallback: string) => fallback
+
+  const ui = useMemo<ApplyViewSettings>(() => {
+    const fallback: ApplyViewSettings = {
+      diff: {
+        decidedBlockViewMode: 'result',
+        showDecisionBadge: true,
+        decidedBlockOpacity: 0.6,
+        collapseDecidedBlocks: false,
+      },
+      layout: {
+        applyBarPosition: 'top',
+        applyBarSticky: false,
+        applyBarAlignment: 'center',
+      },
+      header: {
+        visibleButtons: [
+          'prevNext',
+          'bulkAcceptReject',
+          'keepInsert',
+          'progress',
+          'moreMenu',
+        ],
+        overflowPolicy: 'auto',
+        moreMenuItems: [],
+      },
+      behavior: {
+        autoAdvanceAfterDecision: true,
+        autoAdvanceDelayMs: 100,
+        requireAllDecidedBeforeApply: false,
+        pendingDefaultDecisionOnApply: 'incoming',
+      },
+    }
+    const input = state.ui
+    return {
+      diff: {
+        decidedBlockViewMode:
+          input?.diff?.decidedBlockViewMode ?? fallback.diff.decidedBlockViewMode,
+        showDecisionBadge:
+          input?.diff?.showDecisionBadge ?? fallback.diff.showDecisionBadge,
+        decidedBlockOpacity:
+          typeof input?.diff?.decidedBlockOpacity === 'number'
+            ? input.diff.decidedBlockOpacity
+            : fallback.diff.decidedBlockOpacity,
+        collapseDecidedBlocks:
+          input?.diff?.collapseDecidedBlocks ??
+          fallback.diff.collapseDecidedBlocks,
+      },
+      layout: {
+        applyBarPosition:
+          input?.layout?.applyBarPosition ?? fallback.layout.applyBarPosition,
+        applyBarSticky:
+          input?.layout?.applyBarSticky ?? fallback.layout.applyBarSticky,
+        applyBarAlignment:
+          input?.layout?.applyBarAlignment ?? fallback.layout.applyBarAlignment,
+      },
+      header: {
+        visibleButtons:
+          input?.header?.visibleButtons?.length
+            ? [...input.header.visibleButtons]
+            : [...fallback.header.visibleButtons],
+        overflowPolicy:
+          input?.header?.overflowPolicy ?? fallback.header.overflowPolicy,
+        moreMenuItems:
+          input?.header?.moreMenuItems?.length
+            ? [...input.header.moreMenuItems]
+            : [...fallback.header.moreMenuItems],
+      },
+      behavior: {
+        autoAdvanceAfterDecision:
+          input?.behavior?.autoAdvanceAfterDecision ??
+          fallback.behavior.autoAdvanceAfterDecision,
+        autoAdvanceDelayMs:
+          typeof input?.behavior?.autoAdvanceDelayMs === 'number'
+            ? input.behavior.autoAdvanceDelayMs
+            : fallback.behavior.autoAdvanceDelayMs,
+        requireAllDecidedBeforeApply:
+          input?.behavior?.requireAllDecidedBeforeApply ??
+          fallback.behavior.requireAllDecidedBeforeApply,
+        pendingDefaultDecisionOnApply:
+          input?.behavior?.pendingDefaultDecisionOnApply ??
+          fallback.behavior.pendingDefaultDecisionOnApply,
+      },
+    }
+  }, [state.ui])
 
   useEffect(() => {
     if (!headerRef.current) return
@@ -80,6 +166,9 @@ export default function ApplyViewRoot({
   const [decisions, setDecisions] = useState<Map<number, BlockDecision>>(
     () => new Map(),
   )
+  const [decidedExpansion, setDecidedExpansion] = useState<
+    Map<number, boolean>
+  >(() => new Map())
 
   const modifiedBlockIndices = useMemo(
     () =>
@@ -107,6 +196,49 @@ export default function ApplyViewRoot({
     decidedCount === modifiedBlockIndices.length
 
   const hasChanges = modifiedBlockIndices.length > 0
+  const headerOverflow = ui.header.overflowPolicy
+  const visibleButtons = useMemo(
+    () => new Set(ui.header.visibleButtons),
+    [ui.header.visibleButtons],
+  )
+  const moreMenuButtons = useMemo(
+    () => new Set(ui.header.moreMenuItems),
+    [ui.header.moreMenuItems],
+  )
+  const isCompactMode =
+    headerOverflow === 'auto' ? isCompact : headerOverflow === 'alwaysMenu'
+  const showPrevNext = visibleButtons.has('prevNext')
+  const showBulkAcceptReject = visibleButtons.has('bulkAcceptReject')
+  const showKeepInsert = visibleButtons.has('keepInsert')
+  const showProgress = visibleButtons.has('progress')
+  const showMoreMenuButton =
+    visibleButtons.has('moreMenu') ||
+    headerOverflow === 'alwaysMenu' ||
+    ui.header.moreMenuItems.length > 0
+  const prevNextInToolbar =
+    showPrevNext && !isCompactMode && !moreMenuButtons.has('prevNext')
+  const bulkInToolbar =
+    showBulkAcceptReject &&
+    !isCompactMode &&
+    !moreMenuButtons.has('bulkAcceptReject')
+  const keepInsertInToolbar =
+    showKeepInsert && !isCompactMode && !moreMenuButtons.has('keepInsert')
+  const prevNextInMenu =
+    showPrevNext &&
+    (isCompactMode ||
+      headerOverflow === 'alwaysMenu' ||
+      moreMenuButtons.has('prevNext'))
+  const bulkInMenu =
+    showBulkAcceptReject &&
+    (isCompactMode ||
+      headerOverflow === 'alwaysMenu' ||
+      moreMenuButtons.has('bulkAcceptReject'))
+  const keepInsertInMenu =
+    showKeepInsert &&
+    (isCompactMode ||
+      headerOverflow === 'alwaysMenu' ||
+      moreMenuButtons.has('keepInsert'))
+  const hasMenuItems = prevNextInMenu || bulkInMenu || keepInsertInMenu
 
   const scrollToDiffBlock = useCallback(
     (index: number) => {
@@ -206,7 +338,9 @@ export default function ApplyViewRoot({
   }
 
   const applyAndClose = async () => {
-    const newContent = generateFinalContent('incoming')
+    const newContent = generateFinalContent(
+      ui.behavior.pendingDefaultDecisionOnApply,
+    )
     await app.vault.modify(state.file, newContent)
 
     close(true)
@@ -228,11 +362,17 @@ export default function ApplyViewRoot({
         return next
       })
 
-      window.setTimeout(() => {
-        scrollToNextUndecided()
-      }, 100)
+      if (ui.behavior.autoAdvanceAfterDecision) {
+        window.setTimeout(() => {
+          scrollToNextUndecided()
+        }, ui.behavior.autoAdvanceDelayMs ?? 100)
+      }
     },
-    [scrollToNextUndecided],
+    [
+      scrollToNextUndecided,
+      ui.behavior.autoAdvanceAfterDecision,
+      ui.behavior.autoAdvanceDelayMs,
+    ],
   )
 
   const undoDecision = useCallback((index: number) => {
@@ -263,41 +403,6 @@ export default function ApplyViewRoot({
     })
   }, [modifiedBlockIndices])
 
-  const showMoreMenu = useCallback(
-    (e: React.MouseEvent) => {
-      const menu = new Menu()
-
-      menu.addItem((item) => {
-        item
-          .setTitle(t('applyView.acceptAll', 'Accept All'))
-          .setIcon('check-check')
-          .onClick(acceptAll)
-          .setDisabled(!hasChanges)
-      })
-
-      menu.addItem((item) => {
-        item
-          .setTitle(t('applyView.rejectAll', 'Reject All'))
-          .setIcon('ban')
-          .onClick(rejectAll)
-          .setDisabled(!hasChanges)
-      })
-
-      menu.addSeparator()
-
-      menu.addItem((item) => {
-        item
-          .setTitle(t('applyView.keepInsert', 'Keep & Insert'))
-          .setIcon('copy-plus')
-          .onClick(() => void keepInsertAndClose())
-          .setDisabled(!hasChanges)
-      })
-
-      menu.showAtMouseEvent(e.nativeEvent)
-    },
-    [acceptAll, rejectAll, keepInsertAndClose, hasChanges, t],
-  )
-
   const navigate = useCallback(
     (direction: 'prev' | 'next') => {
       if (modifiedBlockIndices.length === 0) return
@@ -310,6 +415,75 @@ export default function ApplyViewRoot({
       scrollToDiffBlock(nextIndex)
     },
     [currentDiffIndex, modifiedBlockIndices, scrollToDiffBlock],
+  )
+
+  const showMoreMenu = useCallback(
+    (e: React.MouseEvent) => {
+      const menu = new Menu()
+
+      let hasGroup = false
+      if (prevNextInMenu) {
+        menu.addItem((item) => {
+          item
+            .setTitle(t('applyView.prev', 'Previous Change'))
+            .setIcon('chevron-up')
+            .onClick(() => navigate('prev'))
+            .setDisabled(!hasChanges)
+        })
+        menu.addItem((item) => {
+          item
+            .setTitle(t('applyView.next', 'Next Change'))
+            .setIcon('chevron-down')
+            .onClick(() => navigate('next'))
+            .setDisabled(!hasChanges)
+        })
+        hasGroup = true
+      }
+
+      if (bulkInMenu) {
+        if (hasGroup) menu.addSeparator()
+        menu.addItem((item) => {
+          item
+            .setTitle(t('applyView.acceptAll', 'Accept All'))
+            .setIcon('check-check')
+            .onClick(acceptAll)
+            .setDisabled(!hasChanges)
+        })
+
+        menu.addItem((item) => {
+          item
+            .setTitle(t('applyView.rejectAll', 'Reject All'))
+            .setIcon('ban')
+            .onClick(rejectAll)
+            .setDisabled(!hasChanges)
+        })
+        hasGroup = true
+      }
+
+      if (keepInsertInMenu) {
+        if (hasGroup) menu.addSeparator()
+        menu.addItem((item) => {
+          item
+            .setTitle(t('applyView.keepInsert', 'Keep & Insert'))
+            .setIcon('copy-plus')
+            .onClick(() => void keepInsertAndClose())
+            .setDisabled(!hasChanges)
+        })
+      }
+
+      menu.showAtMouseEvent(e.nativeEvent)
+    },
+    [
+      acceptAll,
+      rejectAll,
+      keepInsertAndClose,
+      hasChanges,
+      t,
+      prevNextInMenu,
+      bulkInMenu,
+      keepInsertInMenu,
+      navigate,
+    ],
   )
 
   const renderDiffContent = (block: DiffBlock, index: number) => {
@@ -335,6 +509,14 @@ export default function ApplyViewRoot({
       block.originalValue || '',
       block.modifiedValue || '',
     )
+    const isDecided = decision !== 'pending'
+    const decidedViewMode = ui.diff.decidedBlockViewMode
+    const isExpanded =
+      decidedExpansion.get(index) ?? !ui.diff.collapseDecidedBlocks
+    const canToggle =
+      isDecided &&
+      (decidedViewMode === 'hybrid' ||
+        (decidedViewMode === 'audit' && ui.diff.collapseDecidedBlocks))
 
     const decisionMeta: Record<
       Exclude<BlockDecision, 'pending'>,
@@ -354,12 +536,116 @@ export default function ApplyViewRoot({
       return ''
     }
 
+    const renderDecisionHeader = () => {
+      if (!ui.diff.showDecisionBadge && !canToggle) return null
+      return (
+        <div className="markdown-next-ai-decision-header">
+          {ui.diff.showDecisionBadge && decision !== 'pending' && (
+            <div className="markdown-next-ai-decision-info">
+              <span
+                className="markdown-next-ai-decision-dot"
+                style={{
+                  background: `rgba(${decisionMeta[decision].rgb}, 0.9)`,
+                }}
+              ></span>
+              <span>{decisionMeta[decision].label}</span>
+            </div>
+          )}
+          {canToggle && (
+            <button
+              className="markdown-next-ai-decision-toggle"
+              onClick={() => {
+                setDecidedExpansion((prev) => {
+                  const next = new Map(prev)
+                  next.set(index, !isExpanded)
+                  return next
+                })
+              }}
+            >
+              {isExpanded
+                ? t('applyView.hideDiff', 'Hide Diff')
+                : t('applyView.showDiff', 'Show Diff')}
+            </button>
+          )}
+        </div>
+      )
+    }
+
+    const renderDiffLines = () => (
+      <>
+        {block.originalValue !== undefined && (
+          <div
+            className="markdown-next-ai-diff-line original"
+            style={{
+              whiteSpace: 'pre-wrap',
+              color: 'var(--text-muted)',
+              textDecoration: 'line-through',
+              opacity: 0.7,
+              marginBottom: block.modifiedValue ? '4px' : '0',
+            }}
+          >
+            {charDiffs.map((part, i) => (
+              <span
+                key={i}
+                className={`diff-char ${part.type === 'removed' ? 'removed' : ''} ${part.type === 'added' ? 'hidden' : ''}`}
+                style={{
+                  backgroundColor:
+                    part.type === 'removed'
+                      ? 'rgba(var(--color-red-rgb), 0.2)'
+                      : 'transparent',
+                  display: part.type === 'added' ? 'none' : 'inline',
+                }}
+              >
+                {part.value}
+              </span>
+            ))}
+          </div>
+        )}
+        {block.modifiedValue !== undefined && (
+          <div
+            className="markdown-next-ai-diff-line modified"
+            style={{
+              whiteSpace: 'pre-wrap',
+              color: 'var(--text-normal)',
+            }}
+          >
+            {charDiffs.map((part, i) => (
+              <span
+                key={i}
+                className={`diff-char ${part.type === 'added' ? 'added' : ''} ${part.type === 'removed' ? 'hidden' : ''}`}
+                style={{
+                  backgroundColor:
+                    part.type === 'added'
+                      ? 'rgba(var(--color-green-rgb), 0.2)'
+                      : 'transparent',
+                  display: part.type === 'removed' ? 'none' : 'inline',
+                }}
+              >
+                {part.value}
+              </span>
+            ))}
+          </div>
+        )}
+      </>
+    )
+
+    const showPreview =
+      isDecided &&
+      (decidedViewMode === 'result' ||
+        decidedViewMode === 'hybrid' ||
+        (decidedViewMode === 'audit' && !isExpanded))
+    const showDiff =
+      decision === 'pending' ||
+      (isDecided &&
+        ((decidedViewMode === 'audit' && isExpanded) ||
+          (decidedViewMode === 'hybrid' && isExpanded)))
+
     return (
       <div
         ref={(el) => {
           diffBlockRefs.current[index] = el
         }}
-        className={`markdown-next-ai-diff-block ${decision} ${isCurrent ? 'focused' : ''}`}
+        className={`markdown-next-ai-diff-block ${decision} ${isCurrent ? 'focused' : ''} decided-mode-${decidedViewMode}`}
         style={{
           position: 'relative',
           margin: '28px 0 12px 0',
@@ -427,77 +713,23 @@ export default function ApplyViewRoot({
             }}
           >
             {decision === 'pending' ? (
-              <>
-                {block.originalValue !== undefined && (
-                  <div
-                    className="markdown-next-ai-diff-line original"
-                    style={{
-                      whiteSpace: 'pre-wrap',
-                      color: 'var(--text-muted)',
-                      textDecoration: 'line-through',
-                      opacity: 0.7,
-                      marginBottom: block.modifiedValue ? '4px' : '0',
-                    }}
-                  >
-                    {charDiffs.map((part, i) => (
-                      <span
-                        key={i}
-                        className={`diff-char ${part.type === 'removed' ? 'removed' : ''} ${part.type === 'added' ? 'hidden' : ''}`}
-                        style={{
-                          backgroundColor:
-                            part.type === 'removed'
-                              ? 'rgba(var(--color-red-rgb), 0.2)'
-                              : 'transparent',
-                          display: part.type === 'added' ? 'none' : 'inline',
-                        }}
-                      >
-                        {part.value}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                {block.modifiedValue !== undefined && (
-                  <div
-                    className="markdown-next-ai-diff-line modified"
-                    style={{
-                      whiteSpace: 'pre-wrap',
-                      color: 'var(--text-normal)',
-                    }}
-                  >
-                    {charDiffs.map((part, i) => (
-                      <span
-                        key={i}
-                        className={`diff-char ${part.type === 'added' ? 'added' : ''} ${part.type === 'removed' ? 'hidden' : ''}`}
-                        style={{
-                          backgroundColor:
-                            part.type === 'added'
-                              ? 'rgba(var(--color-green-rgb), 0.2)'
-                              : 'transparent',
-                          display: part.type === 'removed' ? 'none' : 'inline',
-                        }}
-                      >
-                        {part.value}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </>
+              renderDiffLines()
             ) : (
               <>
-                <div className="markdown-next-ai-decision-header">
-                  <div className="markdown-next-ai-decision-info">
-                    <span
-                      className="markdown-next-ai-decision-dot"
-                      style={{
-                        background: `rgba(${decisionMeta[decision].rgb}, 0.9)`,
-                      }}
-                    ></span>
-                    <span>{decisionMeta[decision].label}</span>
+                {renderDecisionHeader()}
+                {showPreview && (
+                  <div className="markdown-next-ai-decision-content">
+                    {getDecidedPreview()}
                   </div>
-                </div>
-                <div className="markdown-next-ai-decision-content">
-                  {getDecidedPreview()}
-                </div>
+                )}
+                {showDiff && (
+                  <div
+                    className="markdown-next-ai-decided-diff"
+                    style={{ opacity: ui.diff.decidedBlockOpacity }}
+                  >
+                    {renderDiffLines()}
+                  </div>
+                )}
               </>
             )}
           </div>
@@ -512,9 +744,42 @@ export default function ApplyViewRoot({
     }
   }, [modifiedBlockIndices, scrollToDiffBlock])
 
+  const canApply =
+    hasChanges &&
+    (!ui.behavior.requireAllDecidedBeforeApply || isAllDecided)
+  const applyBarClassName = `markdown-next-ai-apply-topbar ${ui.layout.applyBarPosition === 'bottom' ? 'is-bottom' : 'is-top'} ${ui.layout.applyBarSticky ? 'is-sticky' : ''} align-${ui.layout.applyBarAlignment ?? 'center'}`
+  const renderApplyBar = () => (
+    <div className={applyBarClassName}>
+      <div className="markdown-next-ai-apply-pill">
+        <button
+          onClick={() => close(false)}
+          title={t('applyView.cancel', 'Cancel')}
+          className="markdown-next-ai-pill-btn markdown-next-ai-pill-btn--cancel"
+        >
+          <X size={16} />
+          <span>Cancel</span>
+        </button>
+        <button
+          onClick={() => void applyAndClose()}
+          title={t('applyView.apply', 'Apply')}
+          className={`markdown-next-ai-pill-btn markdown-next-ai-pill-btn--apply ${isAllDecided ? 'is-complete' : ''}`}
+          disabled={!canApply}
+        >
+          <Check size={16} />
+          <span>
+            {isAllDecided
+              ? t('applyView.ready', 'Ready to Apply')
+              : t('applyView.apply', 'Apply')}
+          </span>
+        </button>
+      </div>
+    </div>
+  )
+
   return (
     <div
       id="markdown-next-ai-apply-view"
+      className={`apply-bar-${ui.layout.applyBarPosition} ${ui.layout.applyBarSticky ? 'apply-bar-sticky' : ''}`}
       style={{
         display: 'flex',
         flexDirection: 'column',
@@ -565,50 +830,56 @@ export default function ApplyViewRoot({
             </div>
           </div>
 
-          <div className="markdown-next-ai-apply-progress-wrap">
-            <div className="markdown-next-ai-apply-progress">
-              <div className="markdown-next-ai-apply-progress-text">
-                <span className="markdown-next-ai-apply-progress-label">
-                  {t('applyView.progress', 'Progress')}
-                </span>
-                <span className="markdown-next-ai-apply-progress-value">
-                  {decidedCount} / {modifiedBlockIndices.length}
-                </span>
-              </div>
-              <div className="markdown-next-ai-apply-progress-bar">
-                <div
-                  className="markdown-next-ai-apply-progress-bar-fill"
-                  style={{ width: `${progressPercent}%` }}
-                />
+          {showProgress && (
+            <div className="markdown-next-ai-apply-progress-wrap">
+              <div className="markdown-next-ai-apply-progress">
+                <div className="markdown-next-ai-apply-progress-text">
+                  <span className="markdown-next-ai-apply-progress-label">
+                    {t('applyView.progress', 'Progress')}
+                  </span>
+                  <span className="markdown-next-ai-apply-progress-value">
+                    {decidedCount} / {modifiedBlockIndices.length}
+                  </span>
+                </div>
+                <div className="markdown-next-ai-apply-progress-bar">
+                  <div
+                    className="markdown-next-ai-apply-progress-bar-fill"
+                    style={{ width: `${progressPercent}%` }}
+                  />
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           <div
             className="view-header-actions"
             style={{ display: 'flex', gap: '8px', alignItems: 'center' }}
           >
-            <button
-              onClick={() => navigate('prev')}
-              title={t('applyView.prev', 'Previous Change')}
-              className="markdown-next-ai-header-btn"
-              disabled={!hasChanges}
-            >
-              <ChevronUp size={16} />
-              {!isCompact && <span>Prev</span>}
-            </button>
+            {prevNextInToolbar && (
+              <>
+                <button
+                  onClick={() => navigate('prev')}
+                  title={t('applyView.prev', 'Previous Change')}
+                  className="markdown-next-ai-header-btn"
+                  disabled={!hasChanges}
+                >
+                  <ChevronUp size={16} />
+                  {!isCompactMode && <span>Prev</span>}
+                </button>
 
-            <button
-              onClick={() => navigate('next')}
-              title={t('applyView.next', 'Next Change')}
-              className="markdown-next-ai-header-btn"
-              disabled={!hasChanges}
-            >
-              <ChevronDown size={16} />
-              {!isCompact && <span>Next</span>}
-            </button>
+                <button
+                  onClick={() => navigate('next')}
+                  title={t('applyView.next', 'Next Change')}
+                  className="markdown-next-ai-header-btn"
+                  disabled={!hasChanges}
+                >
+                  <ChevronDown size={16} />
+                  {!isCompactMode && <span>Next</span>}
+                </button>
+              </>
+            )}
 
-            {!isCompact ? (
+            {bulkInToolbar && (
               <>
                 <button
                   onClick={acceptAll}
@@ -629,18 +900,22 @@ export default function ApplyViewRoot({
                   <Ban size={16} />
                   <span>Reject All</span>
                 </button>
-
-                <button
-                  onClick={() => void keepInsertAndClose()}
-                  title={t('applyView.keepInsert', 'Keep original and insert generated')}
-                  className="markdown-next-ai-header-btn markdown-next-ai-header-btn--merge"
-                  disabled={!hasChanges}
-                >
-                  <CopyPlus size={16} />
-                  <span>Keep &amp; Insert</span>
-                </button>
               </>
-            ) : (
+            )}
+
+            {keepInsertInToolbar && (
+              <button
+                onClick={() => void keepInsertAndClose()}
+                title={t('applyView.keepInsert', 'Keep original and insert generated')}
+                className="markdown-next-ai-header-btn markdown-next-ai-header-btn--merge"
+                disabled={!hasChanges}
+              >
+                <CopyPlus size={16} />
+                <span>Keep &amp; Insert</span>
+              </button>
+            )}
+
+            {showMoreMenuButton && hasMenuItems && (
               <button
                 onClick={showMoreMenu}
                 title={t('applyView.more', 'More Actions')}
@@ -655,27 +930,7 @@ export default function ApplyViewRoot({
 
       </div>
 
-      <div className="markdown-next-ai-apply-topbar">
-        <div className="markdown-next-ai-apply-pill">
-          <button
-            onClick={() => close(false)}
-            title={t('applyView.cancel', 'Cancel')}
-            className="markdown-next-ai-pill-btn markdown-next-ai-pill-btn--cancel"
-          >
-            <X size={16} />
-            <span>Cancel</span>
-          </button>
-          <button
-            onClick={() => void applyAndClose()}
-            title={t('applyView.apply', 'Apply')}
-            className={`markdown-next-ai-pill-btn markdown-next-ai-pill-btn--apply ${isAllDecided ? 'is-complete' : ''}`}
-            disabled={!hasChanges}
-          >
-            <Check size={16} />
-            <span>{isAllDecided ? t('applyView.ready', 'Ready to Apply') : t('applyView.apply', 'Apply')}</span>
-          </button>
-        </div>
-      </div>
+      {ui.layout.applyBarPosition === 'top' && renderApplyBar()}
 
       <div
         className="view-content"
@@ -702,6 +957,8 @@ export default function ApplyViewRoot({
           </div>
         </div>
       </div>
+
+      {ui.layout.applyBarPosition === 'bottom' && renderApplyBar()}
 
     </div>
   )

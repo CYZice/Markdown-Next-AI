@@ -3031,9 +3031,41 @@
   display: flex;
   justify-content: center;
   padding: 6px 12px 10px;
-  border-top: 1px solid var(--background-modifier-border);
   background: var(--background-primary);
   flex-shrink: 0;
+  gap: 8px;
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-apply-topbar.is-top {
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-apply-topbar.is-bottom {
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-apply-topbar.align-right {
+  justify-content: flex-end;
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-apply-topbar.align-center {
+  justify-content: center;
+}
+
+#markdown-next-ai-apply-view.apply-bar-sticky .markdown-next-ai-apply-topbar.is-top {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+
+#markdown-next-ai-apply-view.apply-bar-sticky .markdown-next-ai-apply-topbar.is-bottom {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+}
+
+#markdown-next-ai-apply-view.apply-bar-bottom .cm-sizer {
+  padding-bottom: 560px;
 }
 
 #markdown-next-ai-apply-view .markdown-next-ai-toolbar-btn {
@@ -3084,6 +3116,31 @@
   font-size: var(--font-ui-smaller);
   color: var(--text-accent);
   font-weight: var(--font-medium);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-decision-toggle {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: var(--radius-s);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-decision-toggle:hover {
+  color: var(--text-normal);
+  background: var(--background-modifier-hover);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-decided-diff {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--background-modifier-border);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-diff-block.decided-mode-audit .markdown-next-ai-decided-diff {
+  filter: grayscale(0.15);
 }
 
 #markdown-next-ai-apply-view .markdown-next-ai-undo-btn {

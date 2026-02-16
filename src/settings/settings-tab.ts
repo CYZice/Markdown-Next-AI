@@ -3,11 +3,11 @@ import MarkdownNextAIPlugin from "../main";
 import { SettingsManager } from "./settings-manager";
 import { ChatTabView } from "./views/chat-tab-view";
 import { CompletionTabView } from "./views/completion-tab-view";
-import { EditorTabView } from "./views/editor-tab-view";
+import { EditorTabView, PreviewTabView } from "./views/editor-tab-view";
 import { ModelsTabView } from "./views/models-tab-view";
 import { OthersTabView } from "./views/others-tab-view";
 
-export type TabId = "models" | "editor" | "completion" | "chat" | "others";
+export type TabId = "models" | "editor" | "preview" | "completion" | "chat" | "others";
 
 export class MarkdownNextAISettingTab extends PluginSettingTab {
     private plugin: MarkdownNextAIPlugin;
@@ -38,6 +38,7 @@ export class MarkdownNextAISettingTab extends PluginSettingTab {
         };
         mkBtn("models", "模型");
         mkBtn("editor", "编辑器");
+        mkBtn("preview", "预览视窗");
         mkBtn("completion", "补全");
         mkBtn("chat", "对话");
         mkBtn("others", "其他");
@@ -50,6 +51,9 @@ export class MarkdownNextAISettingTab extends PluginSettingTab {
                 break;
             case "editor":
                 new EditorTabView(this.app, this.settingsManager, this.plugin).render(content);
+                break;
+            case "preview":
+                new PreviewTabView(this.app, this.settingsManager, this.plugin).render(content);
                 break;
             case "completion":
                 new CompletionTabView(this.app, this.settingsManager, this.plugin).render(content);

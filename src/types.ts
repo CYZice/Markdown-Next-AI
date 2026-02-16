@@ -54,6 +54,46 @@ export interface GlobalRule {
     updatedAt?: number;
 }
 
+export type ApplyViewDecidedBlockViewMode = 'result' | 'audit' | 'hybrid';
+
+export type ApplyViewHeaderOverflowPolicy = 'auto' | 'alwaysMenu' | 'alwaysToolbar';
+
+export type ApplyViewApplyBarPosition = 'top' | 'bottom';
+
+export type ApplyViewPendingDecision = 'incoming' | 'current';
+
+export type ApplyViewHeaderButtonKey =
+    | 'prevNext'
+    | 'bulkAcceptReject'
+    | 'keepInsert'
+    | 'progress'
+    | 'moreMenu';
+
+export interface ApplyViewSettings {
+    diff: {
+        decidedBlockViewMode: ApplyViewDecidedBlockViewMode;
+        showDecisionBadge: boolean;
+        decidedBlockOpacity: number;
+        collapseDecidedBlocks: boolean;
+    };
+    layout: {
+        applyBarPosition: ApplyViewApplyBarPosition;
+        applyBarSticky: boolean;
+        applyBarAlignment?: 'center' | 'right';
+    };
+    header: {
+        visibleButtons: ApplyViewHeaderButtonKey[];
+        overflowPolicy: ApplyViewHeaderOverflowPolicy;
+        moreMenuItems: ApplyViewHeaderButtonKey[];
+    };
+    behavior: {
+        autoAdvanceAfterDecision: boolean;
+        autoAdvanceDelayMs?: number;
+        requireAllDecidedBeforeApply: boolean;
+        pendingDefaultDecisionOnApply: ApplyViewPendingDecision;
+    };
+}
+
 /**
  * 插件设置接口
  */
@@ -83,6 +123,7 @@ export interface PluginSettings {
     useKeychain?: boolean;
     quickAskMode: QuickAskMode;
     confirmBeforeDirectApply: boolean;
+    applyView?: ApplyViewSettings;
 }
 
 // ConversationEntry removed

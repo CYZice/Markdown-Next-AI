@@ -532,7 +532,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
         const leaf = workspace.getLeaf(true);
         leaf.setViewState({
             type: APPLY_VIEW_TYPE,
-            state: { file, originalContent, newContent },
+            state: { file, originalContent, newContent, ui: this.settings.applyView },
             active: true
         });
         workspace.setActiveLeaf(leaf, { focus: true });
