@@ -124,7 +124,97 @@
 }
 
 
-/* 菜单项中的SVG图标 */
+/* Decided Diff Block Styles */
+.markdown-next-ai-diff-block.incoming .markdown-next-ai-diff-block-frame {
+  border: 1px solid rgba(var(--color-green-rgb), 0.2) !important;
+  box-shadow: inset 4px 0 0 0 rgba(var(--color-green-rgb), 0.8) !important;
+  background-color: rgba(var(--color-green-rgb), 0.05) !important;
+}
+
+.markdown-next-ai-diff-block.current .markdown-next-ai-diff-block-frame {
+  border: 1px solid rgba(var(--color-red-rgb), 0.2) !important;
+  box-shadow: inset 4px 0 0 0 rgba(var(--color-red-rgb), 0.8) !important;
+  background-color: rgba(var(--color-red-rgb), 0.05) !important;
+  opacity: 0.8;
+}
+
+.markdown-next-ai-diff-block.both .markdown-next-ai-diff-block-frame {
+  border: 1px solid rgba(var(--color-orange-rgb), 0.2) !important;
+  box-shadow: inset 4px 0 0 0 rgba(var(--color-orange-rgb), 0.8) !important;
+  background-color: rgba(var(--color-orange-rgb), 0.05) !important;
+}
+
+.markdown-next-ai-decision-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--background-modifier-border);
+}
+
+.markdown-next-ai-decision-info {
+  font-family: var(--font-interface);
+  font-size: 0.85em;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.markdown-next-ai-decision-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.markdown-next-ai-decision-content {
+  white-space: pre-wrap;
+  color: var(--text-normal);
+  line-height: 1.5;
+}
+
+/* Apply Button Breathing Effect */
+@keyframes markdown-next-ai-pulse-green {
+  0% {
+    box-shadow: 0 0 0 0 rgba(var(--color-green-rgb), 0.7);
+  }
+
+  70% {
+    box-shadow: 0 0 0 6px rgba(var(--color-green-rgb), 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(var(--color-green-rgb), 0);
+  }
+}
+
+.markdown-next-ai-pill-btn--apply.is-complete {
+  animation: markdown-next-ai-pulse-green 2s infinite;
+  background-color: var(--interactive-accent);
+  /* Ensure it stands out */
+  border-color: var(--interactive-accent);
+  box-shadow: 0 0 8px rgba(var(--color-green-rgb), 0.5);
+  /* Static glow base */
+}
+
+.markdown-next-ai-pill-btn--apply.is-complete:hover {
+  animation: none;
+  /* Stop animation on hover to indicate interaction */
+  background-color: var(--interactive-accent-hover);
+}
+
+/* More Button for Compact Mode */
+.markdown-next-ai-header-btn--more {
+  color: var(--text-muted);
+}
+
+.markdown-next-ai-header-btn--more:hover {
+  color: var(--text-normal);
+  background-color: var(--background-modifier-hover);
+}
+
 .menu-item-icon svg {
   display: inline-block;
   vertical-align: middle;
@@ -2501,6 +2591,7 @@
   /* red-700 */
   --markdown-next-ai-incoming-color-rgb: 4, 120, 87;
   /* emerald-700 */
+  --markdown-next-ai-merge-color-rgb: var(--color-orange-rgb, 217, 119, 6);
 }
 
 #markdown-next-ai-apply-view .view-content {
@@ -2545,14 +2636,15 @@
 }
 
 #markdown-next-ai-apply-view .view-header {
-  height: var(--header-height);
+  height: auto;
+  min-height: 0;
   display: flex;
   border-bottom: var(--file-header-border);
   background-color: var(--background-primary);
   z-index: 1;
   position: relative;
-  gap: var(--size-4-2);
-  padding: 0 var(--size-4-3);
+  gap: 6px;
+  padding: 6px 12px;
 }
 
 #markdown-next-ai-apply-view .view-header-title-container {
@@ -2568,6 +2660,13 @@
   gap: 2px;
 }
 
+#markdown-next-ai-apply-view .view-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
 #markdown-next-ai-apply-view .markdown-next-ai-diff-block {
   white-space: pre-wrap;
   word-break: break-word;
@@ -2579,14 +2678,34 @@
   border-radius: var(--radius-s);
 }
 
+#markdown-next-ai-apply-view .markdown-next-ai-diff-block-frame {
+  position: relative;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.15s ease;
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-diff-block.focused .markdown-next-ai-diff-block-frame {
+  border-color: color-mix(in srgb, var(--interactive-accent) 55%, var(--background-modifier-border));
+  background: color-mix(in srgb, var(--interactive-accent) 6%, var(--background-primary));
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--interactive-accent) 85%, transparent),
+    0 18px 50px rgba(0, 0, 0, 0.28);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-diff-block.focused .markdown-next-ai-diff-block-frame::before {
+  display: none;
+}
+
 #markdown-next-ai-apply-view .markdown-next-ai-diff-block.added {
   background-color: rgba(var(--markdown-next-ai-incoming-color-rgb), 0.15);
-  border-left: 3px solid rgb(var(--markdown-next-ai-incoming-color-rgb));
+  border-left: none;
 }
 
 #markdown-next-ai-apply-view .markdown-next-ai-diff-block.removed {
   background-color: rgba(var(--markdown-next-ai-current-color-rgb), 0.15);
-  border-left: 3px solid rgb(var(--markdown-next-ai-current-color-rgb));
+  border-left: none;
   text-decoration: line-through;
   color: var(--text-muted);
 }
@@ -2602,20 +2721,74 @@
 
 #markdown-next-ai-apply-view .markdown-next-ai-diff-block-actions {
   position: absolute;
-  right: 0;
+  right: 8px;
   top: 0;
   transform: translateY(-100%);
   display: flex;
   gap: 0;
-  border-radius: var(--radius-s) var(--radius-s) 0 0;
-  overflow: hidden;
+  border-radius: 0;
+  overflow: visible;
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+  background: color-mix(in srgb, var(--background-secondary) 86%, transparent);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(10px);
+  opacity: 0;
+  pointer-events: none;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-diff-block:hover .markdown-next-ai-diff-block-actions,
+#markdown-next-ai-apply-view .markdown-next-ai-diff-block:focus-within .markdown-next-ai-diff-block-actions,
+#markdown-next-ai-apply-view .markdown-next-ai-diff-block.focused .markdown-next-ai-diff-block-actions {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 #markdown-next-ai-apply-view .markdown-next-ai-diff-block-actions button {
-  padding: var(--size-4-1) var(--size-4-2);
-  font-size: var(--font-ui-smaller);
-  border-radius: 0;
   height: fit-content;
+  border-radius: 0;
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-diff-block-actions button+button {
+  border-left: 1px solid color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-diff-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 0;
+  cursor: pointer;
+  color: white;
+  font-size: var(--font-ui-smaller);
+  line-height: 1;
+  background: transparent;
+  white-space: nowrap;
+  transition:
+    background 0.15s ease,
+    filter 0.15s ease,
+    transform 0.15s ease;
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-diff-action svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2.4;
+  stroke: currentColor;
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-diff-action:hover {
+  transform: none;
+  filter: brightness(1.05);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-diff-action-neutral {
+  color: var(--text-normal);
+  background: color-mix(in srgb, var(--background-primary) 88%, transparent);
 }
 
 #markdown-next-ai-apply-view .markdown-next-ai-accept {
@@ -2634,6 +2807,142 @@
 
 #markdown-next-ai-apply-view .markdown-next-ai-exclude:hover {
   background: rgba(var(--markdown-next-ai-current-color-rgb), 1);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-merge {
+  color: white;
+  background: rgba(var(--markdown-next-ai-merge-color-rgb), 0.82);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-merge:hover {
+  background: rgba(var(--markdown-next-ai-merge-color-rgb), 1);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-header-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  min-width: 96px;
+  min-height: 32px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+  background: color-mix(in srgb, var(--background-secondary) 86%, transparent);
+  color: var(--text-normal);
+  cursor: pointer;
+  white-space: nowrap;
+  justify-content: center;
+  flex: 0 0 auto;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+
+#markdown-next-ai-apply-view .markdown-next-ai-header-btn:hover {
+  transform: translateY(-1px);
+  background: color-mix(in srgb,
+      var(--background-primary) 82%,
+      var(--background-secondary) 18%);
+  border-color: color-mix(in srgb, var(--text-muted) 55%, transparent);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-header-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-header-btn:disabled:hover {
+  transform: none;
+  background: color-mix(in srgb, var(--background-primary) 88%, transparent);
+  border-color: color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-header-btn svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2.4;
+  stroke: currentColor;
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-header-btn--accept {
+  border-color: rgba(var(--markdown-next-ai-incoming-color-rgb), 0.45);
+  background: rgba(var(--markdown-next-ai-incoming-color-rgb), 0.22);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-header-btn--reject {
+  border-color: rgba(var(--markdown-next-ai-current-color-rgb), 0.45);
+  background: rgba(var(--markdown-next-ai-current-color-rgb), 0.22);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-header-btn--merge {
+  border-color: rgba(var(--markdown-next-ai-merge-color-rgb), 0.5);
+  background: rgba(var(--markdown-next-ai-merge-color-rgb), 0.22);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-apply-pill {
+  display: flex;
+  overflow: hidden;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
+  background: color-mix(in srgb, var(--background-secondary) 86%, transparent);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(12px);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border: none;
+  cursor: pointer;
+  color: var(--text-normal);
+  white-space: nowrap;
+  transition:
+    filter 0.15s ease,
+    transform 0.15s ease;
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-pill-btn:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-pill-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-pill-btn:disabled:hover {
+  transform: none;
+  filter: none;
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-apply-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 56px 16px;
+  color: var(--text-muted);
+  font-size: var(--font-ui-small);
+  text-align: center;
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-pill-btn svg {
+  width: 16px;
+  height: 16px;
+  stroke-width: 2.4;
+  stroke: currentColor;
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-pill-btn--cancel {
+  background: rgba(var(--markdown-next-ai-current-color-rgb), 0.22);
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-pill-btn--apply {
+  background: rgba(var(--markdown-next-ai-incoming-color-rgb), 0.22);
 }
 
 #markdown-next-ai-apply-view .markdown-next-ai-diff-navigation {
@@ -2669,9 +2978,62 @@
   flex-wrap: wrap;
 }
 
+#markdown-next-ai-apply-view .markdown-next-ai-apply-progress-wrap {
+  flex: 1 1 auto;
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
 #markdown-next-ai-apply-view .markdown-next-ai-apply-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 160px;
+  max-width: 240px;
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-apply-progress-text {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   font-size: var(--font-ui-small);
+  color: var(--text-normal);
+  font-weight: 600;
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-apply-progress-label {
   color: var(--text-muted);
+  font-weight: 500;
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-apply-progress-value {
+  font-variant-numeric: tabular-nums;
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-apply-progress-bar {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--background-modifier-border) 60%, transparent);
+  overflow: hidden;
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-apply-progress-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--interactive-accent) 75%, var(--background-secondary));
+  transition: width 0.2s ease;
+}
+
+#markdown-next-ai-apply-view .markdown-next-ai-apply-topbar {
+  display: flex;
+  justify-content: center;
+  padding: 6px 12px 10px;
+  border-top: 1px solid var(--background-modifier-border);
+  background: var(--background-primary);
+  flex-shrink: 0;
 }
 
 #markdown-next-ai-apply-view .markdown-next-ai-toolbar-btn {
