@@ -3,9 +3,10 @@ import MarkdownNextAIPlugin from "../main";
 import { SettingsManager } from "./settings-manager";
 import { ChatTabView } from "./views/chat-tab-view";
 import { CompletionTabView } from "./views/completion-tab-view";
-import { EditorTabView, PreviewTabView } from "./views/editor-tab-view";
+import { EditorTabView } from "./views/editor-tab-view";
 import { ModelsTabView } from "./views/models-tab-view";
 import { OthersTabView } from "./views/others-tab-view";
+import { PreviewTabView } from "./views/preview-tab-view";
 
 export type TabId = "models" | "editor" | "preview" | "completion" | "chat" | "others";
 
