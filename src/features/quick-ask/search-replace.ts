@@ -14,56 +14,115 @@ export interface ApplyResult {
 
 const splitLines = (content: string) => content.split(/\r?\n/);
 
-export function parseSearchReplaceBlocks(content: string): SearchReplaceBlock[] {
+export interface ParseDiagnostics {
+    cleanedContent: string;
+    blocks: SearchReplaceBlock[];
+    errors: string[];
+    warnings: string[];
+}
+
+const stripOuterCodeFences = (text: string): string => {
+    const trimmed = (text || "").trim();
+    if (!trimmed.startsWith("```")) return text;
+    const lines = splitLines(trimmed);
+    if (lines.length < 2) return text;
+    if (!lines[0].startsWith("```")) return text;
+    const lastFenceIndex = (() => {
+        for (let i = lines.length - 1; i >= 0; i -= 1) {
+            if (lines[i].trim() === "```") return i;
+        }
+        return -1;
+    })();
+    if (lastFenceIndex <= 0) return text;
+    const inner = lines.slice(1, lastFenceIndex).join("\n");
+    return inner.trim();
+};
+
+export function parseSearchReplaceBlocksWithDiagnostics(content: string): ParseDiagnostics {
+    const cleanedContent = stripOuterCodeFences(content || "");
     const blocks: SearchReplaceBlock[] = [];
-    const lines = splitLines(content);
+    const errors: string[] = [];
+    const warnings: string[] = [];
+
+    const lines = splitLines(cleanedContent);
     let i = 0;
+    let outsideNonEmpty = 0;
+
+    const recordOutsideLine = (lineText: string) => {
+        if (!lineText.trim()) return;
+        outsideNonEmpty += 1;
+        if (warnings.length < 3) warnings.push(`存在块外文本：${lineText.trim().slice(0, 80)}`);
+    };
+
     while (i < lines.length) {
         const line = lines[i].trim();
+
         if (line === "<<<<<<< CONTINUE") {
+            const startLine = i + 1;
             i += 1;
             while (i < lines.length && lines[i].trim() !== "=======") i += 1;
-            if (i >= lines.length) break;
+            if (i >= lines.length) {
+                errors.push(`CONTINUE 块缺少分隔符 =======（第 ${startLine} 行附近）`);
+                break;
+            }
             i += 1;
             const contentLines: string[] = [];
             while (i < lines.length && lines[i].trim() !== ">>>>>>> CONTINUE") {
                 contentLines.push(lines[i]);
                 i += 1;
             }
-            if (i < lines.length) {
-                blocks.push({ type: "continue", search: "", replace: contentLines.join("\n") });
+            if (i >= lines.length) {
+                errors.push(`CONTINUE 块缺少结束标记 >>>>>>> CONTINUE（第 ${startLine} 行附近）`);
+                break;
             }
+            blocks.push({ type: "continue", search: "", replace: contentLines.join("\n") });
             i += 1;
             continue;
         }
+
         if (line === "<<<<<<< SEARCH") {
+            const startLine = i + 1;
             i += 1;
             const searchLines: string[] = [];
             while (i < lines.length && lines[i].trim() !== "=======") {
                 searchLines.push(lines[i]);
                 i += 1;
             }
-            if (i >= lines.length) break;
+            if (i >= lines.length) {
+                errors.push(`SEARCH 块缺少分隔符 =======（第 ${startLine} 行附近）`);
+                break;
+            }
             i += 1;
             const replaceLines: string[] = [];
             while (i < lines.length && lines[i].trim() !== ">>>>>>> REPLACE") {
                 replaceLines.push(lines[i]);
                 i += 1;
             }
-            if (i < lines.length) {
-                blocks.push({ type: "replace", search: searchLines.join("\n"), replace: replaceLines.join("\n") });
+            if (i >= lines.length) {
+                errors.push(`REPLACE 块缺少结束标记 >>>>>>> REPLACE（第 ${startLine} 行附近）`);
+                break;
             }
+            const search = searchLines.join("\n");
+            if (!search.trim()) {
+                warnings.push(`SEARCH 块搜索内容为空（第 ${startLine} 行附近）`);
+            }
+            blocks.push({ type: "replace", search, replace: replaceLines.join("\n") });
             i += 1;
             continue;
         }
+
         if (line === "<<<<<<< INSERT AFTER") {
+            const startLine = i + 1;
             i += 1;
             const searchLines: string[] = [];
             while (i < lines.length && lines[i].trim() !== "=======") {
                 searchLines.push(lines[i]);
                 i += 1;
             }
-            if (i >= lines.length) break;
+            if (i >= lines.length) {
+                errors.push(`INSERT AFTER 块缺少分隔符 =======（第 ${startLine} 行附近）`);
+                break;
+            }
             i += 1;
             const replaceLines: string[] = [];
             while (
@@ -74,15 +133,35 @@ export function parseSearchReplaceBlocks(content: string): SearchReplaceBlock[] 
                 replaceLines.push(lines[i]);
                 i += 1;
             }
-            if (i < lines.length) {
-                blocks.push({ type: "insert", search: searchLines.join("\n"), replace: replaceLines.join("\n") });
+            if (i >= lines.length) {
+                errors.push(`INSERT 块缺少结束标记 >>>>>>> INSERT（第 ${startLine} 行附近）`);
+                break;
             }
+            const search = searchLines.join("\n");
+            if (!search.trim()) {
+                warnings.push(`INSERT AFTER 块定位内容为空（第 ${startLine} 行附近）`);
+            }
+            blocks.push({ type: "insert", search, replace: replaceLines.join("\n") });
             i += 1;
             continue;
         }
+
+        recordOutsideLine(lines[i]);
         i += 1;
     }
-    return blocks;
+
+    if (blocks.length === 0 && cleanedContent.trim()) {
+        errors.push("未找到任何编辑块（需要 <<<<<<< SEARCH / CONTINUE / INSERT AFTER）");
+    }
+    if (outsideNonEmpty > 0 && warnings.length === 0) {
+        warnings.push("存在块外文本");
+    }
+
+    return { cleanedContent, blocks, errors, warnings };
+}
+
+export function parseSearchReplaceBlocks(content: string): SearchReplaceBlock[] {
+    return parseSearchReplaceBlocksWithDiagnostics(content).blocks;
 }
 
 const getLineInfos = (content: string) => {

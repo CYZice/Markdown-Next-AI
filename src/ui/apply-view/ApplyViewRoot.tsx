@@ -137,7 +137,7 @@ export default function ApplyViewRoot({
     return () => ro.disconnect()
   }, [])
 
-  const diff = useMemo(() => {
+  const diff = useMemo<DiffBlock[]>(() => {
     try {
       return createDiffBlocks(state.originalContent, state.newContent)
     } catch (e) {

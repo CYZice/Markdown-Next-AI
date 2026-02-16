@@ -369,10 +369,12 @@ export class TabCompletionController {
             const userContent = isBaseModel
                 ? `${basePromptSection}${systemPrompt}\n\n${titleSection}${contextWithMask}`
                 : `${basePromptSection}${titleSection}${contextWithMask}`;
-            const messages: ChatMessage[] = [
-                ...(isBaseModel ? [] : [{ role: 'system', content: systemPrompt }]),
-                { role: 'user', content: userContent }
-            ];
+            const messages: ChatMessage[] = isBaseModel
+                ? [{ role: 'user', content: userContent }]
+                : [
+                    { role: 'system', content: systemPrompt },
+                    { role: 'user', content: userContent }
+                ];
 
             // Log removed
 

@@ -34,8 +34,8 @@ const SelectionWidgetCore: React.FC<{ manager: SelectionManager, onAction: (acti
     const [mode, setMode] = useState<'hidden' | 'indicator' | 'menu'>('hidden');
     const [indicatorPosition, setIndicatorPosition] = useState({ left: 0, top: 0 });
 
-    const showTimeoutRef = useRef<NodeJS.Timeout>();
-    const hideTimeoutRef = useRef<NodeJS.Timeout>();
+    const showTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         return manager.subscribe((info) => {
