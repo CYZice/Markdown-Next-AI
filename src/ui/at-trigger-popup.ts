@@ -503,8 +503,12 @@ export class AtTriggerPopup {
                 }
                 const result = applySearchReplaceBlocks(editorContent, blocks);
                 if (result.appliedCount > 0) {
-                    editor.setValue(result.newContent);
-                    new Notice(`已应用 ${result.appliedCount} 处修改`);
+                    if (this.plugin.settings.confirmBeforeDirectApply) {
+                        this.plugin.openApplyView(file, editorContent, result.newContent);
+                    } else {
+                        editor.setValue(result.newContent);
+                        new Notice(`已应用 ${result.appliedCount} 处修改`);
+                    }
                 } else {
                     new Notice("未应用任何修改");
                 }

@@ -82,6 +82,7 @@ export interface PluginSettings {
     baseModelSpecialPrompt?: string;
     useKeychain?: boolean;
     quickAskMode: QuickAskMode;
+    confirmBeforeDirectApply: boolean;
 }
 
 // ConversationEntry removed

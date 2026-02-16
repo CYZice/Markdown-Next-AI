@@ -527,7 +527,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
         return null;
     }
 
-    private openApplyView(file: TFile, originalContent: string, newContent: string): void {
+    public openApplyView(file: TFile, originalContent: string, newContent: string): void {
         const workspace = this.app.workspace;
         const leaf = workspace.getLeaf(true);
         leaf.setViewState({
@@ -997,15 +997,18 @@ export default class MarkdownNextAIPlugin extends Plugin {
 
             // Logic Branching based on mode
             if (mode === 'edit-direct') {
-                // Direct Apply without confirmation
-                editor.operation(() => {
-                    if (isModification) {
-                        editor.replaceSelection(finalContent);
-                    } else {
-                        editor.replaceRange(finalContent, insertPos);
-                    }
-                });
-                new Notice("已直接应用修改");
+                if (this.settings.confirmBeforeDirectApply) {
+                    this.openApplyView(view.file!, originalDoc, newDoc);
+                } else {
+                    editor.operation(() => {
+                        if (isModification) {
+                            editor.replaceSelection(finalContent);
+                        } else {
+                            editor.replaceRange(finalContent, insertPos);
+                        }
+                    });
+                    new Notice("已直接应用修改");
+                }
             } else {
                 // Default / Edit / Ask: Open Apply View for confirmation
                 this.openApplyView(view.file!, originalDoc, newDoc);

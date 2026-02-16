@@ -1,4 +1,4 @@
-import { Modal, Setting } from "obsidian";
+import { Setting } from "obsidian";
 import { AbstractTabView } from "./abstract-tab-view";
 
 export class EditorTabView extends AbstractTabView {
@@ -18,6 +18,16 @@ export class EditorTabView extends AbstractTabView {
                     if (this.plugin && typeof this.plugin.updateEventListeners === "function") {
                         this.plugin.updateEventListeners();
                     }
+                }));
+
+        new Setting(containerEl)
+            .setName("直改模式需确认")
+            .setDesc("开启后，Direct 模式在写入前显示 Diff 确认")
+            .addToggle(toggle => toggle
+                .setValue(this.settings.settings.confirmBeforeDirectApply)
+                .onChange(async (value) => {
+                    this.settings.settings.confirmBeforeDirectApply = value;
+                    await this.settings.save();
                 }));
 
         new Setting(containerEl)
