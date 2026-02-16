@@ -178,31 +178,31 @@
 /* Apply Button Breathing Effect */
 @keyframes markdown-next-ai-pulse-green {
   0% {
-    box-shadow: 0 0 0 0 rgba(var(--color-green-rgb), 0.7);
+    background-color: rgba(var(--markdown-next-ai-incoming-color-rgb), 0.1);
+    color: var(--text-normal);
+    border-color: color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
   }
 
-  70% {
-    box-shadow: 0 0 0 6px rgba(var(--color-green-rgb), 0);
+  50% {
+    background-color: rgba(var(--markdown-next-ai-incoming-color-rgb), 1);
+    color: white;
+    border-color: transparent;
   }
 
   100% {
-    box-shadow: 0 0 0 0 rgba(var(--color-green-rgb), 0);
+    background-color: rgba(var(--markdown-next-ai-incoming-color-rgb), 0.1);
+    color: var(--text-normal);
+    border-color: color-mix(in srgb, var(--background-modifier-border) 70%, transparent);
   }
 }
 
 .markdown-next-ai-pill-btn--apply.is-complete {
-  animation: markdown-next-ai-pulse-green 2s infinite;
-  background-color: var(--interactive-accent);
-  /* Ensure it stands out */
-  border-color: var(--interactive-accent);
-  box-shadow: 0 0 8px rgba(var(--color-green-rgb), 0.5);
-  /* Static glow base */
+  animation: markdown-next-ai-pulse-green 1.5s infinite ease-in-out;
 }
 
 .markdown-next-ai-pill-btn--apply.is-complete:hover {
   animation: none;
   /* Stop animation on hover to indicate interaction */
-  background-color: var(--interactive-accent-hover);
 }
 
 /* More Button for Compact Mode */
