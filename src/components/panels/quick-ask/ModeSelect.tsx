@@ -21,7 +21,7 @@ export const MODE_OPTIONS: ModeOption[] = [
         icon: <Pencil size={14} />,
     },
     {
-        value: 'edit-direct',
+        value: 'direct',
         labelKey: 'quickAsk.modeEditDirect',
         labelFallback: 'Direct',
         descKey: 'quickAsk.modeEditDirectDesc',

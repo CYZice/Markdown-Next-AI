@@ -222,6 +222,10 @@ export default class MarkdownNextAIPlugin extends Plugin {
         const loadedData = await this.loadData();
         this.settings = Object.assign({}, DEFAULT_SETTINGS, loadedData);
 
+        if ((this.settings.quickAskMode as any) === 'edit-direct') {
+            this.settings.quickAskMode = 'direct';
+        }
+
         // 深度合并 providers
         if (loadedData && loadedData.providers) {
             this.settings.providers = { ...DEFAULT_SETTINGS.providers };
@@ -997,7 +1001,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
             })();
 
             // Logic Branching based on mode
-            if (mode === 'edit-direct') {
+            if (mode === 'direct') {
                 if (this.settings.confirmBeforeDirectApply) {
                     this.openApplyView(view.file!, originalDoc, newDoc);
                 } else {

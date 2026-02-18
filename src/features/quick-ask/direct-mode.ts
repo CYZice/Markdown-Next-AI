@@ -90,7 +90,7 @@ export async function generateEditContent({
         { role: "user", content: generateEditPrompt(instruction, currentFile, currentFileContent, selectedText, additionalContext) }
     ];
     const configuredMaxTokens = aiService.getMaxTokens("edit") || 2048;
-    const maxTokens = mode === "edit-direct" ? Math.max(16384, configuredMaxTokens) : configuredMaxTokens;
+    const maxTokens = mode === "direct" ? Math.max(16384, configuredMaxTokens) : configuredMaxTokens;
     const text = await aiService.generateCompletion(messages, modelId, {
         temperature: 0.2,
         max_tokens: maxTokens

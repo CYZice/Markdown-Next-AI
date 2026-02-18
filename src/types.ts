@@ -229,7 +229,7 @@ export interface TabCompletionTrigger {
     description?: string;
 }
 
-export type QuickAskMode = 'ask' | 'edit' | 'edit-direct';
+export type QuickAskMode = 'ask' | 'edit' | 'direct';
 
 export interface ModeOption {
     value: QuickAskMode;

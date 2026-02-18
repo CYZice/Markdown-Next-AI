@@ -3,7 +3,7 @@ import * as React from "react";
 import { createRoot, Root } from "react-dom/client";
 import { MODE_OPTIONS, ModeSelect } from "../components/panels/quick-ask";
 import { MODEL_CATEGORIES } from "../constants";
-import { generateEditContent } from "../features/quick-ask/edit-mode";
+import { generateEditContent } from "../features/quick-ask/direct-mode";
 import { applySearchReplaceBlocks, parseSearchReplaceBlocks } from "../features/quick-ask/search-replace";
 import MarkdownNextAIPlugin from "../main";
 import { ImageHandler } from "../services/image-handler";
@@ -430,7 +430,7 @@ export class AtTriggerPopup {
             return;
         }
 
-        if (this.mode === "edit-direct") {
+        if (this.mode === "direct") {
             if (!this.view || !this.view.editor || !this.view.file) {
                 new Notice("请在Markdown编辑器中使用直改模式");
                 return;
@@ -489,7 +489,7 @@ export class AtTriggerPopup {
                     additionalContext: apiContext,
                     aiService: this.plugin.aiService,
                     modelId: this.plugin.settings.currentModel,
-                    mode: "edit-direct"
+                    mode: "direct"
                 });
                 const blocks = parseSearchReplaceBlocks(generatedContent);
 
