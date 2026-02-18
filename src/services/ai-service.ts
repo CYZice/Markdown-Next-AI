@@ -2,6 +2,7 @@ import { App, Notice, requestUrl } from "obsidian";
 import { MODEL_CATEGORIES, SYSTEM_PROMPTS } from "../constants";
 import { DEFAULT_SETTINGS } from "../defaults";
 import type { APIModelConfig, ChatMessage, ImageData, PluginSettings, TextContext } from "../types";
+import { ErrorHandler } from "../utils";
 
 /**
  * AI 服务类
@@ -52,7 +53,7 @@ export class AIService {
                         config.apiKey = key;
                     }
                 } catch (e) {
-                    console.error(`Failed to load key ${secretId} from secret storage`, e);
+                    ErrorHandler.log(e, `Failed to load key ${secretId} from secret storage`);
                 }
             }
         }

@@ -74,7 +74,8 @@ export async function generateEditContent({
     additionalContext,
     aiService,
     modelId,
-    mode
+    mode,
+    onStatusUpdate
 }: {
     instruction: string;
     currentFile: TFile;
@@ -84,6 +85,7 @@ export async function generateEditContent({
     aiService: AIService;
     modelId: string | undefined;
     mode?: string;
+    onStatusUpdate?: (status: string) => void;
 }): Promise<string> {
     const messages: ChatMessage[] = [
         { role: "system", content: EDIT_MODE_SYSTEM_PROMPT },
@@ -91,9 +93,33 @@ export async function generateEditContent({
     ];
     const configuredMaxTokens = aiService.getMaxTokens("edit") || 2048;
     const maxTokens = mode === "direct" ? Math.max(16384, configuredMaxTokens) : configuredMaxTokens;
-    const text = await aiService.generateCompletion(messages, modelId, {
-        temperature: 0.2,
-        max_tokens: maxTokens
-    });
-    return text;
+
+    if (onStatusUpdate) onStatusUpdate("Requesting...");
+
+    let fullText = "";
+    let isThinking = false;
+
+    if (onStatusUpdate) onStatusUpdate("Thinking...");
+
+    // Use streamCompletion to support status updates
+    await aiService.streamCompletion(
+        messages,
+        modelId,
+        {
+            temperature: 0.2,
+            max_tokens: maxTokens
+        },
+        (content) => {
+            // Check for thinking blocks if supported by the model/response format
+            // But streamCompletion in ai-service currently just passes content delta
+            // We'll assume any content means we are generating
+            if (!isThinking) {
+                isThinking = true; // First chunk received
+                if (onStatusUpdate) onStatusUpdate("Generating...");
+            }
+            fullText += content;
+        }
+    );
+
+    return fullText;
 }

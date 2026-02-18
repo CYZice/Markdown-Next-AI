@@ -53,7 +53,7 @@ class MarkdownNextAIAPIImpl implements MarkdownNextAIAPI {
                 const context = await provider.getContext(file, request);
                 return context ? context.trim() : "";
             } catch (error) {
-                console.error(`[Markdown-Next-AI] Error getting context from provider '${provider.name}':`, error);
+                ErrorHandler.log(error, `Error getting context from provider '${provider.name}'`);
                 return "";
             }
         });
@@ -68,7 +68,7 @@ class MarkdownNextAIAPIImpl implements MarkdownNextAIAPI {
             try {
                 extender.extend(popupEl, context);
             } catch (error) {
-                console.error(`[Markdown-Next-AI] Error applying popup extender '${extender.name}':`, error);
+                ErrorHandler.log(error, `Error applying popup extender '${extender.name}'`);
             }
         }
     }
@@ -939,9 +939,9 @@ export default class MarkdownNextAIPlugin extends Plugin {
         let finalContent = "";
 
         if (onStatusUpdate) {
-            onStatusUpdate("正在思考中");
+            onStatusUpdate("正在请求中...");
         } else {
-            new Notice("正在思考中...");
+            new Notice("正在请求中...");
         }
 
         let controller: AbortController | null = null;
@@ -949,6 +949,11 @@ export default class MarkdownNextAIPlugin extends Plugin {
             controller = new AbortController();
             this.activeAbortControllers.add(controller);
             const endPos = isModification ? editor.getCursor("to") : insertPos;
+
+            if (onStatusUpdate) {
+                onStatusUpdate("正在思考中...");
+            }
+
             const result = await this.aiService.sendRequest(
                 mode,
                 {
@@ -981,7 +986,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
             }
             // 生成内容为空时，避免打开空的 Apply View
             if (!finalContent || finalContent.trim().length === 0) {
-                if (previewPopup) previewPopup.close();
+                if (onStatusUpdate) onStatusUpdate("生成内容为空");
                 new Notice("生成结果为空，已取消打开差异视图");
                 return;
             }
@@ -1003,8 +1008,10 @@ export default class MarkdownNextAIPlugin extends Plugin {
             // Logic Branching based on mode
             if (mode === 'direct') {
                 if (this.settings.confirmBeforeDirectApply) {
+                    if (onStatusUpdate) onStatusUpdate("正在准备编辑，即将打开差异视图...");
                     this.openApplyView(view.file!, originalDoc, newDoc);
                 } else {
+                    if (onStatusUpdate) onStatusUpdate("正在应用修改...");
                     editor.operation(() => {
                         if (isModification) {
                             editor.replaceSelection(finalContent);
@@ -1016,10 +1023,11 @@ export default class MarkdownNextAIPlugin extends Plugin {
                 }
             } else {
                 // Default / Edit / Ask: Open Apply View for confirmation
+                if (onStatusUpdate) onStatusUpdate("正在准备编辑，即将打开差异视图...");
                 this.openApplyView(view.file!, originalDoc, newDoc);
             }
         } catch (error: any) {
-            new Notice("续写失败: " + error.message);
+            ErrorHandler.notify(error, "续写失败");
             // Re-throw error so AtTriggerPopup knows it failed and can restore its UI
             throw error;
         } finally {

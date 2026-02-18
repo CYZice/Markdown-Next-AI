@@ -419,6 +419,27 @@ export class AtTriggerPopup {
         this.closeModelDropdown();
     }
 
+    private updateStatus(status: string, isError: boolean = false): void {
+        let statusEl = this.popupEl?.querySelector(".markdown-next-ai-status-message") as HTMLElement;
+        if (!statusEl && this.popupEl) {
+            statusEl = document.createElement("div");
+            statusEl.className = "markdown-next-ai-status-message";
+            statusEl.style.cssText = "padding: 0 12px 8px; color: var(--text-muted); font-size: 0.8em;";
+            const inputSection = this.popupEl.querySelector(".markdown-next-ai-continue-input");
+            if (inputSection && inputSection.parentElement) {
+                inputSection.parentElement.insertBefore(statusEl, inputSection.nextSibling);
+            }
+        }
+        if (statusEl) {
+            statusEl.textContent = status;
+            if (isError) {
+                statusEl.style.color = "var(--text-error)";
+            } else {
+                statusEl.style.color = "var(--text-muted)";
+            }
+        }
+    }
+
     private async submit() {
         if (!this.inputController || !this.chatRenderer) return;
 
@@ -462,17 +483,7 @@ export class AtTriggerPopup {
             }
 
             // Add status message
-            let statusEl = this.popupEl?.querySelector(".markdown-next-ai-status-message");
-            if (!statusEl && this.popupEl) {
-                statusEl = document.createElement("div");
-                statusEl.className = "markdown-next-ai-status-message";
-                statusEl.style.cssText = "padding: 0 12px 8px; color: var(--text-muted); font-size: 0.8em;";
-                const inputSection = this.popupEl.querySelector(".markdown-next-ai-continue-input");
-                if (inputSection && inputSection.parentElement) {
-                    inputSection.parentElement.insertBefore(statusEl, inputSection.nextSibling);
-                }
-            }
-            if (statusEl) statusEl.textContent = "正在思考并修改文档...";
+            this.updateStatus("正在思考并修改文档...");
 
             this.setThinking(true);
             try {
@@ -489,7 +500,8 @@ export class AtTriggerPopup {
                     additionalContext: apiContext,
                     aiService: this.plugin.aiService,
                     modelId: this.plugin.settings.currentModel,
-                    mode: "direct"
+                    mode: "direct",
+                    onStatusUpdate: (status) => this.updateStatus(status)
                 });
                 const blocks = parseSearchReplaceBlocks(generatedContent);
 
@@ -501,6 +513,7 @@ export class AtTriggerPopup {
                     new Notice("未能生成有效的修改建议");
                     return;
                 }
+
                 const result = applySearchReplaceBlocks(editorContent, blocks);
                 if (result.appliedCount > 0) {
                     if (this.plugin.settings.confirmBeforeDirectApply) {
@@ -526,9 +539,10 @@ export class AtTriggerPopup {
                     inputEl.disabled = false;
                     inputEl.style.opacity = "";
                 }
-                if (statusEl) statusEl.textContent = "";
 
-                new Notice("修改失败: " + (error instanceof Error ? error.message : String(error)));
+                const errorMsg = error instanceof Error ? error.message : String(error);
+                this.updateStatus("修改失败: " + errorMsg, true);
+                ErrorHandler.notify(error, "修改失败");
             } finally {
                 this.setThinking(false);
             }
@@ -564,20 +578,10 @@ export class AtTriggerPopup {
             }
 
             // Add status message
-            let statusEl = this.popupEl?.querySelector(".markdown-next-ai-status-message");
-            if (!statusEl && this.popupEl) {
-                statusEl = document.createElement("div");
-                statusEl.className = "markdown-next-ai-status-message";
-                statusEl.style.cssText = "padding: 0 12px 8px; color: var(--text-muted); font-size: 0.8em;";
-                const inputSection = this.popupEl.querySelector(".markdown-next-ai-continue-input");
-                if (inputSection && inputSection.parentElement) {
-                    inputSection.parentElement.insertBefore(statusEl, inputSection.nextSibling);
-                }
-            }
-            if (statusEl) statusEl.textContent = "正在思考中...";
+            this.updateStatus("正在思考中...");
 
             const updateStatus = (status: string) => {
-                if (statusEl) statusEl.textContent = status;
+                this.updateStatus(status);
             };
 
             this.setThinking(true);
@@ -596,8 +600,10 @@ export class AtTriggerPopup {
                     inputEl.disabled = false;
                     inputEl.style.opacity = "";
                 }
-                if (statusEl) statusEl.textContent = "";
-                new Notice("Request failed: " + (error instanceof Error ? error.message : String(error)));
+
+                const errorMsg = error instanceof Error ? error.message : String(error);
+                this.updateStatus("Request failed: " + errorMsg, true);
+                ErrorHandler.notify(error, "Request failed");
             } finally {
                 this.setThinking(false);
             }
@@ -675,7 +681,7 @@ export class AtTriggerPopup {
             this.messages.push({ role: "assistant", content: finalContent });
             this.images = [];
         } catch (error) {
-            new Notice("Generation failed: " + (error as any)?.message || String(error));
+            ErrorHandler.notify(error, "Generation failed");
             this.chatRenderer.updateStreamingMessage("Error: " + ((error as any)?.message || String(error)));
             this.chatRenderer.finalizeStreamingMessage("Error: " + ((error as any)?.message || String(error)));
         } finally {
