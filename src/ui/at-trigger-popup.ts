@@ -4,12 +4,10 @@ import { createRoot, Root } from "react-dom/client";
 import { MODE_OPTIONS, ModeSelect } from "../components/panels/quick-ask";
 import { MODEL_CATEGORIES } from "../constants";
 import { generateEditContent } from "../features/quick-ask/edit-mode";
-import { applySearchReplaceBlocks, parseSearchReplaceBlocksWithDiagnostics } from "../features/quick-ask/search-replace";
+import { applySearchReplaceBlocks, parseSearchReplaceBlocks } from "../features/quick-ask/search-replace";
 import MarkdownNextAIPlugin from "../main";
 import { ImageHandler } from "../services/image-handler";
 import { ChatMessage, CursorPosition, ImageData, QuickAskMode } from "../types";
-import { TextContextExtractor } from "../utils";
-import { createDiffBlocks } from "../utils/diff";
 import { ChatStreamRenderer } from "./popup/components/chat-renderer";
 import { InputController } from "./popup/components/input-controller";
 import { WindowManager } from "./popup/components/window-manager";
@@ -92,10 +90,7 @@ export class AtTriggerPopup {
             if (this.messages.length > 0) {
                 this.messages.forEach(msg => {
                     if (msg.role === "user" || msg.role === "assistant") {
-                        const displayContent = typeof msg.content === "string"
-                            ? msg.content
-                            : msg.content.map((p) => p.type === "text" ? (p.text ?? "") : "[图片]").join("").trim();
-                        this.chatRenderer!.renderChatMessage(msg.role, displayContent || "（无文本内容）");
+                        this.chatRenderer!.renderChatMessage(msg.role, msg.content);
                     }
                 });
             }
@@ -207,7 +202,7 @@ export class AtTriggerPopup {
             this.plugin.api.applyPopupExtenders?.(this.popupEl, {
                 mode: this.mode,
                 selectedText: this.selectedText,
-                file: this.view?.file ?? undefined
+                file: this.view?.file
             });
         }
 
@@ -435,23 +430,9 @@ export class AtTriggerPopup {
             return;
         }
 
-        const setInputEnabled = (el: HTMLElement | HTMLTextAreaElement | null | undefined, enabled: boolean) => {
-            if (!el) return;
-            const maybeFormEl = el as unknown as { disabled?: boolean };
-            if (typeof maybeFormEl.disabled === "boolean") {
-                maybeFormEl.disabled = !enabled;
-            } else if (el instanceof HTMLElement) {
-                el.contentEditable = enabled ? "true" : "false";
-            }
-            if (el instanceof HTMLElement) {
-                el.style.opacity = enabled ? "" : "0.7";
-                el.style.pointerEvents = enabled ? "" : "none";
-            }
-        };
-
-        if (this.mode === "edit-direct" || this.mode === "edit") {
+        if (this.mode === "edit-direct") {
             if (!this.view || !this.view.editor || !this.view.file) {
-                new Notice("请在Markdown编辑器中使用编辑模式");
+                new Notice("请在Markdown编辑器中使用直改模式");
                 return;
             }
             const editor = this.view.editor;
@@ -475,10 +456,13 @@ export class AtTriggerPopup {
                 submitBtn.style.pointerEvents = "none";
                 submitBtn.style.opacity = "0.7";
             }
-            setInputEnabled(inputEl, false);
+            if (inputEl) {
+                inputEl.disabled = true;
+                inputEl.style.opacity = "0.7";
+            }
 
             // Add status message
-            let statusEl = this.popupEl?.querySelector(".markdown-next-ai-status-message") as HTMLElement | null;
+            let statusEl = this.popupEl?.querySelector(".markdown-next-ai-status-message");
             if (!statusEl && this.popupEl) {
                 statusEl = document.createElement("div");
                 statusEl.className = "markdown-next-ai-status-message";
@@ -492,13 +476,11 @@ export class AtTriggerPopup {
 
             this.setThinking(true);
             try {
-                if (statusEl) statusEl.textContent = "正在收集上下文...";
                 // Get additional context from API
                 const apiContext = (this.view && this.view.file)
                     ? await this.plugin.api.getAggregatedContext(this.view.file, { mode: this.mode, prompt: content, selectedText: this.selectedText })
                     : "";
 
-                if (statusEl) statusEl.textContent = "正在请求 AI...";
                 const generatedContent = await generateEditContent({
                     instruction: content,
                     currentFile: file,
@@ -507,57 +489,45 @@ export class AtTriggerPopup {
                     additionalContext: apiContext,
                     aiService: this.plugin.aiService,
                     modelId: this.plugin.settings.currentModel,
-                    mode: this.mode
+                    mode: "edit-direct"
                 });
-                if (statusEl) statusEl.textContent = "正在解析 AI 输出...";
-                const diag = parseSearchReplaceBlocksWithDiagnostics(generatedContent);
-                const blocks = diag.blocks;
+                const blocks = parseSearchReplaceBlocks(generatedContent);
 
-                if (diag.warnings.length > 0) {
-                    new Notice(`AI 输出警告：${diag.warnings[0]}`);
-                }
-                if (diag.errors.length > 0) {
-                    const snippet = (diag.cleanedContent || "").trim().slice(0, 200);
-                    const suffix = (diag.cleanedContent || "").trim().length > 200 ? "…" : "";
-                    throw new Error(`${diag.errors[0]}${snippet ? `；输出片段：${snippet}${suffix}` : ""}`);
-                }
+                // Close popup before showing results/notices
+                this.isSubmitted = true;
+                this.close();
+
                 if (blocks.length === 0) {
                     new Notice("未能生成有效的修改建议");
                     return;
                 }
                 const result = applySearchReplaceBlocks(editorContent, blocks);
-                const diffBlocks = createDiffBlocks(editorContent, result.newContent);
-                const modifiedBlocks = diffBlocks.filter(b => b.type === "modified").length;
-                const deltaChars = result.newContent.length - editorContent.length;
-                const deltaText = deltaChars === 0 ? "字符数不变" : (deltaChars > 0 ? `增加 ${deltaChars} 字符` : `减少 ${Math.abs(deltaChars)} 字符`);
-
-                if (result.appliedCount === 0) {
-                    throw new Error(result.errors.length > 0 ? `未应用任何修改：${result.errors[0]}` : "未应用任何修改");
-                }
-
-                this.isSubmitted = true;
-                this.close();
-                if (this.mode === "edit-direct") {
+                if (result.appliedCount > 0) {
                     if (this.plugin.settings.confirmBeforeDirectApply) {
                         this.plugin.openApplyView(file, editorContent, result.newContent);
-                        new Notice(`已生成差异预览：${result.appliedCount} 处修改，${deltaText}`);
                     } else {
                         editor.setValue(result.newContent);
-                        new Notice(`已应用 ${result.appliedCount} 处修改，${deltaText}`);
+                        new Notice(`已应用 ${result.appliedCount} 处修改`);
                     }
                 } else {
-                    this.plugin.openApplyView(file, editorContent, result.newContent);
-                    new Notice(`已生成差异预览：${result.appliedCount} 处修改（${modifiedBlocks} 段变更），${deltaText}`);
+                    new Notice("未应用任何修改");
                 }
-                if (result.errors.length > 0) new Notice(`部分修改未应用：${result.errors[0]}`);
+                if (result.errors.length > 0) {
+                    new Notice(`部分修改未应用：${result.errors[0]}`);
+                }
             } catch (error) {
+                // Restore UI on error
                 if (submitBtn) {
                     submitBtn.innerHTML = originalBtnContent;
                     submitBtn.style.pointerEvents = "";
                     submitBtn.style.opacity = "";
                 }
-                setInputEnabled(inputEl, true);
-                if (statusEl) statusEl.textContent = "修改失败：" + (error instanceof Error ? error.message : String(error));
+                if (inputEl) {
+                    inputEl.disabled = false;
+                    inputEl.style.opacity = "";
+                }
+                if (statusEl) statusEl.textContent = "";
+
                 new Notice("修改失败: " + (error instanceof Error ? error.message : String(error)));
             } finally {
                 this.setThinking(false);
@@ -588,10 +558,13 @@ export class AtTriggerPopup {
                 submitBtn.style.pointerEvents = "none";
                 submitBtn.style.opacity = "0.7";
             }
-            setInputEnabled(inputEl, false);
+            if (inputEl) {
+                inputEl.disabled = true;
+                inputEl.style.opacity = "0.7";
+            }
 
             // Add status message
-            let statusEl = this.popupEl?.querySelector(".markdown-next-ai-status-message") as HTMLElement | null;
+            let statusEl = this.popupEl?.querySelector(".markdown-next-ai-status-message");
             if (!statusEl && this.popupEl) {
                 statusEl = document.createElement("div");
                 statusEl.className = "markdown-next-ai-status-message";
@@ -619,7 +592,10 @@ export class AtTriggerPopup {
                     submitBtn.style.pointerEvents = "";
                     submitBtn.style.opacity = "";
                 }
-                setInputEnabled(inputEl, true);
+                if (inputEl) {
+                    inputEl.disabled = false;
+                    inputEl.style.opacity = "";
+                }
                 if (statusEl) statusEl.textContent = "";
                 new Notice("Request failed: " + (error instanceof Error ? error.message : String(error)));
             } finally {
@@ -657,23 +633,13 @@ export class AtTriggerPopup {
         try {
             let finalContent = "";
             let finalThinking = "";
-            const editorContext = this.view?.editor
-                ? TextContextExtractor.getContext(this.view.editor, this.selectedText || null, this.plugin.settings)
-                : {
+            await this.plugin.aiService.sendRequest(
+                "chat",
+                {
                     selectedText: this.selectedText,
                     beforeText: "",
                     afterText: "",
                     cursorPosition: { line: 0, ch: 0 },
-                    filePath: "",
-                    lineNumber: 0
-                };
-            await this.plugin.aiService.sendRequest(
-                "chat",
-                {
-                    selectedText: editorContext.selectedText || this.selectedText,
-                    beforeText: editorContext.beforeText || "",
-                    afterText: editorContext.afterText || "",
-                    cursorPosition: editorContext.cursorPosition || { line: 0, ch: 0 },
                     additionalContext: finalContext || undefined
                 },
                 content,

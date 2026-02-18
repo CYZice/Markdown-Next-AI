@@ -1,6 +1,6 @@
-import { Modal, Notice, Setting, SuggestModal, requestUrl, type RequestUrlParam } from "obsidian";
+import { Modal, Notice, Setting, SuggestModal } from "obsidian";
 import { MODEL_CATEGORIES, PROVIDER_TYPES } from "../../constants";
-import type { APIModelConfig, ModelCategory, ModelConfig, PluginSettings } from "../../types";
+import type { ModelCategory, ModelConfig, PluginSettings } from "../../types";
 import { AbstractTabView } from "./abstract-tab-view";
 
 class ModelSuggestModal extends SuggestModal<{ id: string; name: string }> {

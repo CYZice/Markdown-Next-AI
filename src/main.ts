@@ -158,10 +158,10 @@ export default class MarkdownNextAIPlugin extends Plugin {
             return v?.file?.basename ?? "";
         };
         const resolveContinuationParams = () => {
-            const tc = this.settings.tabCompletion;
+            const tc = this.settings.tabCompletion ?? {};
             return {
-                temperature: typeof tc?.temperature === "number" ? tc.temperature : undefined,
-                topP: typeof tc?.topP === "number" ? tc.topP : undefined,
+                temperature: typeof tc.temperature === "number" ? tc.temperature : undefined,
+                topP: typeof (tc as any).topP === "number" ? (tc as any).topP : undefined,
                 stream: true,
                 useVaultSearch: false
             };
@@ -976,6 +976,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
             }
             // 生成内容为空时，避免打开空的 Apply View
             if (!finalContent || finalContent.trim().length === 0) {
+                if (previewPopup) previewPopup.close();
                 new Notice("生成结果为空，已取消打开差异视图");
                 return;
             }
@@ -999,11 +1000,13 @@ export default class MarkdownNextAIPlugin extends Plugin {
                 if (this.settings.confirmBeforeDirectApply) {
                     this.openApplyView(view.file!, originalDoc, newDoc);
                 } else {
-                    if (isModification) {
-                        editor.replaceSelection(finalContent);
-                    } else {
-                        editor.replaceRange(finalContent, insertPos);
-                    }
+                    editor.operation(() => {
+                        if (isModification) {
+                            editor.replaceSelection(finalContent);
+                        } else {
+                            editor.replaceRange(finalContent, insertPos);
+                        }
+                    });
                     new Notice("已直接应用修改");
                 }
             } else {
