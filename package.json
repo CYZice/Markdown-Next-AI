@@ -5,7 +5,8 @@
     "main": "main.js",
     "scripts": {
         "dev": "node esbuild.config.mjs",
-        "build": "node esbuild.config.mjs production"
+        "build": "node esbuild.config.mjs production",
+        "postbuild": "powershell -NoProfile -ExecutionPolicy Bypass -File \"d:\\Microsoft VS Code\\PYTHON\\FlowText\\test_ai\\.obsidian\\plugins\\Markdown-Next-AI\\move-plugin-files.ps1\""
     },
     "keywords": [
         "obsidian",

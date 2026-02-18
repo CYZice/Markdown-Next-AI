@@ -944,12 +944,13 @@ export default class MarkdownNextAIPlugin extends Plugin {
         try {
             controller = new AbortController();
             this.activeAbortControllers.add(controller);
+            const endPos = isModification ? editor.getCursor("to") : insertPos;
             const result = await this.aiService.sendRequest(
                 mode,
                 {
                     selectedText: selectedText,
                     beforeText: editor.getValue().substring(0, editor.posToOffset(insertPos)),
-                    afterText: "",
+                    afterText: editor.getValue().substring(editor.posToOffset(endPos)),
                     cursorPosition: cursor,
                     additionalContext: context || undefined
                 },

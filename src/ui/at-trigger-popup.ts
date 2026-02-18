@@ -631,20 +631,33 @@ export class AtTriggerPopup {
 
         this.setThinking(true);
         try {
+            let beforeText = "";
+            let afterText = "";
+            let cursorPosition = { line: 0, ch: 0 };
+
+            if (this.view && this.view.editor) {
+                const editor = this.view.editor;
+                const cursor = editor.getCursor();
+                cursorPosition = cursor;
+                const offset = editor.posToOffset(cursor);
+                beforeText = editor.getValue().substring(0, offset);
+                afterText = editor.getValue().substring(offset);
+            }
+
             let finalContent = "";
             let finalThinking = "";
             await this.plugin.aiService.sendRequest(
                 "chat",
                 {
                     selectedText: this.selectedText,
-                    beforeText: "",
-                    afterText: "",
-                    cursorPosition: { line: 0, ch: 0 },
+                    beforeText: beforeText,
+                    afterText: afterText,
+                    cursorPosition: cursorPosition,
                     additionalContext: finalContext || undefined
                 },
                 content,
                 imagesToSend,
-                this.messages,
+                this.messages.slice(0, -1),
                 (streamData) => {
                     if (streamData.thinking != null) {
                         finalThinking = streamData.thinking;
