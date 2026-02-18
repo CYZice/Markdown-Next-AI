@@ -57,16 +57,18 @@ export class AtTriggerPopup {
     private modelDropdownTouchHandler: EventListener | null = null;
     private modelDropdownKeydownHandler: EventListener | null = null;
 
-    private onSubmitCallback: ((prompt: string, images: ImageData[], modelId: string, context: string, selectedText: string, mode: string, onStatusUpdate?: (status: string) => void) => Promise<void> | void) | null = null;
+    private onSubmitCallback: ((prompt: string, images: ImageData[], modelId: string, context: string, selectedText: string, mode: string, onStatusUpdate?: (status: string) => void, triggerPattern?: string) => Promise<void> | void) | null = null;
     public onCancel: (() => void) | null = null;
     private isSubmitted: boolean = false;
+    private triggerPattern: string = "";
 
-    constructor(app: App, plugin: MarkdownNextAIPlugin, onSubmit?: (prompt: string, images: ImageData[], modelId: string, context: string, selectedText: string, mode: string, onStatusUpdate?: (status: string) => void) => Promise<void> | void) {
+    constructor(app: App, plugin: MarkdownNextAIPlugin, onSubmit?: (prompt: string, images: ImageData[], modelId: string, context: string, selectedText: string, mode: string, onStatusUpdate?: (status: string) => void, triggerPattern?: string) => Promise<void> | void, triggerPattern: string = "") {
         this.app = app;
         this.plugin = plugin;
         this.windowManager = new WindowManager(app);
         this.imageHandler = new ImageHandler();
         this.onSubmitCallback = onSubmit ?? null;
+        this.triggerPattern = triggerPattern;
     }
 
     public open(cursorPosition: CursorPosition, selectedText: string, view: MarkdownView | null): void {
@@ -440,6 +442,21 @@ export class AtTriggerPopup {
         }
     }
 
+    private deleteTriggerCharacter(): void {
+        if (!this.triggerPattern || !this.view || !this.view.editor) return;
+
+        const editor = this.view.editor;
+        const cursor = editor.getCursor();
+        const line = editor.getLine(cursor.line);
+        const textBefore = line.substring(0, cursor.ch);
+
+        if (textBefore.endsWith(this.triggerPattern)) {
+            const from = { line: cursor.line, ch: cursor.ch - this.triggerPattern.length };
+            const to = { line: cursor.line, ch: cursor.ch };
+            editor.replaceRange("", from, to);
+        }
+    }
+
     private async submit() {
         if (!this.inputController || !this.chatRenderer) return;
 
@@ -450,6 +467,9 @@ export class AtTriggerPopup {
             new Notice("请输入内容");
             return;
         }
+
+        // 删除触发字符 (在任何模式处理之前)
+        this.deleteTriggerCharacter();
 
         if (this.mode === "direct") {
             if (!this.view || !this.view.editor || !this.view.file) {
@@ -586,7 +606,9 @@ export class AtTriggerPopup {
 
             this.setThinking(true);
             try {
-                await this.onSubmitCallback(content, imagesToSend, this.plugin.settings.currentModel, finalContext, this.selectedText, this.mode, updateStatus);
+                if (this.onSubmitCallback) {
+                    await this.onSubmitCallback(content, imagesToSend, this.plugin.settings.currentModel, finalContext, this.selectedText, this.mode, updateStatus, this.triggerPattern);
+                }
                 this.isSubmitted = true;
                 this.close();
             } catch (error) {

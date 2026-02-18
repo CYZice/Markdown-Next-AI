@@ -743,26 +743,11 @@ export default class MarkdownNextAIPlugin extends Plugin {
         const popup = new AtTriggerPopup(
             this.app,
             this,
-            async (prompt: string, images: ImageData[], modelId: string, context: string, selectedText: string, md: string, onStatusUpdate?: (status: string) => void) => {
-                await this.handleContinueWriting(prompt, images, modelId, context, selectedText, md, onStatusUpdate);
-            }
+            async (prompt: string, images: ImageData[], modelId: string, context: string, selectedText: string, md: string, onStatusUpdate?: (status: string) => void, trigger?: string) => {
+                await this.handleContinueWriting(prompt, images, modelId, context, selectedText, md, onStatusUpdate, trigger);
+            },
+            triggerPattern
         );
-
-        if (triggerPattern) {
-            popup.onCancel = () => {
-                if (view && view.editor) {
-                    const cursor = view.editor.getCursor();
-                    const line = view.editor.getLine(cursor.line);
-                    const textBefore = line.substring(0, cursor.ch);
-                    if (textBefore.endsWith(triggerPattern)) {
-                        view.editor.replaceRange("",
-                            { line: cursor.line, ch: cursor.ch - triggerPattern.length },
-                            { line: cursor.line, ch: cursor.ch }
-                        );
-                    }
-                }
-            };
-        }
 
         this.lastAtTriggerPopup = popup;
         popup.open(cursorPos, selectedText, view);
@@ -905,7 +890,8 @@ export default class MarkdownNextAIPlugin extends Plugin {
         context: string | null = null,
         selectedText: string = "",
         mode: string = "chat",
-        onStatusUpdate?: (status: string) => void
+        onStatusUpdate?: (status: string) => void,
+        triggerPattern?: string
     ): Promise<void> {
         // 编辑器模式：不使用浮窗确认，按预览+差异视图流程处理
 
@@ -926,8 +912,18 @@ export default class MarkdownNextAIPlugin extends Plugin {
         const line = editor.getLine(cursor.line);
         const lastChar = cursor.ch > 0 ? line.charAt(cursor.ch - 1) : "";
 
-        // 如果光标前是 @ 或 &，删除它
-        if (lastChar === "@" || lastChar === "&") {
+        // 如果提供了触发字符，使用触发字符删除逻辑
+        if (triggerPattern) {
+            const textBefore = line.substring(0, cursor.ch);
+            if (textBefore.endsWith(triggerPattern)) {
+                const from = { line: cursor.line, ch: cursor.ch - triggerPattern.length };
+                const to = { line: cursor.line, ch: cursor.ch };
+                editor.replaceRange("", from, to);
+                cursor.ch = cursor.ch - triggerPattern.length;
+            }
+        }
+        // 兼容旧逻辑：如果光标前是 @ 或 &，删除它 (仅当未提供 triggerPattern 时)
+        else if (lastChar === "@" || lastChar === "&") {
             const from = { line: cursor.line, ch: cursor.ch - 1 };
             const to = { line: cursor.line, ch: cursor.ch };
             editor.replaceRange("", from, to);
