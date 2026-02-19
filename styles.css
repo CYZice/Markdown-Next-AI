@@ -3341,49 +3341,49 @@
 
 /* Chat Mode - Standalone Window Style */
 .markdown-next-ai-at-popup.markdown-next-ai-chat-mode {
-    display: flex;
-    flex-direction: column;
-    width: 500px !important;
-    height: 600px !important;
-    max-width: 90vw;
-    max-height: 90vh;
-    border-radius: 12px;
-    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
-    resize: both; /* Allow resizing */
-    overflow: hidden;
-    padding: 0;
-    transition: width 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), height 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  display: flex;
+  flex-direction: column;
+  width: 500px !important;
+  height: 600px !important;
+  max-width: 90vw;
+  max-height: 90vh;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+  resize: both;
+  /* Allow resizing */
+  overflow: hidden;
+  padding: 0;
+  transition: width 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), height 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .markdown-next-ai-at-popup.markdown-next-ai-chat-mode .markdown-next-ai-popup-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    padding: 16px;
-    overflow: hidden;
-    gap: 12px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 14px;
+  overflow: hidden;
+  gap: 0;
 }
 
 .markdown-next-ai-at-popup.markdown-next-ai-chat-mode .markdown-next-ai-chat-history {
-    flex: 1;
-    overflow-y: auto;
-    padding-right: 4px;
-    display: flex !important; /* Force display */
-    margin-bottom: 12px;
-    border-bottom: 1px solid var(--background-modifier-border);
-    padding-bottom: 12px;
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 4px;
+  display: flex !important;
+  /* Force display */
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding-bottom: 12px;
 }
 
 /* Adjust input area for chat mode */
 .markdown-next-ai-at-popup.markdown-next-ai-chat-mode .markdown-next-ai-continue-input {
-    min-height: 40px;
-    height: auto;
-    max-height: 120px;
-    flex-shrink: 0;
+  min-height: 40px;
+  height: auto;
+  max-height: 120px;
+  flex-shrink: 0;
 }
 
 .markdown-next-ai-at-popup.markdown-next-ai-chat-mode .markdown-next-ai-upload-section {
-    margin-top: 0;
-    padding-top: 0;
-    border-top: none;
+  border-top: none;
 }
