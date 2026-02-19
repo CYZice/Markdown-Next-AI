@@ -94,12 +94,12 @@ export async function generateEditContent({
     const configuredMaxTokens = aiService.getMaxTokens("edit") || 2048;
     const maxTokens = mode === "direct" ? Math.max(16384, configuredMaxTokens) : configuredMaxTokens;
 
-    if (onStatusUpdate) onStatusUpdate("Requesting...");
+    if (onStatusUpdate) onStatusUpdate("正在请求中...");
 
     let fullText = "";
     let isThinking = false;
 
-    if (onStatusUpdate) onStatusUpdate("Thinking...");
+    if (onStatusUpdate) onStatusUpdate("正在思考中...");
 
     // Use streamCompletion to support status updates
     await aiService.streamCompletion(
@@ -115,7 +115,7 @@ export async function generateEditContent({
             // We'll assume any content means we are generating
             if (!isThinking) {
                 isThinking = true; // First chunk received
-                if (onStatusUpdate) onStatusUpdate("Generating...");
+                if (onStatusUpdate) onStatusUpdate("正在生成中...");
             }
             fullText += content;
         }

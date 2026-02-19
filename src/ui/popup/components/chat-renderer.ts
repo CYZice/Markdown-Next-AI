@@ -1,5 +1,6 @@
 import { App, MarkdownRenderer, MarkdownView, Notice, setIcon } from "obsidian";
 import MarkdownNextAIPlugin from "../../../main";
+import { ChatMessage } from "../../../types";
 
 export class ChatStreamRenderer {
     private app: App;
@@ -24,7 +25,7 @@ export class ChatStreamRenderer {
         this.container = container;
     }
 
-    public async renderChatMessage(role: "user" | "assistant", content: string): Promise<void> {
+    public async renderChatMessage(role: "user" | "assistant", content: ChatMessage["content"]): Promise<void> {
         if (!this.container) return;
 
         const rowEl = this.container.createDiv({ cls: `markdown-next-ai-chat-row ${role}` });
@@ -32,14 +33,53 @@ export class ChatStreamRenderer {
 
         const contentEl = messageEl.createDiv({ cls: "message-content" });
 
+        await this.renderMessageContent(role, contentEl, content);
         if (role === "assistant") {
-            await MarkdownRenderer.render(this.app, content, contentEl, "", this.plugin);
-            this.createMessageActions(rowEl, content);
-        } else {
-            contentEl.innerText = content;
+            const text = this.getTextContent(content);
+            this.createMessageActions(rowEl, text);
         }
 
         this.scrollToBottom();
+    }
+
+    private getTextContent(content: ChatMessage["content"]): string {
+        if (typeof content === "string") return content;
+        return content
+            .filter(part => part.type === "text")
+            .map(part => part.text || "")
+            .filter(Boolean)
+            .join("\n");
+    }
+
+    private async renderMessageContent(
+        role: "user" | "assistant",
+        container: HTMLElement,
+        content: ChatMessage["content"]
+    ): Promise<void> {
+        if (typeof content === "string") {
+            if (role === "assistant") {
+                await MarkdownRenderer.render(this.app, content, container, "", this.plugin);
+            } else {
+                container.innerText = content;
+            }
+            return;
+        }
+
+        for (const part of content) {
+            if (part.type === "text") {
+                const text = part.text || "";
+                const textEl = container.createDiv({ cls: "markdown-next-ai-chat-text" });
+                if (role === "assistant") {
+                    await MarkdownRenderer.render(this.app, text, textEl, "", this.plugin);
+                } else {
+                    textEl.innerText = text;
+                }
+            }
+            if (part.type === "image_url" && part.image_url?.url) {
+                const imgEl = container.createEl("img", { cls: "markdown-next-ai-chat-image" });
+                imgEl.src = part.image_url.url;
+            }
+        }
     }
 
     private createMessageActions(container: HTMLElement, content: string): void {
@@ -120,12 +160,8 @@ export class ChatStreamRenderer {
         detailsEl.style.display = "block";
         this.currentStreamingThinkingEl.setText(trimmed);
 
-        // Auto-expand while generating unless user manually toggled.
-        if (this.currentStreamingMessageEl.hasClass("streaming") && !this.currentStreamingThinkingUserToggled && !detailsEl.open) {
-            this.suppressThinkingToggleMark = true;
-            detailsEl.open = true;
-            this.suppressThinkingToggleMark = false;
-        }
+        // Auto-expand removed: user must manually toggle thinking details
+
         this.scrollToBottom();
     }
 

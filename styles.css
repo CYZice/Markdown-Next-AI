@@ -1211,18 +1211,19 @@
   display: flex;
   flex-direction: column;
   align-self: flex-start;
-  max-width: 92%;
-  padding: 7px 10px;
-  border-radius: 10px;
+  max-width: 88%;
+  padding: 10px 14px;
+  border-radius: 12px;
   border: 1px solid transparent;
-  font-size: 12.5px;
-  line-height: 1.45;
+  font-size: 13.5px;
+  line-height: 1.6;
 }
 
 .markdown-next-ai-at-popup .markdown-next-ai-chat-row {
   display: flex;
   align-items: flex-end;
-  gap: 6px;
+  gap: 8px;
+  margin-bottom: 12px;
 }
 
 .markdown-next-ai-at-popup .markdown-next-ai-chat-row.user {
@@ -1248,6 +1249,17 @@
 .markdown-next-ai-at-popup .markdown-next-ai-chat-message .message-content {
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+.markdown-next-ai-at-popup .markdown-next-ai-chat-message .markdown-next-ai-chat-text {
+  white-space: pre-wrap;
+}
+
+.markdown-next-ai-at-popup .markdown-next-ai-chat-message .markdown-next-ai-chat-image {
+  max-width: 100%;
+  border-radius: 8px;
+  margin-top: 6px;
+  display: block;
 }
 
 /* Markdown 渲染在气泡内的排版更紧凑 */
@@ -1318,19 +1330,32 @@
   }
 }
 
-/* 聊天气泡内的“思考”区块：可折叠，区别于正文 */
+/* 聊天气泡内的“思考”区块：简约折叠样式 (Cherry Studio风格) */
 .markdown-next-ai-at-popup .markdown-next-ai-chat-thinking {
-  margin: 2px 0 6px;
-  padding: 10px;
-  background: var(--background-secondary);
-  border-color: var(--background-modifier-border);
+  margin: 4px 0 8px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-left: 2px solid var(--background-modifier-border);
+  padding-left: 8px;
 }
 
 .markdown-next-ai-at-popup .markdown-next-ai-chat-thinking summary {
   cursor: pointer;
-  color: var(--text-muted);
-  font-size: 0.9em;
+  color: var(--text-faint);
+  font-size: 0.85em;
   user-select: none;
+  opacity: 0.8;
+  transition: opacity 0.2s;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.markdown-next-ai-at-popup .markdown-next-ai-chat-thinking summary:hover {
+  opacity: 1;
+  color: var(--text-muted);
 }
 
 .markdown-next-ai-at-popup .markdown-next-ai-chat-thinking summary::-webkit-details-marker {
@@ -1341,17 +1366,20 @@
   content: "▸";
   display: inline-block;
   width: 1em;
-  margin-right: 2px;
-  transform: translateY(-0.5px);
+  text-align: center;
+  transition: transform 0.2s ease;
 }
 
 .markdown-next-ai-at-popup .markdown-next-ai-chat-thinking[open] summary::before {
-  content: "▾";
+  transform: rotate(90deg);
 }
 
 .markdown-next-ai-at-popup .markdown-next-ai-chat-thinking .markdown-next-ai-thinking-content {
   margin-top: 6px;
-  font-size: 0.82em;
+  font-size: 0.85em;
+  color: var(--text-muted);
+  font-family: var(--font-monospace);
+  line-height: 1.5;
 }
 
 /* 选中文本预览区域样式 */
@@ -3309,4 +3337,53 @@
   font-size: 12px;
   color: var(--text-faint);
   opacity: 0.85;
+}
+
+/* Chat Mode - Standalone Window Style */
+.markdown-next-ai-at-popup.markdown-next-ai-chat-mode {
+    display: flex;
+    flex-direction: column;
+    width: 500px !important;
+    height: 600px !important;
+    max-width: 90vw;
+    max-height: 90vh;
+    border-radius: 12px;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.2);
+    resize: both; /* Allow resizing */
+    overflow: hidden;
+    padding: 0;
+    transition: width 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), height 0.3s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.markdown-next-ai-at-popup.markdown-next-ai-chat-mode .markdown-next-ai-popup-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    overflow: hidden;
+    gap: 12px;
+}
+
+.markdown-next-ai-at-popup.markdown-next-ai-chat-mode .markdown-next-ai-chat-history {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 4px;
+    display: flex !important; /* Force display */
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--background-modifier-border);
+    padding-bottom: 12px;
+}
+
+/* Adjust input area for chat mode */
+.markdown-next-ai-at-popup.markdown-next-ai-chat-mode .markdown-next-ai-continue-input {
+    min-height: 40px;
+    height: auto;
+    max-height: 120px;
+    flex-shrink: 0;
+}
+
+.markdown-next-ai-at-popup.markdown-next-ai-chat-mode .markdown-next-ai-upload-section {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: none;
 }

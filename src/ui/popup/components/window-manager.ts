@@ -52,6 +52,15 @@ export class WindowManager {
         this.closeGuards.clear();
     }
 
+    public resetDragOffsets(): void {
+        this.xOffset = 0;
+        this.yOffset = 0;
+        if (this.popupEl) {
+            this.popupEl.style.transform = "none";
+            delete document.body.dataset.mnaiDraggingAtPopup;
+        }
+    }
+
     public positionPopup(
         cursorPosition: CursorPosition | null
     ): void {

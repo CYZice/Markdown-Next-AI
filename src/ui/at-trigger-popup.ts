@@ -40,6 +40,8 @@ export class AtTriggerPopup {
     private messages: ChatMessage[] = [];
     private images: ImageData[] = [];
     private isThinking: boolean = false;
+    private abortController: AbortController | null = null;
+    private isChatOnly: boolean = false;
 
     // UI Elements
     private popupEl: HTMLElement | null = null;
@@ -78,7 +80,9 @@ export class AtTriggerPopup {
         if (this.isOpen) return;
         this.isOpen = true;
         this.isSubmitted = false;
+        this.isChatOnly = false;
         this.windowManager.isPinned = false;
+        this.windowManager.resetDragOffsets();
 
         this.createPopupShell();
 
@@ -103,7 +107,15 @@ export class AtTriggerPopup {
             this.inputController = new InputController(this.app, this.plugin, this.popupEl, inputEl, fileInput);
 
             this.inputController.onSubmit = () => this.submit();
-            this.inputController.onClose = () => this.close();
+            this.inputController.onClose = () => {
+                if (this.mode === 'ask') {
+                    if (this.isThinking) {
+                        this.abortRequest();
+                    }
+                    return;
+                }
+                this.close();
+            };
             this.inputController.onImageSelected = (img) => {
                 this.images.push(img);
                 const previewContainer = this.popupEl?.querySelector(".markdown-next-ai-image-previews") as HTMLElement;
@@ -361,6 +373,7 @@ export class AtTriggerPopup {
 
     private setupGlobalListeners() {
         const outsideClickHandler = (e: MouseEvent) => {
+            if (this.mode === 'ask') return;
             if (this.windowManager.hasCloseGuard()) return;
             if (!document.body.contains(e.target as Node)) return;
 
@@ -386,10 +399,18 @@ export class AtTriggerPopup {
         }
     }
 
+    private abortRequest(): void {
+        if (this.abortController) {
+            this.abortController.abort();
+            this.abortController = null;
+        }
+        this.setThinking(false);
+    }
+
     public close(): void {
         if (!this.isOpen) return;
+        this.abortRequest();
         this.isOpen = false;
-        this.setThinking(false);
 
         if (!this.isSubmitted && this.onCancel) {
             this.onCancel();
@@ -457,6 +478,59 @@ export class AtTriggerPopup {
         }
     }
 
+    private switchToChatMode(): void {
+        if (this.isChatOnly || !this.popupEl) return;
+        this.isChatOnly = true;
+        this.popupEl.addClass("markdown-next-ai-chat-mode");
+
+        // Update title
+        const titleTextEl = this.popupEl.querySelector(".markdown-next-ai-title-text") as HTMLElement;
+        if (titleTextEl) titleTextEl.textContent = "AI 对话";
+
+        // Ensure chat history is visible
+        if (this.chatHistoryContainer) {
+            this.chatHistoryContainer.style.display = "flex";
+        }
+
+        // Center the popup
+        const width = 500;
+        const height = 600;
+        const left = (window.innerWidth - width) / 2;
+        const top = (window.innerHeight - height) / 2;
+
+        this.windowManager.isPinned = false; // Disable pin temporarily to allow manual positioning override without interference
+        this.windowManager.resetDragOffsets(); // Clear any previous drag transforms
+
+        this.popupEl.style.position = "fixed";
+        this.popupEl.style.left = `${left}px`;
+        this.popupEl.style.top = `${top}px`;
+        this.popupEl.style.right = "auto";
+        this.popupEl.style.bottom = "auto";
+        this.popupEl.style.width = `${width}px`;
+        this.popupEl.style.height = `${height}px`;
+        this.popupEl.style.transform = "none";
+
+        // Re-enable pin to prevent auto-closing/auto-positioning logic from moving it back
+        this.windowManager.isPinned = true;
+
+        // Detach from scroll container to prevent relative positioning
+        this.windowManager.setScrollContainer(null);
+    }
+
+    private buildUserMessageContent(text: string, images: ImageData[]): ChatMessage["content"] {
+        if (!images || images.length === 0) return text;
+        const parts: Array<{ type: string; text?: string; image_url?: { url: string } }> = [];
+        const safeText = text && text.trim() ? text : " ";
+        parts.push({ type: "text", text: safeText });
+        images.forEach((img) => {
+            const url = img.base64 || img.url;
+            if (url) {
+                parts.push({ type: "image_url", image_url: { url } });
+            }
+        });
+        return parts;
+    }
+
     private async submit() {
         if (!this.inputController || !this.chatRenderer) return;
 
@@ -470,6 +544,10 @@ export class AtTriggerPopup {
 
         // 删除触发字符 (在任何模式处理之前)
         this.deleteTriggerCharacter();
+
+        if (this.mode === 'ask') {
+            this.switchToChatMode();
+        }
 
         if (this.mode === "direct") {
             if (!this.view || !this.view.editor || !this.view.file) {
@@ -624,8 +702,8 @@ export class AtTriggerPopup {
                 }
 
                 const errorMsg = error instanceof Error ? error.message : String(error);
-                this.updateStatus("Request failed: " + errorMsg, true);
-                ErrorHandler.notify(error, "Request failed");
+                this.updateStatus("请求失败: " + errorMsg, true);
+                ErrorHandler.notify(error, "请求失败");
             } finally {
                 this.setThinking(false);
             }
@@ -640,24 +718,16 @@ export class AtTriggerPopup {
             : "";
         const finalContext = (context || "") + (apiContext ? "\n\n" + apiContext : "");
 
-        const userVisiblePrompt = (() => {
-            const trimmed = (content || "").trim();
-            if (trimmed) return trimmed;
-            const parts: string[] = [];
-            if (imagesToSend.length > 0) parts.push(`图片 ${imagesToSend.length} 张`);
-            if (context && context.trim()) parts.push("已附加上下文");
-            if (parts.length === 0) return "（无文本）";
-            return `（${parts.join("，")}）`;
-        })();
-
         if (this.inputController) {
             this.inputController.clear();
         }
-        this.messages.push({ role: "user", content: userVisiblePrompt });
-        await this.chatRenderer.renderChatMessage("user", userVisiblePrompt);
+        const userMessageContent = this.buildUserMessageContent(content, imagesToSend);
+        this.messages.push({ role: "user", content: userMessageContent });
+        await this.chatRenderer.renderChatMessage("user", userMessageContent);
         this.chatRenderer.createStreamingAssistantMessage();
 
         this.setThinking(true);
+        this.abortController = new AbortController();
         try {
             let beforeText = "";
             let afterText = "";
@@ -697,16 +767,23 @@ export class AtTriggerPopup {
                             this.chatRenderer!.updateStreamingMessage(finalContent);
                         }
                     }
-                }
+                },
+                this.abortController.signal
             );
             await this.chatRenderer.finalizeStreamingMessage(finalContent);
             this.messages.push({ role: "assistant", content: finalContent });
             this.images = [];
         } catch (error) {
-            ErrorHandler.notify(error, "Generation failed");
-            this.chatRenderer.updateStreamingMessage("Error: " + ((error as any)?.message || String(error)));
-            this.chatRenderer.finalizeStreamingMessage("Error: " + ((error as any)?.message || String(error)));
+            if (error.name === 'AbortError') {
+                this.chatRenderer.updateStreamingMessage(" (已中断)");
+                this.chatRenderer.finalizeStreamingMessage(" (已中断)");
+            } else {
+                ErrorHandler.notify(error, "生成失败");
+                this.chatRenderer.updateStreamingMessage("错误: " + ((error as any)?.message || String(error)));
+                this.chatRenderer.finalizeStreamingMessage("错误: " + ((error as any)?.message || String(error)));
+            }
         } finally {
+            this.abortController = null;
             this.setThinking(false);
         }
     }
