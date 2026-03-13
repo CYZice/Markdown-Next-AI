@@ -179,7 +179,7 @@ export class AtTriggerPopup {
         }
 
         const isRewriteMode = this.mode === 'edit';
-        const titleText = isRewriteMode ? "修改所选内容" : "Markdown-Next-AI";
+        const titleText = isRewriteMode ? "修改所选内容" : "NextAI";
         const currentOption = MODE_OPTIONS.find(opt => opt.value === this.mode);
         const placeholderText = currentOption?.descFallback || (isRewriteMode ? "请输入修改要求..." : "@选择文件，#选择常用提示词...");
         const selectedTextPreview = this.selectedText;

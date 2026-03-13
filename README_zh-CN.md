@@ -1,4 +1,4 @@
-<h1 align="center">Markdown Next AI</h1>
+<h1 align="center">NextAI</h1>
 <p align="center"><b>深度集成到 Obsidian 的 AI 助手插件。</b></p>
 
 <p align="center">
@@ -6,17 +6,17 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/CYZice/Markdown-Next-AI/stargazers">
-    <img src="https://img.shields.io/github/stars/CYZice/Markdown-Next-AI?style=flat-square&color=6c5ce7" alt="GitHub Stars">
+  <a href="https://github.com/CYZice/Obsidian-Next-AI/stargazers">
+    <img src="https://img.shields.io/github/stars/CYZice/Obsidian-Next-AI?style=flat-square&color=6c5ce7" alt="GitHub Stars">
   </a>
-  <a href="https://github.com/CYZice/Markdown-Next-AI/releases/latest">
-    <img src="https://img.shields.io/github/v/release/CYZice/Markdown-Next-AI?style=flat-square&color=00b894" alt="Latest Release">
+  <a href="https://github.com/CYZice/Obsidian-Next-AI/releases/latest">
+    <img src="https://img.shields.io/github/v/release/CYZice/Obsidian-Next-AI?style=flat-square&color=00b894" alt="Latest Release">
   </a>
-  <a href="https://github.com/CYZice/Markdown-Next-AI/releases">
-    <img src="https://img.shields.io/github/downloads/CYZice/Markdown-Next-AI/total?style=flat-square&color=0984e3" alt="Downloads">
+  <a href="https://github.com/CYZice/Obsidian-Next-AI/releases">
+    <img src="https://img.shields.io/github/downloads/CYZice/Obsidian-Next-AI/total?style=flat-square&color=0984e3" alt="Downloads">
   </a>
-  <a href="https://github.com/CYZice/Markdown-Next-AI/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/CYZice/Markdown-Next-AI?style=flat-square&color=636e72" alt="License">
+  <a href="https://github.com/CYZice/Obsidian-Next-AI/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/CYZice/Obsidian-Next-AI?style=flat-square&color=636e72" alt="License">
   </a>
 </p>
 
@@ -65,7 +65,7 @@
 
 1. **安装插件**: 参考下方的 [安装指南](#📦-安装指南)。
 2. **配置模型**:
-   - 进入 `设置` -> `Markdown Next AI` -> `模型 (Models)`。
+   - 进入 `设置` -> `NextAI` -> `模型 (Models)`。
    - 添加供应商并填写 API Key。
    - *提示: 开启 Keychain 可实现跨设备/跨模型安全存储。*
 3. **开始写作**:
@@ -78,10 +78,10 @@
 
 ### 手动安装 (推荐)
 
-1. 从 [最新 Release](https://github.com/CYZice/Markdown-Next-AI/releases) 下载 `main.js`, `manifest.json`, `styles.css`, `data.json`。
+1. 从 [最新 Release](https://github.com/CYZice/Obsidian-Next-AI/releases) 下载 `main.js`, `manifest.json`, `styles.css`, `data.json`。
 2. 在您的库目录下创建 `.obsidian/plugins/markdown-next-ai` 文件夹。
 3. 将下载的文件放入该文件夹。
-4. 重启 Obsidian，在 **设置** -> **第三方插件** 中启用 "Markdown Next AI"。
+4. 重启 Obsidian，在 **设置** -> **第三方插件** 中启用 "NextAI"。
 
 ## 🗺️ 路线图
 
@@ -101,7 +101,7 @@
 
 ## ☕️ 支持
 
-如果您觉得 Markdown Next AI 对您有帮助，请在 GitHub 上点个 ⭐️！
+如果您觉得 NextAI 对您有帮助，请在 GitHub 上点个 ⭐️！
 
 ## 📄 许可证
 

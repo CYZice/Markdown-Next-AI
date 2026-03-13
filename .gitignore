@@ -1,6 +1,28 @@
+# Dependencies
+node_modules/
 
+# OS specific
 .DS_Store
+Thumbs.db
+
+# IDE specific
 .idea/
 .vscode/
+
+# Build artifacts
+# main.js
+
+# Configuration with secrets
+data.json
+
+# Logs
 *.log
-node_modules/
+
+# Temporary scripts
+extract.js
+fix_*.js
+tmp_*.js
+main_formatted.js
+
+
+*.md

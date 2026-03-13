@@ -19,30 +19,30 @@ class MarkdownNextAIAPIImpl implements MarkdownNextAIAPI {
     registerContextProvider(provider: AIContextProvider) {
         // Prevent duplicate registration
         if (this.contextProviders.some(p => p.id === provider.id)) {
-            console.warn(`[Markdown-Next-AI] Context provider with id '${provider.id}' is already registered.`);
+            console.warn(`[NextAI] Context provider with id '${provider.id}' is already registered.`);
             return;
         }
         this.contextProviders.push(provider);
-        console.log(`[Markdown-Next-AI] Registered context provider: ${provider.name}`);
+        console.log(`[NextAI] Registered context provider: ${provider.name}`);
     }
 
     unregisterContextProvider(id: string) {
         this.contextProviders = this.contextProviders.filter(p => p.id !== id);
-        console.log(`[Markdown-Next-AI] Unregistered context provider: ${id}`);
+        console.log(`[NextAI] Unregistered context provider: ${id}`);
     }
 
     registerPopupExtender(extender: AIPopupExtender) {
         if (this.popupExtenders.some(e => e.id === extender.id)) {
-            console.warn(`[Markdown-Next-AI] Popup extender with id '${extender.id}' is already registered.`);
+            console.warn(`[NextAI] Popup extender with id '${extender.id}' is already registered.`);
             return;
         }
         this.popupExtenders.push(extender);
-        console.log(`[Markdown-Next-AI] Registered popup extender: ${extender.name}`);
+        console.log(`[NextAI] Registered popup extender: ${extender.name}`);
     }
 
     unregisterPopupExtender(id: string) {
         this.popupExtenders = this.popupExtenders.filter(e => e.id !== id);
-        console.log(`[Markdown-Next-AI] Unregistered popup extender: ${id}`);
+        console.log(`[NextAI] Unregistered popup extender: ${id}`);
     }
 
     async getAggregatedContext(file: TFile, request?: AIContextRequest): Promise<string> {
@@ -81,7 +81,7 @@ interface EventListenerEntry {
 }
 
 /**
- * MarkdownNext AI 主插件类
+ * NextAI 主插件类
  */
 export default class MarkdownNextAIPlugin extends Plugin {
     settings!: PluginSettings;
@@ -135,7 +135,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
         // 追踪最后活跃的编辑器视图
         this.setupLastActiveViewTracker();
 
-        console.log("MarkdownNext AI 插件已加载");
+        console.log("NextAI 插件已加载");
         this.registerView(APPLY_VIEW_TYPE, (leaf) => new ApplyView(leaf));
 
         this.inlineSuggestionController = new InlineSuggestionController({
@@ -305,7 +305,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
             const provider = this.settings.providers[providerId];
             if (provider.apiKey && !provider.apiKey.startsWith("secret:")) {
                 try {
-                    const secretId = `markdown-next-ai-api-key-${providerId}`;
+                    const secretId = `obsidian-next-ai-api-key-${providerId}`;
                     const keyToSave = provider.apiKey.trim();
 
                     if (typeof secretStorage.save === "function") {
@@ -316,9 +316,9 @@ export default class MarkdownNextAIPlugin extends Plugin {
 
                     provider.apiKey = `secret:${secretId}`;
                     hasChanges = true;
-                    console.log(`[MarkdownNextAI] Automatically migrated API key for ${providerId} to Keychain.`);
+                    console.log(`[NextAI] Automatically migrated API key for ${providerId} to Keychain.`);
                 } catch (e) {
-                    console.error(`[MarkdownNextAI] Failed to migrate API key for ${providerId} to Keychain:`, e);
+                    console.error(`[NextAI] Failed to migrate API key for ${providerId} to Keychain:`, e);
                 }
             }
         }
@@ -549,7 +549,7 @@ export default class MarkdownNextAIPlugin extends Plugin {
                 if (selection && selection.trim()) {
                     menu.addItem((item) => {
                         item
-                            .setTitle("Markdown-Next-AI：修改所选内容")
+                            .setTitle("NextAI：修改所选内容")
                             .setIcon("atom")
                             .onClick(() => {
                                 this.showAtTriggerModal(selection);

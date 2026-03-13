@@ -1,4 +1,4 @@
-<h1 align="center">Markdown Next AI</h1>
+<h1 align="center">NextAI</h1>
 <p align="center"><b>Your Intelligent Writing Companion for Obsidian.</b></p>
 
 <p align="center">
@@ -6,17 +6,17 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/CYZice/Markdown-Next-AI/stargazers">
-    <img src="https://img.shields.io/github/stars/CYZice/Markdown-Next-AI?style=flat-square&color=6c5ce7" alt="GitHub Stars">
+  <a href="https://github.com/CYZice/Obsidian-Next-AI/stargazers">
+    <img src="https://img.shields.io/github/stars/CYZice/Obsidian-Next-AI?style=flat-square&color=6c5ce7" alt="GitHub Stars">
   </a>
-  <a href="https://github.com/CYZice/Markdown-Next-AI/releases/latest">
-    <img src="https://img.shields.io/github/v/release/CYZice/Markdown-Next-AI?style=flat-square&color=00b894" alt="Latest Release">
+  <a href="https://github.com/CYZice/Obsidian-Next-AI/releases/latest">
+    <img src="https://img.shields.io/github/v/release/CYZice/Obsidian-Next-AI?style=flat-square&color=00b894" alt="Latest Release">
   </a>
-  <a href="https://github.com/CYZice/Markdown-Next-AI/releases">
-    <img src="https://img.shields.io/github/downloads/CYZice/Markdown-Next-AI/total?style=flat-square&color=0984e3" alt="Downloads">
+  <a href="https://github.com/CYZice/Obsidian-Next-AI/releases">
+    <img src="https://img.shields.io/github/downloads/CYZice/Obsidian-Next-AI/total?style=flat-square&color=0984e3" alt="Downloads">
   </a>
-  <a href="https://github.com/CYZice/Markdown-Next-AI/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/CYZice/Markdown-Next-AI?style=flat-square&color=636e72" alt="License">
+  <a href="https://github.com/CYZice/Obsidian-Next-AI/blob/main/LICENSE">
+    <img src="https://img.shields.io/github/license/CYZice/Obsidian-Next-AI?style=flat-square&color=636e72" alt="License">
   </a>
 </p>
 
@@ -65,7 +65,7 @@ Quickly access AI actions by simply selecting text in your editor.
 
 1. **Install the plugin**: Follow the [Installation](#installation) guide below.
 2. **Configure API Keys**:
-   - Go to `Settings` -> `Markdown Next AI` -> `Models`.
+   - Go to `Settings` -> `NextAI` -> `Models`.
    - Add your provider (OpenAI, Anthropic, Gemini, etc.) and enter your API Key.
    - *Tip: Enable Keychain for secure storage.*
 3. **Start Writing**:
@@ -78,7 +78,7 @@ Quickly access AI actions by simply selecting text in your editor.
 
 ### Manual Installation (Currently Recommended)
 
-1. Download `main.js`, `manifest.json`, `styles.css`, and `data.json` from the [latest release](https://github.com/CYZice/Markdown-Next-AI/releases).
+1. Download `main.js`, `manifest.json`, `styles.css`, and `data.json` from the [latest release](https://github.com/CYZice/Obsidian-Next-AI/releases).
 2. Create a folder named `markdown-next-ai` in your vault's `.obsidian/plugins/` directory.
 3. Copy the downloaded files into that folder.
 4. Restart Obsidian and enable the plugin in **Settings** -> **Community plugins**.
@@ -93,7 +93,7 @@ Quickly access AI actions by simply selecting text in your editor.
 
 ## Contributing
 
-Contributions are welcome! Whether it's a bug report, a feature suggestion, or a pull request, we appreciate your help in making Markdown Next AI better.
+Contributions are welcome! Whether it's a bug report, a feature suggestion, or a pull request, we appreciate your help in making NextAI better.
 
 ## Acknowledgments
 
@@ -101,7 +101,7 @@ Special thanks to all the open-source projects and developers in the Obsidian co
 
 ## Support
 
-If you find Markdown Next AI helpful, please consider giving it a ⭐️ on GitHub!
+If you find NextAI helpful, please consider giving it a ⭐️ on GitHub!
 
 ## License
 
